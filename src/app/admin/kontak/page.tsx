@@ -1,0 +1,445 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { Kontak, TipeKontak, Pesanan, PengaturanDepo } from '@/lib/types';
+import { AppStore } from '@/lib/store';
+import { Users, UserPlus, Phone, MapPin, Search, Edit3, Trash2, Shield, X, Check, ChevronDown, ChevronUp, Target } from 'lucide-react';
+
+export default function AdminKontakPage() {
+  const [kontakList, setKontakList] = useState<Kontak[]>([]);
+  const [pesananList, setPesananList] = useState<Pesanan[]>([]);
+  const [pengaturan, setPengaturan] = useState<PengaturanDepo>(AppStore.getPengaturan());
+  const [search, setSearch] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Modal / Form state
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [nama, setNama] = useState('');
+  const [tipe, setTipe] = useState<TipeKontak>('pelanggan');
+  const [noHp, setNoHp] = useState('');
+  const [alamat, setAlamat] = useState('');
+  const [limitHutang, setLimitHutang] = useState<number>(100000);
+
+  useEffect(() => {
+    loadData();
+    window.addEventListener('depo_kontak_updated', loadData);
+    window.addEventListener('depo_pesanan_updated', loadData);
+    window.addEventListener('depo_pengaturan_updated', loadData);
+    return () => {
+      window.removeEventListener('depo_kontak_updated', loadData);
+      window.removeEventListener('depo_pesanan_updated', loadData);
+      window.removeEventListener('depo_pengaturan_updated', loadData);
+    };
+  }, []);
+
+  const loadData = () => {
+    setKontakList(AppStore.getKontak());
+    setPesananList(AppStore.getPesanan());
+    setPengaturan(AppStore.getPengaturan());
+  };
+
+  const openAddModal = () => {
+    setEditingId(null);
+    setNama('');
+    setTipe('pelanggan');
+    setNoHp('');
+    setAlamat('');
+    setLimitHutang(100000);
+    setShowModal(true);
+  };
+
+  const openEditModal = (kontak: Kontak) => {
+    setEditingId(kontak.id);
+    setNama(kontak.nama);
+    setTipe(kontak.tipe);
+    setNoHp(kontak.no_hp);
+    setAlamat(kontak.alamat || '');
+    setLimitHutang(kontak.limit_hutang || 100000);
+    setShowModal(true);
+  };
+
+  const handleDelete = (id: string, namaKontak: string) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus data kontak "${namaKontak}"?`)) {
+      const updated = kontakList.filter(k => k.id !== id);
+      setKontakList(updated);
+      AppStore.saveKontak(updated);
+    }
+  };
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (editingId) {
+      // Edit Mode
+      const updated = kontakList.map(k => {
+        if (k.id === editingId) {
+          return {
+            ...k,
+            nama,
+            tipe,
+            no_hp: noHp,
+            alamat,
+            limit_hutang: limitHutang
+          };
+        }
+        return k;
+      });
+      setKontakList(updated);
+      AppStore.saveKontak(updated);
+    } else {
+      // Add Mode
+      const newKontak: Kontak = {
+        id: `kt-${Date.now()}`,
+        nama,
+        tipe,
+        no_hp: noHp,
+        alamat,
+        limit_hutang: limitHutang,
+        hutang_saat_ini: 0,
+        aktif: true
+      };
+      const updated = [newKontak, ...kontakList];
+      setKontakList(updated);
+      AppStore.saveKontak(updated);
+    }
+
+    setShowModal(false);
+  };
+
+  const filtered = kontakList.filter(k => 
+    k.nama.toLowerCase().includes(search.toLowerCase()) || 
+    k.no_hp.includes(search) ||
+    k.alamat.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // Target Penjualan Harian Calculations for Admin Widget
+  const todayPesanan = pesananList.filter(p => new Date(p.created_at).toDateString() === new Date().toDateString());
+  const totalOmzetHarian = todayPesanan.reduce((acc, p) => acc + p.total_akhir, 0);
+  const totalGalonHarian = todayPesanan.reduce((acc, p) => {
+    const galonQty = p.items
+      .filter(item => item.nama_produk.includes('Galon'))
+      .reduce((sum, item) => sum + item.jumlah, 0);
+    return acc + galonQty;
+  }, 0);
+
+  const targetOmzetHarian = pengaturan.target_omzet_harian ?? 500000;
+  const targetGalonHarian = pengaturan.target_galon_harian ?? 50;
+
+  const persenOmzet = Math.min(100, Math.round((totalOmzetHarian / targetOmzetHarian) * 100));
+  const persenGalon = Math.min(100, Math.round((totalGalonHarian / targetGalonHarian) * 100));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      
+      {/* Header Bar */}
+      <div className="glass-card animate-fade-in" style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Users size={24} color="#0284c7" /> Manajemen Pelanggan & Reseller
+          </h2>
+          <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '2px' }}>
+            Kelola data kontak, nomor WhatsApp, alamat pengiriman, dan catatan limit hutang.
+          </p>
+        </div>
+        <button onClick={openAddModal} className="btn btn-primary">
+          <UserPlus size={18} /> Tambah Kontak Baru
+        </button>
+      </div>
+
+      {/* Target Penjualan & Capaian (HARIAN) Widget */}
+      <div className="glass-card animate-fade-in" style={{ padding: '20px', borderLeft: '4px solid #10b981' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Target size={20} color="#10b981" /> Target Penjualan & Capaian (HARIAN)
+          </h3>
+          <a href="/owner/dashboard" className="btn btn-secondary btn-sm" style={{ fontSize: '0.78rem', color: '#34d399', borderColor: 'rgba(16, 185, 129, 0.4)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            ✏️ Edit Target & Lihat Dashboard Detail
+          </a>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+          
+          {/* Target Omzet */}
+          <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>Target Pendapatan / Omzet</span>
+              <span className={`badge ${persenOmzet >= 100 ? 'badge-success' : 'badge-warning'}`}>
+                {persenOmzet >= 100 ? 'TERCAPAI' : 'DALAM PROSES'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
+              <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#34d399' }}>
+                {AppStore.formatRupiah(totalOmzetHarian)}
+              </h4>
+              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                Target: {AppStore.formatRupiah(targetOmzetHarian)}
+              </span>
+            </div>
+
+            <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{
+                width: `${persenOmzet}%`, height: '100%',
+                background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
+                transition: 'width 0.4s ease'
+              }} />
+            </div>
+            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginTop: '4px' }}>
+              Capaian: {persenOmzet}% dari target harian
+            </span>
+          </div>
+
+          {/* Target Galon */}
+          <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>Target Volume Penjualan Galon</span>
+              <span className={`badge ${persenGalon >= 100 ? 'badge-success' : 'badge-primary'}`}>
+                {persenGalon >= 100 ? 'TERCAPAI' : 'BERJALAN'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
+              <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#38bdf8' }}>
+                {totalGalonHarian} Galon
+              </h4>
+              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                Target: {targetGalonHarian} Galon
+              </span>
+            </div>
+
+            <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{
+                width: `${persenGalon}%`, height: '100%',
+                background: 'linear-gradient(90deg, #0284c7 0%, #38bdf8 100%)',
+                transition: 'width 0.4s ease'
+              }} />
+            </div>
+            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginTop: '4px' }}>
+              Capaian: {persenGalon}% dari target harian ({totalGalonHarian * 19} Liter)
+            </span>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Filter & Search */}
+      <div className="glass-card" style={{ padding: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Search size={18} color="#94a3b8" />
+          <input 
+            type="text" 
+            className="form-input" 
+            placeholder="Cari berdasarkan nama, no HP, atau alamat..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ marginBottom: 0 }}
+          />
+        </div>
+      </div>
+
+      {/* Modal Form Add/Edit */}
+      {showModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px'
+        }}>
+          <div className="glass-card animate-fade-in" style={{
+            width: '100%', maxWidth: '500px', padding: '28px', background: '#0f172a',
+            border: '1px solid var(--glass-border)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc' }}>
+                {editingId ? 'Edit Data Kontak Pelanggan' : 'Tambah Kontak Pelanggan / Reseller'}
+              </h3>
+              <button type="button" onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="form-group">
+                <label className="form-label">Nama Lengkap / Nama Toko</label>
+                <input type="text" className="form-input" value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Contoh: Pak Hendra" required />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Kategori Kontak</label>
+                <select value={tipe} onChange={(e) => setTipe(e.target.value as TipeKontak)} className="form-select">
+                  <option value="pelanggan">Pelanggan Rumah Tangga</option>
+                  <option value="reseller">Reseller / Toko Mitra</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Nomor WhatsApp / HP</label>
+                <input type="text" className="form-input" value={noHp} onChange={(e) => setNoHp(e.target.value)} placeholder="08..." required />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Alamat Lengkap Pengiriman</label>
+                <textarea className="form-textarea" rows={3} value={alamat} onChange={(e) => setAlamat(e.target.value)} placeholder="Jl. Merpati No..." required />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Limit Maksimum Hutang (Rp)</label>
+                <input type="number" className="form-input" value={limitHutang} onChange={(e) => setLimitHutang(Number(e.target.value))} placeholder="100000" required />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>
+                  Batal
+                </button>
+                <button type="submit" className="btn btn-success" style={{ flex: 1 }}>
+                  {editingId ? 'Simpan Perubahan' : 'Tambah Kontak'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Tabel Baris List Pelanggan & Reseller */}
+      <div className="glass-card animate-fade-in" style={{ padding: '20px' }}>
+        {filtered.length === 0 ? (
+          <p style={{ color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>
+            Tidak ada data pelanggan yang cocok dengan pencarian.
+          </p>
+        ) : (
+          <>
+            <div style={{ 
+              overflowX: 'auto', 
+              maxHeight: isExpanded ? '400px' : 'auto', 
+              overflowY: isExpanded ? 'auto' : 'hidden',
+              borderRadius: '8px'
+            }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', color: '#f8fafc' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left', color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', position: 'sticky', top: 0, background: '#0f172a', zIndex: 1 }}>
+                    <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Tipe</th>
+                    <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Nama Pelanggan / Toko</th>
+                    <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Nomor Kontak / WA</th>
+                    <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Alamat Lengkap</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>Hutang Aktif</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>Limit Hutang</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(isExpanded ? filtered : filtered.slice(0, 1)).map((kontak, idx) => {
+                    const isDebt = (kontak.hutang_saat_ini || 0) > 0;
+                    return (
+                      <tr 
+                        key={kontak.id} 
+                        style={{ 
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                          background: idx % 2 === 0 ? 'rgba(15, 23, 42, 0.3)' : 'transparent',
+                          transition: 'background 0.2s',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {/* Tipe Badge */}
+                        <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                          <span className={`badge ${kontak.tipe === 'reseller' ? 'badge-warning' : 'badge-primary'}`} style={{ padding: '2px 8px', fontSize: '0.7rem' }}>
+                            {kontak.tipe.toUpperCase()}
+                          </span>
+                        </td>
+
+                        {/* Nama */}
+                        <td style={{ padding: '8px 12px', fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap' }}>
+                          {kontak.nama}
+                        </td>
+
+                        {/* No HP */}
+                        <td style={{ padding: '8px 12px', color: '#38bdf8', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <Phone size={13} color="#38bdf8" />
+                            <span>{kontak.no_hp || '-'}</span>
+                          </div>
+                        </td>
+
+                        {/* Alamat */}
+                        <td style={{ padding: '8px 12px', color: '#94a3b8', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <MapPin size={13} color="#34d399" style={{ flexShrink: 0 }} />
+                            <span>{kontak.alamat || '-'}</span>
+                          </div>
+                        </td>
+
+                        {/* Hutang Aktif */}
+                        <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 800, color: isDebt ? '#ef4444' : '#34d399', whiteSpace: 'nowrap' }}>
+                          {AppStore.formatRupiah(kontak.hutang_saat_ini || 0)}
+                        </td>
+
+                        {/* Limit Hutang */}
+                        <td style={{ padding: '8px 12px', textAlign: 'right', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                          {AppStore.formatRupiah(kontak.limit_hutang || 0)}
+                        </td>
+
+                        {/* Action Buttons */}
+                        <td style={{ padding: '8px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
+                            <button 
+                              onClick={() => openEditModal(kontak)} 
+                              className="btn btn-secondary btn-sm" 
+                              style={{ padding: '4px 8px', fontSize: '0.75rem' }} 
+                              title="Edit Data Kontak"
+                            >
+                              <Edit3 size={13} /> Edit
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(kontak.id, kontak.nama)} 
+                              className="btn btn-danger btn-sm" 
+                              style={{ padding: '4px 8px', fontSize: '0.75rem' }} 
+                              title="Hapus Kontak"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Click to Expand / Scroll Toggle Button */}
+            {filtered.length > 1 && (
+              <button 
+                type="button" 
+                onClick={() => setIsExpanded(!isExpanded)} 
+                className="btn btn-secondary btn-sm" 
+                style={{ 
+                  width: '100%', 
+                  marginTop: '12px', 
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center', 
+                  gap: '8px',
+                  padding: '10px', 
+                  fontWeight: 700,
+                  background: isExpanded ? 'rgba(2, 132, 199, 0.2)' : 'rgba(15, 23, 42, 0.8)',
+                  border: '1px solid var(--glass-border)',
+                  color: '#38bdf8'
+                }}
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUp size={16} /> Ciutkan / Sembunyikan (Tampilkan 1 Baris Utama)
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown size={16} /> Klik Untuk Buka &amp; Scroll Seluruh Daftar ({filtered.length} Pelanggan)
+                  </>
+                )}
+              </button>
+            )}
+          </>
+        )}
+      </div>
+
+    </div>
+  );
+}

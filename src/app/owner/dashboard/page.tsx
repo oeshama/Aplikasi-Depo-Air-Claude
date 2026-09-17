@@ -1,0 +1,2803 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { Pesanan, Kontak, Produk, PengaturanDepo, KomponenServis, Pengeluaran, HutangToko, UserApp, ShiftKasir } from '@/lib/types';
+import { AppStore } from '@/lib/store';
+import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
+import { calculateOrderDuration, alarmSound, formatThresholdText } from '@/lib/audioAndTimer';
+import { 
+  LayoutDashboard, TrendingUp, ShoppingBag, AlertTriangle, 
+  Users, Droplets, ArrowUpRight, DollarSign, Clock, Wrench, 
+  Truck, Package, CheckCircle, RotateCcw, Calendar, Target, 
+  PieChart, FileText, Lightbulb, AlertCircle, ArrowDownRight,
+  BellOff, Volume2, TrendingDown, Banknote, Trash2, Coffee, Eye, ChevronRight, UserCheck, BookOpen, Check, X,
+  Search, History as HistoryIcon, Receipt
+} from 'lucide-react';
+
+type PeriodeFilter = 'harian' | 'mingguan' | 'bulanan' | 'tahunan' | 'semua';
+
+export default function OwnerDashboardPage() {
+  const [currentUser, setCurrentUser] = useState<UserApp | null>(null);
+  const [pesananList, setPesananList] = useState<Pesanan[]>([]);
+  const [kontakList, setKontakList] = useState<Kontak[]>([]);
+  const [produkList, setProdukList] = useState<Produk[]>([]);
+  const [pengeluaranList, setPengeluaranList] = useState<Pengeluaran[]>([]);
+  const [hutangTokoList, setHutangTokoList] = useState<HutangToko[]>([]);
+  const [shiftList, setShiftList] = useState<ShiftKasir[]>([]);
+  const [pengaturan, setPengaturan] = useState<PengaturanDepo>(AppStore.getPengaturan());
+  const [activeExpenseReceipt, setActiveExpenseReceipt] = useState<Pengeluaran | null>(null);
+  
+  // Filter State, Karyawan Detail Modal & Timer Alarm State
+  type TabType = 'overview' | 'keuangan' | 'karyawan_piutang' | 'pemeliharaan' | 'riwayat';
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
+
+  const [periode, setPeriode] = useState<PeriodeFilter>('harian');
+  const [mutedIds, setMutedIds] = useState<string[]>([]);
+  const [snoozedUntilMap, setSnoozedUntilMap] = useState<Record<string, number>>({});
+  const [nowTick, setNowTick] = useState<number>(Date.now());
+  const [selectedDetailKaryawan, setSelectedDetailKaryawan] = useState<any | null>(null);
+  const [isWaterAlarmMuted, setIsWaterAlarmMuted] = useState<boolean>(false);
+  const [waterAlarmSnoozedUntil, setWaterAlarmSnoozedUntil] = useState<number>(0);
+
+  // Pagination State for Tables
+  const [pengeluaranPage, setPengeluaranPage] = useState<number>(1);
+  const [riwayatPage, setRiwayatPage] = useState<number>(1);
+  const [riwayatSearch, setRiwayatSearch] = useState<string>('');
+  const ITEMS_PER_PAGE_EXPENSE = 8;
+  const ITEMS_PER_PAGE_TRANSACTIONS = 10;
+
+  // Modal Bayar Hak Staf / Ongkir State
+  const [showBayarHakModal, setShowBayarHakModal] = useState<boolean>(false);
+  const [targetKaryawanBayar, setTargetKaryawanBayar] = useState<any | null>(null);
+  const [kategoriBayarStaf, setKategoriBayarStaf] = useState<string>('ongkir');
+  const [nominalBayarStaf, setNominalBayarStaf] = useState<number>(0);
+  const [peruntukanBayarStaf, setPeruntukanBayarStaf] = useState<string>('');
+  const [catatanBayarStaf, setCatatanBayarStaf] = useState<string>('');
+
+  // Owner Water Meter & Stock Adjust Modal State
+  const [showOwnerMeterAdjustModal, setShowOwnerMeterAdjustModal] = useState<boolean>(false);
+  const [newStokAirInput, setNewStokAirInput] = useState<number>(5000);
+  const [newMeterAirInput, setNewMeterAirInput] = useState<number>(10000);
+
+  // Modal Edit Target Penjualan State
+  const [showEditTargetModal, setShowEditTargetModal] = useState<boolean>(false);
+  const [targetOmzetHarianInput, setTargetOmzetHarianInput] = useState<number>(500000);
+  const [targetGalonHarianInput, setTargetGalonHarianInput] = useState<number>(50);
+  const [targetOmzetMingguanInput, setTargetOmzetMingguanInput] = useState<number>(3500000);
+  const [targetGalonMingguanInput, setTargetGalonMingguanInput] = useState<number>(350);
+  const [targetOmzetBulananInput, setTargetOmzetBulananInput] = useState<number>(15000000);
+  const [targetGalonBulananInput, setTargetGalonBulananInput] = useState<number>(1500);
+
+  const handleOpenEditTargetModal = () => {
+    setTargetOmzetHarianInput(pengaturan.target_omzet_harian ?? 500000);
+    setTargetGalonHarianInput(pengaturan.target_galon_harian ?? 50);
+    setTargetOmzetMingguanInput(pengaturan.target_omzet_mingguan ?? 3500000);
+    setTargetGalonMingguanInput(pengaturan.target_galon_mingguan ?? 350);
+    setTargetOmzetBulananInput(pengaturan.target_omzet_bulanan ?? 15000000);
+    setTargetGalonBulananInput(pengaturan.target_galon_bulanan ?? 1500);
+    setShowEditTargetModal(true);
+  };
+
+  const handleSaveTargetPenjualan = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updatedPengaturan: PengaturanDepo = {
+      ...pengaturan,
+      target_omzet_harian: Number(targetOmzetHarianInput) || 0,
+      target_galon_harian: Number(targetGalonHarianInput) || 0,
+      target_omzet_mingguan: Number(targetOmzetMingguanInput) || 0,
+      target_galon_mingguan: Number(targetGalonMingguanInput) || 0,
+      target_omzet_bulanan: Number(targetOmzetBulananInput) || 0,
+      target_galon_bulanan: Number(targetGalonBulananInput) || 0,
+    };
+    AppStore.savePengaturan(updatedPengaturan);
+    setPengaturan(updatedPengaturan);
+    setShowEditTargetModal(false);
+    alert('🎯 Target Penjualan (Harian, Mingguan, Bulanan) berhasil diperbarui!');
+  };
+
+  const handleOpenBayarOngkirModal = (item: any, kat: string = 'ongkir') => {
+    setTargetKaryawanBayar(item);
+    setKategoriBayarStaf(kat);
+    
+    if (kat === 'ongkir') {
+      const sisa = item.sisaOngkirBelumTerbayar || 0;
+      setNominalBayarStaf(sisa > 0 ? sisa : item.totalOngkirOrderTerjadi || 0);
+      setPeruntukanBayarStaf(`Pembayaran Ongkir Delivery - ${item.kary.nama}`);
+    } else if (kat === 'gaji') {
+      const tglGaji = item.kary.tanggal_jatuh_tempo_gaji || 25;
+      const todayDate = new Date().getDate();
+      if (todayDate < tglGaji) {
+        if (!confirm(`🔒 Pembayaran gaji untuk ${item.kary.nama} belum jatuh tempo (Jatuh Tempo: Tanggal ${tglGaji}). Apakah Anda yakin ingin memproses pembayaran gaji lebih awal?`)) {
+          return;
+        }
+      }
+      setNominalBayarStaf(item.sisaGajiBelumDibayar > 0 ? item.sisaGajiBelumDibayar : item.kary.gaji_basic || 0);
+      setPeruntukanBayarStaf(`Pembayaran Gaji Bulan Ini (Jatuh Tempo Tgl ${tglGaji}) - ${item.kary.nama}`);
+    } else if (kat === 'kasbon') {
+      setNominalBayarStaf(0);
+      setPeruntukanBayarStaf(`Pinjaman Kasbon Karyawan - ${item.kary.nama}`);
+    } else if (kat === 'pengembalian_kasbon') {
+      setNominalBayarStaf(item.sisaKasbonAktif || 0);
+      setPeruntukanBayarStaf(`Pengembalian Kasbon Karyawan - ${item.kary.nama}`);
+    } else {
+      setNominalBayarStaf(item.kary.uang_makan_per_hari || 25000);
+      setPeruntukanBayarStaf(`Uang Makan / Konsumsi - ${item.kary.nama}`);
+    }
+    
+    setCatatanBayarStaf('');
+    setShowBayarHakModal(true);
+  };
+
+  const handleSaveBayarHakStaf = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetKaryawanBayar) return;
+
+    if (nominalBayarStaf <= 0) {
+      alert('Nominal pembayaran harus lebih besar dari Rp 0!');
+      return;
+    }
+
+    const currentUser = AppStore.getCurrentUser();
+    const isKasMasuk = kategoriBayarStaf === 'pengembalian_kasbon';
+
+    const newPengeluaran: Pengeluaran = {
+      id: `exp-${Date.now()}`,
+      tanggal: new Date().toISOString(),
+      nominal: nominalBayarStaf,
+      peruntukan: peruntukanBayarStaf.trim() || `Pembayaran Hak ${kategoriBayarStaf} - ${targetKaryawanBayar.kary.nama}`,
+      kategori: kategoriBayarStaf,
+      karyawan_id: targetKaryawanBayar.kary.id,
+      karyawan_nama: targetKaryawanBayar.kary.nama,
+      tipe_arus_kas: isKasMasuk ? 'masuk' : 'keluar',
+      kasir_id: currentUser.id,
+      kasir_nama: currentUser.nama,
+      catatan: catatanBayarStaf.trim() || undefined
+    };
+
+    AppStore.addPengeluaran(newPengeluaran);
+
+    setShowBayarHakModal(false);
+    setSelectedDetailKaryawan(null);
+    setTargetKaryawanBayar(null);
+
+    setActiveExpenseReceipt(newPengeluaran);
+  };
+
+  const loadData = () => {
+    setCurrentUser(AppStore.getCurrentUser());
+    setPesananList(AppStore.getPesanan());
+    setKontakList(AppStore.getKontak());
+    setProdukList(AppStore.getProduk());
+    setPengeluaranList(AppStore.getPengeluaran());
+    setHutangTokoList(AppStore.getHutangToko());
+    setPengaturan(AppStore.getPengaturan());
+    setShiftList(AppStore.getShiftList());
+  };
+
+  useEffect(() => {
+    loadData();
+
+    const handleUpdate = () => {
+      loadData();
+    };
+
+    window.addEventListener('depo_pengaturan_updated', handleUpdate);
+    window.addEventListener('depo_pesanan_updated', handleUpdate);
+    window.addEventListener('depo_pengeluaran_updated', handleUpdate);
+    window.addEventListener('depo_hutang_toko_updated', handleUpdate);
+    window.addEventListener('depo_shift_updated', handleUpdate);
+    
+    // Interval for dynamic duration updates
+    const interval = setInterval(() => setNowTick(Date.now()), 10000);
+
+    return () => {
+      window.removeEventListener('depo_pengaturan_updated', handleUpdate);
+      window.removeEventListener('depo_pesanan_updated', handleUpdate);
+      window.removeEventListener('depo_pengeluaran_updated', handleUpdate);
+      window.removeEventListener('depo_hutang_toko_updated', handleUpdate);
+      window.removeEventListener('depo_shift_updated', handleUpdate);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Calculation helper for Rekap Hutang Piutang & Keuangan Karyawan
+  const getRekapKaryawanList = () => {
+    const list = pengaturan.karyawan_list || [];
+
+    return list.map(kary => {
+      const matchesKary = (id?: string, nama?: string, peruntukan?: string) => {
+        if (id && id === kary.id) return true;
+        if (nama && (nama.toLowerCase().includes(kary.nama.toLowerCase()) || kary.nama.toLowerCase().includes(nama.toLowerCase()))) return true;
+        const firstName = kary.nama.split(' ')[0].toLowerCase();
+        if (peruntukan && firstName.length >= 3 && peruntukan.toLowerCase().includes(firstName)) return true;
+        return false;
+      };
+
+      // 1. Kasbon Karyawan & Pengembalian Kasbon
+      const pengeluaranKary = (pengeluaranList || []).filter(p => matchesKary(p.karyawan_id, p.karyawan_nama, p.peruntukan));
+      
+      const totalKasbon = pengeluaranKary
+        .filter(p => p.kategori === 'kasbon')
+        .reduce((acc, p) => acc + p.nominal, 0);
+
+      const totalPengembalianKasbon = pengeluaranKary
+        .filter(p => p.kategori === 'pengembalian_kasbon')
+        .reduce((acc, p) => acc + p.nominal, 0);
+
+      const sisaKasbonAktif = Math.max(0, totalKasbon - totalPengembalianKasbon);
+
+      // 2. Hutang Toko ke Karyawan (Depo Berhutang / Talangan dari Karyawan)
+      const hutangTokoKaryEntries = (hutangTokoList || []).filter(h => 
+        h.tipe_pihak === 'karyawan' && (h.karyawan_id === kary.id || h.nama_pihak.toLowerCase().includes(kary.nama.toLowerCase()))
+      );
+      const sisaHutangTokoKeKary = hutangTokoKaryEntries
+        .filter(h => h.status === 'belum_lunas')
+        .reduce((acc, h) => acc + h.sisa_hutang, 0);
+
+      // 3. Ongkir & Delivery Kurir (Terjadi vs Sudah Dibayar Kas Keluar vs Sisa Belum Terbayar)
+      const allDrivers = list.filter(k => 
+        k.jabatan.toLowerCase().includes('pengantar') || k.jabatan.toLowerCase().includes('driver')
+      );
+      const isKurirDriver = kary.jabatan.toLowerCase().includes('pengantar') || kary.jabatan.toLowerCase().includes('driver');
+
+      const pesananDiantar = (pesananList || []).filter(p => {
+        // Check if delivery order with ongkir
+        const isDelivery = (p.total_ongkir && p.total_ongkir > 0) || !!p.zone_ongkir_id || p.tipe_transaksi === 'tukar_galon';
+        if (!isDelivery) return false;
+
+        // Direct ID match
+        if (p.pengantar_id === kary.id) return true;
+        // User ID match (e.g. usr-4 is Pengantar Doni, kary-1 is Doni Pengantar)
+        if (p.pengantar_id === 'usr-4' && (kary.id === 'kary-1' || kary.nama.toLowerCase().includes('doni'))) return true;
+        // Catatan match
+        if (p.catatan && p.catatan.toLowerCase().includes(kary.nama.split(' ')[0].toLowerCase())) return true;
+        
+        // Fallback: If order is delivery and this is the main driver
+        if (isKurirDriver && (allDrivers.length === 1 || !p.pengantar_id)) return true;
+
+        return false;
+      });
+
+      // Total Ongkir Delivery yang TERJADI (Hak Kurir)
+      const totalOngkirOrderTerjadi = pesananDiantar.reduce((acc, p) => acc + (p.total_ongkir || 0), 0);
+      const totalGalonDiantar = pesananDiantar.reduce((acc, p) => acc + (p.total_unit_ongkir || 0), 0);
+
+      // Total Ongkir yang SUDAH DIBAYARKAN dari Kasir (Pengeluaran Kategori 'ongkir' atau 'bensin')
+      const totalOngkirKasKeluar = pengeluaranKary
+        .filter(p => p.kategori === 'ongkir' || p.kategori === 'bensin')
+        .reduce((acc, p) => acc + p.nominal, 0);
+
+      // Sisa Ongkir Delivery Terjadi yang BELUM TERBAYAR oleh Depo
+      const sisaOngkirBelumTerbayar = Math.max(0, totalOngkirOrderTerjadi - totalOngkirKasKeluar);
+
+      // 4. Uang Makan & Konsumsi
+      const totalKonsumsiKasKeluar = pengeluaranKary
+        .filter(p => p.kategori === 'konsumsi')
+        .reduce((acc, p) => acc + p.nominal, 0);
+
+      // 5. Gaji Bulanan (Disesuaikan dengan Tanggal Jatuh Tempo)
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      const currentDate = now.getDate();
+      const dueDay = kary.tanggal_jatuh_tempo_gaji || 25;
+      const isSudahJatuhTempo = currentDate >= dueDay;
+
+      const pengeluaranGajiBulanIni = pengeluaranKary.filter(p => {
+        if (p.kategori !== 'gaji') return false;
+        const pDate = new Date(p.tanggal);
+        return pDate.getMonth() === currentMonth && pDate.getFullYear() === currentYear;
+      });
+
+      const totalGajiPaidBulanIni = pengeluaranGajiBulanIni.reduce((acc, p) => acc + p.nominal, 0);
+      const sisaGajiBelumDibayar = Math.max(0, (kary.gaji_basic || 0) - totalGajiPaidBulanIni);
+      const sisaGajiTerhitung = isSudahJatuhTempo ? sisaGajiBelumDibayar : 0;
+      const isGajiLunasBulanIni = sisaGajiBelumDibayar === 0 && (kary.gaji_basic || 0) > 0;
+      const canBayarGaji = sisaGajiBelumDibayar > 0;
+      const totalInsentifGalon = 0;
+
+      // Total Hak Keuangan Karyawan dari Depo (Hutang Toko + Sisa Ongkir Belum Terbayar + Sisa Gaji Terhitung + Konsumsi)
+      const totalHakKeuangan = sisaHutangTokoKeKary + sisaOngkirBelumTerbayar + sisaGajiTerhitung + totalKonsumsiKasKeluar;
+      
+      // Total Piutang Depo ke Karyawan (Kasbon Aktif)
+      const totalKewajibanKasbon = sisaKasbonAktif;
+
+      // Net Balance Position (positif: Depo berhutang ke karyawan, negatif: Karyawan berhutang kasbon ke Depo)
+      const netPosisi = totalHakKeuangan - totalKewajibanKasbon;
+
+      return {
+        kary,
+        dueDay,
+        isSudahJatuhTempo,
+        canBayarGaji,
+        totalKasbon,
+        totalPengembalianKasbon,
+        sisaKasbonAktif,
+        sisaHutangTokoKeKary,
+        totalOngkirOrderTerjadi,
+        sisaOngkirBelumTerbayar,
+        totalGalonDiantar,
+        totalOngkirKasKeluar,
+        totalKonsumsiKasKeluar,
+        totalInsentifGalon,
+        totalGajiPaid: totalGajiPaidBulanIni,
+        sisaGajiBelumDibayar,
+        sisaGajiTerhitung,
+        isGajiLunasBulanIni,
+        totalHakKeuangan,
+        totalKewajibanKasbon,
+        netPosisi,
+        pengeluaranKary,
+        hutangTokoKaryEntries,
+        pesananDiantar
+      };
+    });
+  };
+
+  // Pending delivery (seluruh transaksi yang belum terkirim)
+  const pendingDelivery = (pesananList || []).filter(p => 
+    p && (
+      p.status_pesanan === 'pending' || 
+      p.status_pesanan === 'dijadwalkan' || 
+      p.status_pesanan === 'dalam_perjalanan'
+    )
+  );
+
+  // Settings Notifikasi Alarm
+  const thresholdMins = pengaturan.batas_keterlambatan_menit || 90;
+  const snoozeMins = pengaturan.durasi_snooze_menit || 15;
+  const isAlarmEnabled = (pengaturan.notifikasi_alarm_aktif !== false) && (pengaturan.mode_suara_alarm !== 'silent');
+
+  // Critical Low Water Stock Alarm
+  const minStokAirBakuCalc = pengaturan.min_stok_air_baku_liter || 2000;
+  const currentStokAirBakuCalc = pengaturan.stok_air_baku_saat_ini ?? 0;
+  const isWaterStockCriticalCalc = currentStokAirBakuCalc <= minStokAirBakuCalc;
+  const isWaterAlarmSnoozed = waterAlarmSnoozedUntil ? nowTick < waterAlarmSnoozedUntil : false;
+  const hasWaterStockAlarmAudio = isAlarmEnabled && isWaterStockCriticalCalc && !isWaterAlarmMuted && !isWaterAlarmSnoozed;
+
+  // Delayed Pending Orders (> thresholdMins)
+  const delayedPending = pendingDelivery.filter(p => {
+    const durInfo = calculateOrderDuration(p.created_at, p.terkirim_at, p.status_pesanan, thresholdMins);
+    return durInfo.isTerlambat;
+  });
+
+  const isOrderMuted = (id: string) => mutedIds.includes(id);
+
+  const isOrderSnoozed = (id: string) => {
+    const until = snoozedUntilMap[id];
+    return until ? nowTick < until : false;
+  };
+
+  const getSnoozeRemainingMinutes = (id: string) => {
+    const until = snoozedUntilMap[id];
+    if (!until || nowTick >= until) return 0;
+    return Math.max(1, Math.ceil((until - nowTick) / (1000 * 60)));
+  };
+
+  const hasActiveAlarm = isAlarmEnabled && (delayedPending.some(p => !isOrderMuted(p.id) && !isOrderSnoozed(p.id)) || hasWaterStockAlarmAudio);
+
+  useEffect(() => {
+    if (hasActiveAlarm) {
+      alarmSound.startAlarm();
+    } else {
+      alarmSound.stopAlarm();
+    }
+    return () => {
+      alarmSound.stopAlarm();
+    };
+  }, [hasActiveAlarm]);
+
+  const handleMuteJob = (id: string) => {
+    setMutedIds(prev => prev.includes(id) ? prev : [...prev, id]);
+    setSnoozedUntilMap(prev => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
+  };
+
+  const handleSnoozeJob = (id: string) => {
+    const until = Date.now() + (pengaturan.durasi_snooze_menit || 15) * 60 * 1000;
+    setSnoozedUntilMap(prev => ({ ...prev, [id]: until }));
+    setMutedIds(prev => prev.filter(mId => mId !== id));
+  };
+
+  const handleMuteAll = () => {
+    const allDelayedIds = delayedPending.map(p => p.id);
+    setMutedIds(prev => Array.from(new Set([...prev, ...allDelayedIds])));
+    setSnoozedUntilMap({});
+  };
+
+  const handleSnoozeAll = () => {
+    const until = Date.now() + (pengaturan.durasi_snooze_menit || 15) * 60 * 1000;
+    const newMap = { ...snoozedUntilMap };
+    delayedPending.forEach(p => {
+      newMap[p.id] = until;
+    });
+    setSnoozedUntilMap(newMap);
+    const allDelayedIds = delayedPending.map(p => p.id);
+    setMutedIds(prev => prev.filter(mId => !allDelayedIds.includes(mId)));
+  };
+
+  // Filter Pesanan based on selected Timeframe
+  const getFilteredPesanan = () => {
+    const now = new Date();
+    return (pesananList || []).filter(p => {
+      if (!p || !p.created_at) return false;
+      const pDate = new Date(p.created_at);
+      if (periode === 'harian') {
+        return pDate.toDateString() === now.toDateString();
+      } else if (periode === 'mingguan') {
+        const diffTime = Math.abs(now.getTime() - pDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 7;
+      } else if (periode === 'bulanan') {
+        return pDate.getMonth() === now.getMonth() && pDate.getFullYear() === now.getFullYear();
+      } else if (periode === 'tahunan') {
+        return pDate.getFullYear() === now.getFullYear();
+      }
+      return true; // 'semua'
+    });
+  };
+
+  const getFilteredPengeluaran = () => {
+    const now = new Date();
+    return (pengeluaranList || []).filter(p => {
+      if (!p || !p.tanggal) return false;
+      const pDate = new Date(p.tanggal);
+      if (periode === 'harian') {
+        return pDate.toDateString() === now.toDateString();
+      } else if (periode === 'mingguan') {
+        const diffTime = Math.abs(now.getTime() - pDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 7;
+      } else if (periode === 'bulanan') {
+        return pDate.getMonth() === now.getMonth() && pDate.getFullYear() === now.getFullYear();
+      } else if (periode === 'tahunan') {
+        return pDate.getFullYear() === now.getFullYear();
+      }
+      return true;
+    });
+  };
+
+  const filteredPesanan = getFilteredPesanan();
+  const filteredPengeluaran = getFilteredPengeluaran();
+
+  // Metrics Calculations
+  const totalOmzet = filteredPesanan.reduce((acc, p) => acc + (p?.total_akhir || 0), 0);
+  const totalTunaiMasuk = filteredPesanan
+    .filter(p => p && p.pembayaran_details && Array.isArray(p.pembayaran_details) && p.pembayaran_details.some(d => d && d.metode === 'tunai'))
+    .reduce((acc, p) => acc + (p?.total_akhir || 0), 0);
+
+  const totalPengeluaranKeluar = filteredPengeluaran
+    .filter(p => p && p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon')
+    .reduce((acc, p) => acc + (p?.nominal || 0), 0);
+
+  const totalPengembalianKasbon = filteredPengeluaran
+    .filter(p => p && (p.tipe_arus_kas === 'masuk' || p.kategori === 'pengembalian_kasbon'))
+    .reduce((acc, p) => acc + (p?.nominal || 0), 0);
+
+  const kasBersihSetoranOwner = Math.max(0, (totalTunaiMasuk + totalPengembalianKasbon) - totalPengeluaranKeluar);
+
+  // Shift Kasir Aggregation & Audit Calculations per Periode
+  const getFilteredShiftList = () => {
+    const now = new Date();
+    return (shiftList || []).filter(s => {
+      if (!s || !s.waktu_buka) return false;
+      const sDate = new Date(s.waktu_buka);
+      if (periode === 'harian') {
+        return sDate.toDateString() === now.toDateString();
+      } else if (periode === 'mingguan') {
+        const diffTime = Math.abs(now.getTime() - sDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 7;
+      } else if (periode === 'bulanan') {
+        return sDate.getMonth() === now.getMonth() && sDate.getFullYear() === now.getFullYear();
+      } else if (periode === 'tahunan') {
+        return sDate.getFullYear() === now.getFullYear();
+      }
+      return true;
+    });
+  };
+
+  const filteredShiftList = getFilteredShiftList();
+  const closedShiftList = filteredShiftList.filter(s => s.status === 'tutup');
+
+  const totalModalAwalShift = closedShiftList.reduce((acc, s) => acc + (s.saldo_awal || 0), 0);
+  const totalKasFisikAktualShift = closedShiftList.reduce((acc, s) => acc + (s.saldo_akhir_aktual || 0), 0);
+  const totalSelisihKasShift = closedShiftList.reduce((acc, s) => acc + (s.selisih || 0), 0);
+  const hasClosedShift = closedShiftList.length > 0;
+
+  const totalPiutangPelanggan = (pesananList || []).length === 0 ? 0 : (kontakList || []).reduce((acc, k) => acc + (k?.hutang_saat_ini || 0), 0);
+  const pelangganBerhutang = (pesananList || []).length === 0 ? [] : (kontakList || []).filter(k => k && (k.hutang_saat_ini || 0) > 0);
+
+  // Total Galon & Volume Air Terjual
+  const totalGalonTerjual = filteredPesanan.reduce((acc, p) => {
+    if (!p || !p.items || !Array.isArray(p.items)) return acc;
+    const galonQty = p.items
+      .filter(item => item && item.nama_produk && item.nama_produk.includes('Galon'))
+      .reduce((sum, item) => sum + (item.jumlah || 0), 0);
+    return acc + galonQty;
+  }, 0);
+
+  const totalLiterTerjual = filteredPesanan.reduce((acc, p) => {
+    if (!p || !p.items || !Array.isArray(p.items)) return acc;
+    const orderLiter = p.items.reduce((sum, item) => {
+      if (!item) return sum;
+      const prod = (produkList || []).find(pr => pr && pr.id === item.produk_id);
+      const nama = item.nama_produk || '';
+      const vol = prod ? (prod.volume_liter || 19) : nama.includes('19L') ? 19 : nama.includes('15L') ? 15 : 10;
+      return sum + (vol * (item.jumlah || 0));
+    }, 0);
+    return acc + orderLiter;
+  }, 0);
+
+  // Meteran Air Depo Calculations (Hitung Otomatis POS vs Entry Kasir & Selisih)
+  const activeShift = (shiftList || []).find(s => s.status === 'buka');
+  const closedShifts = (shiftList || []).filter(s => s.status === 'tutup' && s.meter_akhir !== undefined);
+  const latestClosedShift = closedShifts.length > 0 ? closedShifts[0] : null;
+
+  const targetShift = activeShift || latestClosedShift;
+
+  let meterAwalBasis = pengaturan.meteran_air_awal_liter ?? 0;
+  let totalLiterShift = 0;
+  let meterDepoEntryKasir: number | null = null;
+
+  if (targetShift) {
+    meterAwalBasis = targetShift.meter_awal || 0;
+    const shiftBukaTime = new Date(targetShift.waktu_buka).getTime();
+    const shiftTutupTime = targetShift.waktu_tutup ? new Date(targetShift.waktu_tutup).getTime() : Date.now() + 86400000;
+
+    const pesananShift = pesananList.filter(p => {
+      if (!p || !p.created_at) return false;
+      const t = new Date(p.created_at).getTime();
+      return t >= shiftBukaTime && t <= shiftTutupTime;
+    });
+
+    totalLiterShift = pesananShift.reduce((acc, p) => {
+      if (!p || !p.items || !Array.isArray(p.items)) return acc;
+      const orderLiter = p.items.reduce((sum, item) => {
+        if (!item) return sum;
+        const prod = (produkList || []).find(pr => pr && pr.id === item.produk_id);
+        const nama = item.nama_produk || '';
+        const vol = prod ? (prod.volume_liter || 19) : nama.includes('19L') ? 19 : nama.includes('15L') ? 15 : 10;
+        return sum + (vol * (item.jumlah || 0));
+      }, 0);
+      return acc + orderLiter;
+    }, 0);
+
+    if (targetShift.status === 'tutup') {
+      meterDepoEntryKasir = targetShift.meter_akhir ?? null;
+    }
+  }
+
+  const meterDepoHitungOtomatis = meterAwalBasis + totalLiterShift;
+  const hasMeterEntryKasir = meterDepoEntryKasir !== null && meterDepoEntryKasir !== undefined;
+  const selisihMeterAirDepo = hasMeterEntryKasir ? (meterDepoEntryKasir! - meterDepoHitungOtomatis) : 0;
+
+
+  // Target Sales Calculations
+  const targetOmzetMap: Record<PeriodeFilter, number> = {
+    harian: pengaturan.target_omzet_harian ?? 500000,
+    mingguan: pengaturan.target_omzet_mingguan ?? 3500000,
+    bulanan: pengaturan.target_omzet_bulanan ?? 15000000,
+    tahunan: pengaturan.target_omzet_tahunan ?? 180000000,
+    semua: 200000000
+  };
+
+  const targetGalonMap: Record<PeriodeFilter, number> = {
+    harian: pengaturan.target_galon_harian ?? 50,
+    mingguan: pengaturan.target_galon_mingguan ?? 350,
+    bulanan: pengaturan.target_galon_bulanan ?? 1500,
+    tahunan: pengaturan.target_galon_tahunan ?? 18000,
+    semua: 20000
+  };
+
+  const targetOmzetCurrent = targetOmzetMap[periode];
+  const targetGalonCurrent = targetGalonMap[periode];
+
+  const persenCapaianOmzet = Math.min(100, Math.round((totalOmzet / targetOmzetCurrent) * 100));
+  const persenCapaianGalon = Math.min(100, Math.round((totalGalonTerjual / targetGalonCurrent) * 100));
+
+  // Laba Rugi & Dynamic HPP Calculations
+  // HPP per Liter = (Total Kas Pembelian Air Baku / Total Volume Air Baku Terkirim)
+  const pembelianAirBakuPeriode = (filteredPengeluaran || []).filter(p => p && p.kategori === 'pembelian_air_baku' && (p.volume_air_masuk_liter || 0) > 0);
+  const totalBiayaAirBakuPeriode = pembelianAirBakuPeriode.reduce((sum, p) => sum + (p.nominal || 0), 0);
+  const totalVolumeAirBakuPeriode = pembelianAirBakuPeriode.reduce((sum, p) => sum + (p.volume_air_masuk_liter || 0), 0);
+
+  // Fallback ke riwayat pembelian air baku all-time jika di periode filter tidak ada pengiriman tangki
+  const pembelianAirBakuAllTime = (pengeluaranList || []).filter(p => p && p.kategori === 'pembelian_air_baku' && (p.volume_air_masuk_liter || 0) > 0);
+  const totalBiayaAirBakuAllTime = pembelianAirBakuAllTime.reduce((sum, p) => sum + (p.nominal || 0), 0);
+  const totalVolumeAirBakuAllTime = pembelianAirBakuAllTime.reduce((sum, p) => sum + (p.volume_air_masuk_liter || 0), 0);
+
+  let hppPerLiter = 0;
+  let isHppEstimated = false;
+  if (totalVolumeAirBakuPeriode > 0) {
+    hppPerLiter = totalBiayaAirBakuPeriode / totalVolumeAirBakuPeriode;
+  } else if (totalVolumeAirBakuAllTime > 0) {
+    hppPerLiter = totalBiayaAirBakuAllTime / totalVolumeAirBakuAllTime;
+  } else {
+    hppPerLiter = 37.5; // Default standar depo (misal Rp 300.000 / 8000 liter = Rp 37.5 / Liter)
+    isHppEstimated = true;
+  }
+
+  const hppPerLiterFormatted = Number(hppPerLiter.toFixed(1));
+  const totalHppAirTerjual = Math.round(totalLiterTerjual * hppPerLiter);
+
+  // Biaya operasional lain-lain (selain pembelian air baku)
+  const totalBiayaOperasionalLainnya = (filteredPengeluaran || [])
+    .filter(p => p && p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon' && p.kategori !== 'pembelian_air_baku')
+    .reduce((acc, p) => acc + (p?.nominal || 0), 0);
+
+  const labaKotor = totalOmzet - totalHppAirTerjual;
+  const totalBebanUsaha = totalHppAirTerjual + totalBiayaOperasionalLainnya;
+  const labaBersih = Math.max(0, totalOmzet - totalBebanUsaha);
+  const profitMarginPercent = totalOmzet > 0 ? Math.round((labaBersih / totalOmzet) * 100) : 0;
+
+  // Formatting Helpers
+  const formatJamOrder = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const formatTanggalJam = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) + ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const formatProdukRingkas = (items: Pesanan['items']) => {
+    if (!items || items.length === 0) return '-';
+    return items.map(item => `${item.nama_produk} (x${item.jumlah})`).join(', ');
+  };
+
+  // Reset/Reset Counter Komponen Terakhir Ganti
+  const handleResetKomponenServis = (kompId: string) => {
+    const updatedList = (pengaturan.komponen_servis_list || []).map(k => 
+      k.id === kompId ? { ...k, liter_terakhir_ganti: totalLiterTerjual } : k
+    );
+    const updatedPengaturan = { ...pengaturan, komponen_servis_list: updatedList };
+    AppStore.savePengaturan(updatedPengaturan);
+    setPengaturan(updatedPengaturan);
+    alert('Komponen berhasil ditandai sudah diganti/diservis! Counter liter telah di-reset.');
+  };
+
+  // Evaluate Alerts
+  const minStokAirBaku = pengaturan.min_stok_air_baku_liter || 2000;
+  const stokAirBakuSaatIni = pengaturan.stok_air_baku_saat_ini ?? 0;
+  const isAirBakuMenipis = (pengaturan.notifikasi_air_baku_aktif !== false) && (stokAirBakuSaatIni <= minStokAirBaku);
+
+  const activeKomponenList = (pengaturan.komponen_servis_list || []).filter(k => k.aktif);
+
+  // Pagination Calculations
+  const totalPengeluaranPages = Math.max(1, Math.ceil(filteredPengeluaran.length / ITEMS_PER_PAGE_EXPENSE));
+  const currentPengeluaranPage = Math.min(pengeluaranPage, totalPengeluaranPages);
+  const paginatedPengeluaran = filteredPengeluaran.slice(
+    (currentPengeluaranPage - 1) * ITEMS_PER_PAGE_EXPENSE,
+    currentPengeluaranPage * ITEMS_PER_PAGE_EXPENSE
+  );
+
+  const searchFilteredPesanan = filteredPesanan.filter(p => {
+    if (!riwayatSearch.trim()) return true;
+    const q = riwayatSearch.toLowerCase().trim();
+    return (
+      (p.no_nota && p.no_nota.toLowerCase().includes(q)) ||
+      (p.nama_pelanggan && p.nama_pelanggan.toLowerCase().includes(q)) ||
+      (p.status_pesanan && p.status_pesanan.toLowerCase().includes(q))
+    );
+  });
+  const totalRiwayatPages = Math.max(1, Math.ceil(searchFilteredPesanan.length / ITEMS_PER_PAGE_TRANSACTIONS));
+  const currentRiwayatPage = Math.min(riwayatPage, totalRiwayatPages);
+  const paginatedRiwayatPesanan = searchFilteredPesanan.slice(
+    (currentRiwayatPage - 1) * ITEMS_PER_PAGE_TRANSACTIONS,
+    currentRiwayatPage * ITEMS_PER_PAGE_TRANSACTIONS
+  );
+
+  const renderPagination = (currentPage: number, totalPages: number, onPageChange: (p: number) => void) => {
+    if (totalPages <= 1) return null;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', flexWrap: 'wrap', gap: '8px' }}>
+        <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+          Halaman <strong style={{ color: '#38bdf8' }}>{currentPage}</strong> dari <strong>{totalPages}</strong>
+        </span>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            className="btn btn-secondary btn-sm"
+            style={{ opacity: currentPage === 1 ? 0.5 : 1, padding: '4px 12px', fontSize: '0.8rem' }}
+          >
+            ← Previous
+          </button>
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+            className="btn btn-secondary btn-sm"
+            style={{ opacity: currentPage === totalPages ? 0.5 : 1, padding: '4px 12px', fontSize: '0.8rem' }}
+          >
+            Next →
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderRekapKasAndShiftAuditSection = () => {
+    return (
+      <div className="glass-card animate-fade-in" style={{ padding: '24px', borderTop: '4px solid #ef4444' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <TrendingDown size={22} color="#f87171" /> Rekap Kas Setoran &amp; Audit Shift Kasir ({periode.toUpperCase()})
+            </h3>
+            <p style={{ color: '#94a3b8', fontSize: '0.82rem', marginTop: '2px' }}>
+              Rangkuman modal kas awal kasir, hasil setoran tunai, pengeluaran kas, serta audit selisih kas fisik.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <span className="badge badge-primary">{filteredShiftList.length} Shift Kasir</span>
+            <span className="badge badge-danger">{filteredPengeluaran.length} Item Pengeluaran</span>
+          </div>
+        </div>
+
+        {/* 5 Box Summary Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+          <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Modal Kas Laci Awal</span>
+            <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>
+              {AppStore.formatRupiah(totalModalAwalShift)}
+            </h4>
+            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Dari {closedShiftList.length} shift tutup</span>
+          </div>
+
+          <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Total Tunai Masuk</span>
+            <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#34d399', marginTop: '4px' }}>
+              +{AppStore.formatRupiah(totalTunaiMasuk + totalPengembalianKasbon)}
+            </h4>
+            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Penjualan &amp; Kasbon Kembali</span>
+          </div>
+
+          <div style={{ background: 'rgba(239, 68, 68, 0.12)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+            <span style={{ fontSize: '0.75rem', color: '#fca5a5' }}>Total Kas Keluar</span>
+            <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f87171', marginTop: '4px' }}>
+              -{AppStore.formatRupiah(totalPengeluaranKeluar)}
+            </h4>
+            <span style={{ fontSize: '0.7rem', color: '#fca5a5' }}>Ongkir, Gaji, Kasbon, Air</span>
+          </div>
+
+          <div style={{ background: 'rgba(2, 132, 199, 0.15)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+            <span style={{ fontSize: '0.75rem', color: '#93c5fd' }}>Kas Fisik di Tangan (Aktual)</span>
+            <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>
+              {AppStore.formatRupiah(hasClosedShift ? totalKasFisikAktualShift : kasBersihSetoranOwner)}
+            </h4>
+            <span style={{ fontSize: '0.7rem', color: '#cbd5e1' }}>Di-entry Kasir saat Tutup</span>
+          </div>
+
+          <div style={{ 
+            background: hasClosedShift && totalSelisihKasShift < 0 ? 'rgba(239, 68, 68, 0.2)' : hasClosedShift && totalSelisihKasShift > 0 ? 'rgba(56, 189, 248, 0.2)' : 'rgba(16, 185, 129, 0.15)', 
+            padding: '14px', 
+            borderRadius: '12px', 
+            border: `2px solid ${hasClosedShift && totalSelisihKasShift < 0 ? '#ef4444' : hasClosedShift && totalSelisihKasShift > 0 ? '#38bdf8' : '#34d399'}` 
+          }}>
+            <span style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 700 }}>AUDIT SELISIH KAS</span>
+            <h4 style={{ fontSize: '1.25rem', fontWeight: 900, color: hasClosedShift && totalSelisihKasShift < 0 ? '#f87171' : hasClosedShift && totalSelisihKasShift > 0 ? '#38bdf8' : '#34d399', marginTop: '4px' }}>
+              {!hasClosedShift ? 'Belum Ada Tutup' : totalSelisihKasShift === 0 ? 'PAS (Rp 0)' : totalSelisihKasShift < 0 ? `-${AppStore.formatRupiah(Math.abs(totalSelisihKasShift))}` : `+${AppStore.formatRupiah(totalSelisihKasShift)}`}
+            </h4>
+            <span style={{ fontSize: '0.7rem', color: '#cbd5e1' }}>
+              {!hasClosedShift ? 'Shift kasir masih aktif' : totalSelisihKasShift === 0 ? 'Kas fisik 100% cocok' : totalSelisihKasShift < 0 ? '⚠️ Kurang Setor (Tekor)' : '🔵 Lebih Setor (Surplus)'}
+            </span>
+          </div>
+        </div>
+
+        {/* SUB-SECTION 1: Tabel Audit Shift Kasir */}
+        <div style={{ marginBottom: '28px' }}>
+          <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Receipt size={18} color="#38bdf8" /> Riwayat &amp; Audit Shift Kasir ({periode.toUpperCase()})
+          </h4>
+          {filteredShiftList.length === 0 ? (
+            <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', fontStyle: 'italic', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '10px' }}>
+              Belum ada riwayat pembukaan/penutupan shift kasir pada periode {periode}.
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)', color: '#94a3b8', textAlign: 'left', background: 'rgba(15, 23, 42, 0.6)' }}>
+                    <th style={{ padding: '10px' }}>Waktu Shift (Buka - Tutup)</th>
+                    <th style={{ padding: '10px' }}>Kasir</th>
+                    <th style={{ padding: '10px', textAlign: 'right' }}>Modal Awal</th>
+                    <th style={{ padding: '10px', textAlign: 'right' }}>Tunai Masuk</th>
+                    <th style={{ padding: '10px', textAlign: 'right' }}>Kas Keluar</th>
+                    <th style={{ padding: '10px', textAlign: 'right' }}>Ekspektasi Kas</th>
+                    <th style={{ padding: '10px', textAlign: 'right' }}>Kas Fisik (Aktual)</th>
+                    <th style={{ padding: '10px', textAlign: 'center' }}>Audit Selisih</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredShiftList.map(s => {
+                    const isShiftBuka = s.status === 'buka';
+                    const shiftBukaTime = new Date(s.waktu_buka).getTime();
+                    const shiftTutupTime = s.waktu_tutup ? new Date(s.waktu_tutup).getTime() : Date.now();
+
+                    const pesananShift = pesananList.filter(p => {
+                      if (!p?.created_at) return false;
+                      const t = new Date(p.created_at).getTime();
+                      return t >= shiftBukaTime && t <= shiftTutupTime;
+                    });
+
+                    const pengeluaranShift = pengeluaranList.filter(p => {
+                      if (!p?.tanggal) return false;
+                      const t = new Date(p.tanggal).getTime();
+                      return t >= shiftBukaTime && t <= shiftTutupTime;
+                    });
+
+                    const tunaiMasukShift = s.total_tunai_masuk ?? pesananShift
+                      .filter(p => p.pembayaran_details?.some(d => d.metode === 'tunai'))
+                      .reduce((sum, p) => sum + (p.total_akhir || 0), 0);
+
+                    const kasKeluarShift = pengeluaranShift
+                      .filter(p => p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon')
+                      .reduce((sum, p) => sum + (p.nominal || 0), 0);
+
+                    const kasbonKembaliShift = pengeluaranShift
+                      .filter(p => p.tipe_arus_kas === 'masuk' || p.kategori === 'pengembalian_kasbon')
+                      .reduce((sum, p) => sum + (p.nominal || 0), 0);
+
+                    const ekspektasiKasShift = (s.saldo_awal + tunaiMasukShift + kasbonKembaliShift) - kasKeluarShift;
+                    const kasFisikAktualShift = isShiftBuka ? ekspektasiKasShift : (s.saldo_akhir_aktual ?? ekspektasiKasShift);
+                    const selisihShift = isShiftBuka ? 0 : (s.selisih ?? (kasFisikAktualShift - ekspektasiKasShift));
+
+                    return (
+                      <tr key={s.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <td style={{ padding: '10px', color: '#cbd5e1', whiteSpace: 'nowrap' }}>
+                          <div><b>Buka:</b> {formatTanggalJam(s.waktu_buka)}</div>
+                          <div style={{ fontSize: '0.75rem', color: s.waktu_tutup ? '#94a3b8' : '#38bdf8' }}>
+                            <b>Tutup:</b> {s.waktu_tutup ? formatTanggalJam(s.waktu_tutup) : '🟢 Masih Aktif'}
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px', fontWeight: 700, color: '#f8fafc' }}>
+                          👤 {s.kasir_nama || 'Kasir'}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'right', color: '#38bdf8', fontWeight: 600 }}>
+                          {AppStore.formatRupiah(s.saldo_awal)}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'right', color: '#34d399', fontWeight: 600 }}>
+                          +{AppStore.formatRupiah(tunaiMasukShift)}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'right', color: '#f87171', fontWeight: 600 }}>
+                          -{AppStore.formatRupiah(kasKeluarShift)}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'right', color: '#cbd5e1', fontWeight: 600 }}>
+                          {AppStore.formatRupiah(ekspektasiKasShift)}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'right', fontWeight: 800, color: '#38bdf8' }}>
+                          {isShiftBuka ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Shift berjalan</span> : AppStore.formatRupiah(kasFisikAktualShift)}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                          {isShiftBuka ? (
+                            <span className="badge badge-primary" style={{ fontSize: '0.7rem' }}>🟢 SHIFT AKTIF</span>
+                          ) : selisihShift === 0 ? (
+                            <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>🟢 PAS (Rp 0)</span>
+                          ) : selisihShift < 0 ? (
+                            <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>🔴 Kurang {AppStore.formatRupiah(Math.abs(selisihShift))}</span>
+                          ) : (
+                            <span className="badge badge-info" style={{ fontSize: '0.7rem' }}>🔵 Lebih +{AppStore.formatRupiah(selisihShift)}</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* SUB-SECTION 2: Tabel Pengeluaran Operasional */}
+        <div>
+          <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <TrendingDown size={18} color="#f87171" /> Rincian Pengeluaran Kasir ({periode.toUpperCase()})
+          </h4>
+          {filteredPengeluaran.length === 0 ? (
+            <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', fontStyle: 'italic', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '10px' }}>
+              Tidak ada catatan pengeluaran kasir pada periode {periode}.
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)', color: '#94a3b8', textAlign: 'left', background: 'rgba(15, 23, 42, 0.6)' }}>
+                    <th style={{ padding: '10px' }}>Tanggal &amp; Waktu</th>
+                    <th style={{ padding: '10px' }}>Isian Peruntukan / Keperluan</th>
+                    <th style={{ padding: '10px' }}>Karyawan Terkait</th>
+                    <th style={{ padding: '10px' }}>Kategori</th>
+                    <th style={{ padding: '10px' }}>Dicatat Oleh (Kasir)</th>
+                    <th style={{ padding: '10px', textAlign: 'right' }}>Nominal (Rp)</th>
+                    <th style={{ padding: '10px', textAlign: 'center' }}>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedPengeluaran.map(item => {
+                    const isMasuk = item.tipe_arus_kas === 'masuk' || item.kategori === 'pengembalian_kasbon';
+                    return (
+                      <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <td style={{ padding: '10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                          {formatTanggalJam(item.tanggal)}
+                        </td>
+                        <td style={{ padding: '10px', fontWeight: 700, color: '#f8fafc' }}>
+                          {item.peruntukan}
+                          {item.kategori === 'pembelian_air_baku' && (
+                            <div style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: '2px', fontWeight: 500 }}>
+                              🚛 Vendor: {item.nama_vendor_pengirim || '-'} | Vol: {item.volume_air_masuk_liter || 0} Liter | HPP Air: Rp {((item.nominal || 0) / (item.volume_air_masuk_liter || 1)).toFixed(1)}/L | Air: {AppStore.formatRupiah(item.harga_perolehan_air || 0)} | Tips Sopir: {AppStore.formatRupiah(item.tips_sopir_pengirim || 0)}
+                            </div>
+                          )}
+                          {item.catatan && (
+                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>{item.catatan}</div>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px', color: '#38bdf8', fontWeight: 600 }}>
+                          {item.karyawan_nama ? (
+                            <span>👤 {item.karyawan_nama}</span>
+                          ) : (
+                            <span style={{ color: '#64748b' }}>-</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px' }}>
+                          <span className={`badge ${isMasuk ? 'badge-success' : 'badge-secondary'}`} style={{ fontSize: '0.7rem' }}>
+                            {(item.kategori || 'lain_lain').replace('_', ' ').toUpperCase()}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px', color: '#cbd5e1' }}>{item.kasir_nama}</td>
+                        <td style={{ padding: '10px', textAlign: 'right', fontWeight: 800, color: isMasuk ? '#34d399' : '#f87171' }}>
+                          {isMasuk ? `+${AppStore.formatRupiah(item.nominal)}` : `-${AppStore.formatRupiah(item.nominal)}`}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                          <button 
+                            onClick={() => {
+                              if (confirm(`Hapus catatan pengeluaran "${item.peruntukan}"?`)) {
+                                AppStore.deletePengeluaran(item.id);
+                              }
+                            }}
+                            className="btn btn-danger btn-sm"
+                            style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                            title="Hapus Pengeluaran"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <ExpenseReceiptModal pengeluaran={activeExpenseReceipt} onClose={() => setActiveExpenseReceipt(null)} />
+      
+      {/* Top Banner & Timeframe Filter Switcher */}
+      <div className="glass-card animate-fade-in" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(16, 185, 129, 0.15) 100%)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <LayoutDashboard size={28} color="#38bdf8" /> Executive Dashboard Owner
+            </h2>
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '4px' }}>
+              Laporan Penjualan, Keuangan Laba Rugi, Piutang Pelanggan, dan Resume Analisa Usaha.
+            </p>
+          </div>
+
+          {/* Timeframe Filter Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(15, 23, 42, 0.6)', padding: '6px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+            <span style={{ fontSize: '0.8rem', color: '#94a3b8', marginLeft: '6px', marginRight: '4px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Calendar size={14} color="#38bdf8" /> Periode:
+            </span>
+            {(['harian', 'mingguan', 'bulanan', 'tahunan', 'semua'] as PeriodeFilter[]).map(p => (
+              <button 
+                key={p} 
+                onClick={() => setPeriode(p)}
+                className={`btn btn-sm ${periode === p ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ padding: '6px 12px', fontSize: '0.8rem', textTransform: 'capitalize' }}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* BANNER NOTIFIKASI ALARM CRITICAL STOK AIR BAKU */}
+      {isWaterStockCriticalCalc && (
+        <div className="glass-card animate-fade-in" style={{
+          padding: '16px 20px',
+          background: hasWaterStockAlarmAudio 
+            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.35) 0%, rgba(185, 28, 28, 0.4) 100%)' 
+            : 'rgba(239, 68, 68, 0.15)',
+          border: '2px solid #ef4444'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {hasWaterStockAlarmAudio ? (
+                <Volume2 size={28} color="#ef4444" className="animate-pulse" />
+              ) : (
+                <AlertTriangle size={28} color="#f87171" />
+              )}
+              <div>
+                <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  🚛 PERINGATAN: STOK AIR BAKU DEPO MENIPIS! ({currentStokAirBakuCalc.toLocaleString('id-ID')} Liter)
+                </h4>
+                <p style={{ fontSize: '0.82rem', color: '#fca5a5', marginTop: '2px' }}>
+                  Stok saat ini ({currentStokAirBakuCalc.toLocaleString('id-ID')} L) telah mencapai / di bawah batas minimum pengingat (Min: {minStokAirBakuCalc.toLocaleString('id-ID')} L). Segera lakukan pemesanan / pasokan tangki air baku!
+                  {isWaterAlarmMuted && ' [🔕 Audio Muted]'}
+                  {isWaterAlarmSnoozed && ` [⏰ Audio Snoozed: ${Math.max(1, Math.ceil((waterAlarmSnoozedUntil - nowTick) / (1000 * 60)))} menit]`}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  setNewStokAirInput(pengaturan.stok_air_baku_saat_ini ?? 0);
+                  const defaultMeter = meterDepoHitungOtomatis > 0 ? meterDepoHitungOtomatis : (hasMeterEntryKasir ? meterDepoEntryKasir! : (pengaturan.meteran_air_awal_liter ?? 10000));
+                  setNewMeterAirInput(defaultMeter);
+                  setShowOwnerMeterAdjustModal(true);
+                }}
+                className="btn btn-primary btn-sm"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', fontWeight: 700, padding: '8px 14px', border: 'none' }}
+              >
+                🚛 Pesan / Tambah Air Baku Tangki
+              </button>
+
+              <button
+                onClick={() => {
+                  setWaterAlarmSnoozedUntil(Date.now() + (pengaturan.durasi_snooze_menit || 15) * 60 * 1000);
+                  setIsWaterAlarmMuted(false);
+                }}
+                className="btn btn-warning btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, background: '#f59e0b', color: '#0f172a', border: 'none', padding: '8px 14px' }}
+              >
+                <Clock size={16} /> ⏰ Snooze (15m)
+              </button>
+
+              <button
+                onClick={() => setIsWaterAlarmMuted(!isWaterAlarmMuted)}
+                className="btn btn-secondary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, background: 'rgba(239, 68, 68, 0.25)', border: '1px solid #ef4444', color: '#fca5a5', padding: '8px 14px' }}
+              >
+                <BellOff size={16} /> {isWaterAlarmMuted ? '🔊 Unmute Suara' : '🔕 Mute Suara'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUB-TAB NAVIGATION BAR */}
+      <div className="glass-card animate-fade-in" style={{ padding: '8px 12px', background: 'rgba(15, 23, 42, 0.75)', border: '1px solid var(--glass-border)' }}>
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`btn btn-sm ${activeTab === 'overview' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', fontWeight: 700, fontSize: '0.88rem',
+              background: activeTab === 'overview' ? 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)' : undefined
+            }}
+          >
+            <LayoutDashboard size={18} /> 📊 Ringkasan &amp; Meteran
+            {delayedPending.length > 0 && (
+              <span className="badge badge-danger" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{delayedPending.length}</span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('keuangan')}
+            className={`btn btn-sm ${activeTab === 'keuangan' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', fontWeight: 700, fontSize: '0.88rem',
+              background: activeTab === 'keuangan' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : undefined
+            }}
+          >
+            <DollarSign size={18} /> 💵 Keuangan &amp; Laba Rugi
+          </button>
+
+          <button
+            onClick={() => setActiveTab('karyawan_piutang')}
+            className={`btn btn-sm ${activeTab === 'karyawan_piutang' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', fontWeight: 700, fontSize: '0.88rem',
+              background: activeTab === 'karyawan_piutang' ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' : undefined
+            }}
+          >
+            <Users size={18} /> 👥 Gaji Staf &amp; Piutang
+            {pelangganBerhutang.length > 0 && (
+              <span className="badge badge-warning" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{pelangganBerhutang.length}</span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('pemeliharaan')}
+            className={`btn btn-sm ${activeTab === 'pemeliharaan' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', fontWeight: 700, fontSize: '0.88rem',
+              background: activeTab === 'pemeliharaan' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : undefined
+            }}
+          >
+            <Wrench size={18} /> 🛠️ Pemeliharaan Filter
+          </button>
+
+          <button
+            onClick={() => setActiveTab('riwayat')}
+            className={`btn btn-sm ${activeTab === 'riwayat' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', fontWeight: 700, fontSize: '0.88rem',
+              background: activeTab === 'riwayat' ? 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)' : undefined
+            }}
+          >
+            <FileText size={18} /> 📜 Riwayat Transaksi POS ({filteredPesanan.length})
+          </button>
+        </div>
+      </div>
+
+      {/* TAB CONTENT 1: RINGKASAN & METERAN (OVERVIEW) */}
+      {activeTab === 'overview' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* SECTION KONTROL METERAN AIR & STOK AIR BAKU DEPO (KHUSUS LOGIN BY OWNER) */}
+          {(currentUser?.role === 'owner' || !currentUser) && (
+        <div className="glass-card animate-fade-in" style={{ padding: '20px', borderLeft: '4px solid #38bdf8', background: 'rgba(2, 132, 199, 0.1)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Droplets size={22} color="#38bdf8" /> Kontrol Meteran Air &amp; Stok Air Baku Tangki Depo (Owner Only)
+              </h3>
+              <p style={{ color: '#94a3b8', fontSize: '0.82rem', marginTop: '2px' }}>
+                Otomatis bertambah dari Pengisian Tangki Air Baku (+Liter) &amp; Otomatis berkurang saat ada Penjualan POS Kasir (-Liter).
+              </p>
+            </div>
+
+            <button 
+              onClick={() => {
+                setNewStokAirInput(pengaturan.stok_air_baku_saat_ini ?? 0);
+                const defaultMeter = meterDepoHitungOtomatis > 0 ? meterDepoHitungOtomatis : (hasMeterEntryKasir ? meterDepoEntryKasir! : (pengaturan.meteran_air_awal_liter ?? 10000));
+                setNewMeterAirInput(defaultMeter);
+                setShowOwnerMeterAdjustModal(true);
+              }}
+              className="btn btn-primary btn-sm"
+              style={{ background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)', fontWeight: 700, padding: '8px 14px' }}
+            >
+              ✏️ Adjust / Koreksi Meter &amp; Stok Air Baku
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '16px' }}>
+            {/* Card 1: Stok Air Baku */}
+            <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>STOK AIR BAKU TANGKI DEPO</span>
+              <h4 style={{ fontSize: '1.35rem', fontWeight: 800, color: (pengaturan.stok_air_baku_saat_ini || 0) <= (pengaturan.min_stok_air_baku_liter || 2000) ? '#f87171' : '#34d399', marginTop: '4px' }}>
+                {(pengaturan.stok_air_baku_saat_ini ?? 0).toLocaleString('id-ID')} Liter
+              </h4>
+              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Min Target: {(pengaturan.min_stok_air_baku_liter || 2000).toLocaleString('id-ID')} Liter</span>
+            </div>
+
+            {/* Card 2: Meter Depo Hitung Otomatis */}
+            <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              <span style={{ fontSize: '0.75rem', color: '#93c5fd', fontWeight: 600 }}>🤖 METER DEPO HITUNG OTOMATIS</span>
+              <h4 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>
+                {meterDepoHitungOtomatis.toLocaleString('id-ID')} Liter
+              </h4>
+              <span style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>
+                Awal + Penjualan POS (+{totalLiterShift.toLocaleString('id-ID')} L)
+              </span>
+            </div>
+
+            {/* Card 3: Meter Depo Entry Tutup Kasir */}
+            <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              <span style={{ fontSize: '0.75rem', color: '#fbbf24', fontWeight: 600 }}>📝 METER ENTRY TUTUP KASIR</span>
+              <h4 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fbbf24', marginTop: '4px' }}>
+                {hasMeterEntryKasir ? `${meterDepoEntryKasir!.toLocaleString('id-ID')} Liter` : '0 Liter'}
+              </h4>
+              <span style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>
+                {latestClosedShift ? `Kasir: ${latestClosedShift.kasir_nama}` : (pesananList || []).length === 0 ? 'Data Direset (0 Liter)' : 'Belum Tutup Shift'}
+              </span>
+            </div>
+
+            {/* Card 4: Selisih Meteran Air Depo */}
+            <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>⚖️ SELISIH METERAN DEPO</span>
+              <h4 style={{
+                fontSize: '1.35rem', fontWeight: 800, marginTop: '4px',
+                color: !hasMeterEntryKasir ? '#94a3b8' : selisihMeterAirDepo === 0 ? '#34d399' : selisihMeterAirDepo > 0 ? '#38bdf8' : '#f87171'
+              }}>
+                {!hasMeterEntryKasir 
+                  ? 'PAS (0 Liter)' 
+                  : selisihMeterAirDepo === 0 
+                    ? 'PAS (0 Liter)' 
+                    : `${selisihMeterAirDepo > 0 ? '+' : ''}${selisihMeterAirDepo.toLocaleString('id-ID')} Liter`
+                }
+              </h4>
+              <span style={{ fontSize: '0.75rem', color: !hasMeterEntryKasir ? '#64748b' : selisihMeterAirDepo === 0 ? '#34d399' : '#fca5a5' }}>
+                {!hasMeterEntryKasir 
+                  ? 'Menunggu Laporan Kasir' 
+                  : selisihMeterAirDepo === 0 
+                    ? 'Sesuai Nota POS & Fisik' 
+                    : selisihMeterAirDepo < 0 
+                      ? 'Pemakaian Air Belum Tercatat POS' 
+                      : 'Entry Kasir Lebih Tinggi'
+                }
+              </span>
+            </div>
+
+            {/* Card 5: Air Terkuras */}
+            <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>AIR TERKURAS ({periode.toUpperCase()})</span>
+              <h4 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#f8fafc', marginTop: '4px' }}>
+                {totalLiterTerjual.toLocaleString('id-ID')} Liter
+              </h4>
+              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Total produk air terisi</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION PALING ATAS: Detail Pengiriman Pending (Belum Terkirim) */}
+      <div className="glass-card animate-fade-in" style={{ padding: '24px', borderTop: '4px solid #fbbf24' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Truck size={24} color="#fbbf24" /> Detail Pengiriman Pending (Belum Terkirim)
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {delayedPending.length > 0 && (
+              <span className="badge badge-danger animate-pulse">
+                🚨 {delayedPending.length} Terlambat (&gt; {formatThresholdText(thresholdMins)})
+              </span>
+            )}
+            <span className="badge badge-warning">{pendingDelivery.length} Antaran Menunggu</span>
+          </div>
+        </div>
+
+        {/* Alarm Warning Banner for Delayed Orders */}
+        {delayedPending.length > 0 && (
+          <div className="glass-card animate-fade-in" style={{
+            padding: '14px 18px',
+            marginBottom: '16px',
+            background: hasActiveAlarm 
+              ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(185, 28, 28, 0.35) 100%)' 
+              : 'rgba(239, 68, 68, 0.12)',
+            border: '2px solid #ef4444'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {hasActiveAlarm ? (
+                  <Volume2 size={24} color="#ef4444" className="animate-pulse" />
+                ) : (
+                  <BellOff size={22} color="#94a3b8" />
+                )}
+                <div>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#f8fafc' }}>
+                    🚨 Notifikasi Pesanan Belum Terkirim (&gt; {formatThresholdText(thresholdMins)})
+                  </h4>
+                  <p style={{ fontSize: '0.8rem', color: '#fca5a5', marginTop: '2px' }}>
+                    {hasActiveAlarm 
+                      ? '🔔 Alarm pengingat berbunyi! Pilih aksi di bawah:' 
+                      : delayedPending.every(p => isOrderMuted(p.id))
+                        ? '🔕 Alarm telah dimatikan (tidak akan bunyi lagi).'
+                        : `🔕 Suara alarm di-Snooze (${snoozeMins} Menit).`}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button 
+                  onClick={handleMuteAll}
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, background: 'rgba(239, 68, 68, 0.25)', border: '1px solid #ef4444', color: '#fca5a5', padding: '6px 12px' }}
+                >
+                  <BellOff size={14} /> 🔕 Matikan Alarm (Permanen)
+                </button>
+                <button 
+                  onClick={handleSnoozeAll}
+                  className="btn btn-warning btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, background: '#f59e0b', color: '#0f172a', border: 'none', padding: '6px 12px' }}
+                >
+                  <Clock size={14} /> ⏰ Snooze Tunda ({snoozeMins}m)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {pendingDelivery.length === 0 ? (
+          <div style={{ padding: '24px', textAlign: 'center', background: 'rgba(15, 23, 42, 0.5)', borderRadius: '12px', color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <CheckCircle size={20} /> Tidak ada pengiriman pending saat ini. Semua pesanan antar sudah terkirim lunas!
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--glass-border)', color: '#94a3b8', background: 'rgba(15, 23, 42, 0.6)' }}>
+                  <th style={{ padding: '12px' }}>Jam Order</th>
+                  <th style={{ padding: '12px' }}>Jam Terkirim</th>
+                  <th style={{ padding: '12px' }}>Durasi Menunggu</th>
+                  <th style={{ padding: '12px' }}>No Nota &amp; Pelanggan</th>
+                  <th style={{ padding: '12px' }}>Produk &amp; Tagihan</th>
+                  <th style={{ padding: '12px' }}>Status Kirim</th>
+                  <th style={{ padding: '12px' }}>Aksi / Alarm</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingDelivery.map(psn => {
+                  const durInfo = calculateOrderDuration(psn.created_at, psn.terkirim_at, psn.status_pesanan, thresholdMins);
+                  const isMuted = isOrderMuted(psn.id);
+                  const isSnoozed = isOrderSnoozed(psn.id);
+                  const remainingSnooze = getSnoozeRemainingMinutes(psn.id);
+
+                  return (
+                    <tr 
+                      key={psn.id} 
+                      style={{ 
+                        borderBottom: '1px solid rgba(255,255,255,0.06)',
+                        background: durInfo.isTerlambat ? 'rgba(239, 68, 68, 0.08)' : undefined
+                      }}
+                    >
+                      <td style={{ padding: '12px', fontWeight: 600, color: '#fbbf24', whiteSpace: 'nowrap' }}>
+                        <Clock size={14} style={{ display: 'inline', marginRight: '4px' }} />
+                        {durInfo.jamOrder}
+                      </td>
+                      <td style={{ padding: '12px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                        {durInfo.jamTerkirim}
+                      </td>
+                      <td style={{ padding: '12px', fontWeight: 800, whiteSpace: 'nowrap' }}>
+                        <span style={{ color: durInfo.isTerlambat ? '#f87171' : '#38bdf8' }}>
+                          {durInfo.formattedDurasi}
+                        </span>
+                        {durInfo.isTerlambat && (
+                          <span className="badge badge-danger" style={{ display: 'block', fontSize: '0.65rem', marginTop: '3px' }}>
+                            🚨 &gt; {formatThresholdText(thresholdMins)}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px' }}>
+                        <div style={{ fontWeight: 700, color: '#38bdf8' }}>{psn.no_nota}</div>
+                        <div style={{ fontWeight: 600, color: '#f8fafc', marginTop: '2px' }}>{psn.nama_pelanggan}</div>
+                      </td>
+                      <td style={{ padding: '12px', color: '#cbd5e1' }}>
+                        <div style={{ fontWeight: 600 }}>{formatProdukRingkas(psn.items)}</div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#34d399', marginTop: '2px' }}>
+                          {AppStore.formatRupiah(psn.total_akhir)}
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px' }}>
+                        <span className="badge badge-warning">
+                          {psn.status_pesanan.toUpperCase().replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px' }}>
+                        {durInfo.isTerlambat ? (
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            {isMuted ? (
+                              <span className="badge badge-secondary" style={{ fontSize: '0.7rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <BellOff size={12} /> Dimatikan
+                              </span>
+                            ) : (
+                              <button 
+                                onClick={() => handleMuteJob(psn.id)}
+                                className="btn btn-secondary btn-sm"
+                                style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#fca5a5', fontSize: '0.75rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                title="Mematikan alarm agar tidak bunyi lagi"
+                              >
+                                <BellOff size={13} /> Matikan
+                              </button>
+                            )}
+
+                            {isSnoozed ? (
+                              <span className="badge badge-warning" style={{ fontSize: '0.7rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Clock size={12} /> Snooze ({remainingSnooze}m)
+                              </span>
+                            ) : (
+                              <button 
+                                onClick={() => handleSnoozeJob(psn.id)}
+                                className="btn btn-warning btn-sm"
+                                style={{ background: '#f59e0b', color: '#0f172a', border: 'none', fontWeight: 700, fontSize: '0.75rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                title="Menunda alarm sementara"
+                              >
+                                <Clock size={13} /> Snooze ({snoozeMins}m)
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Normal</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 1: Resume Analisa Usaha Berjalan (Smart Executive Digest) */}
+      {currentUser?.role !== 'admin' && (
+        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid #38bdf8', background: 'rgba(15, 23, 42, 0.85)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Lightbulb size={22} color="#fbbf24" /> Resume Analisa Usaha Berjalan ({periode.toUpperCase()})
+            </h3>
+            <span className="badge badge-primary">Rangkuman Otomatis</span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+            
+            <div style={{ background: 'rgba(2, 132, 199, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+              <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>KESEHATAN CASHFLOW</span>
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#34d399', marginTop: '4px' }}>
+                Laba Bersih: {AppStore.formatRupiah(labaBersih)}
+              </h4>
+              <p style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '4px' }}>
+                Margin keuntungan usaha mencapai <strong style={{ color: '#38bdf8' }}>{profitMarginPercent}%</strong> dari total pendapatan kotor.
+              </p>
+            </div>
+
+            <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+              <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>CAPAIAN TARGET</span>
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fbbf24', marginTop: '4px' }}>
+                {persenCapaianOmzet}% dari Target Omzet
+              </h4>
+              <p style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '4px' }}>
+                Terjual {totalGalonTerjual} Galon ({persenCapaianGalon}% dari target {targetGalonCurrent} galon).
+              </p>
+            </div>
+
+            <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>REKOMENDASI PENAGIHAN</span>
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f87171', marginTop: '4px' }}>
+                Piutang: {AppStore.formatRupiah(totalPiutangPelanggan)}
+              </h4>
+              <p style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '4px' }}>
+                {pelangganBerhutang.length} pelanggan menunggak. {pelangganBerhutang.length > 0 ? `Segera tagih ${pelangganBerhutang[0]?.nama}.` : 'Tidak ada tunggakan.'}
+              </p>
+            </div>
+
+            <div style={{ 
+              background: hasClosedShift && totalSelisihKasShift < 0 ? 'rgba(239, 68, 68, 0.15)' : hasClosedShift && totalSelisihKasShift > 0 ? 'rgba(56, 189, 248, 0.15)' : 'rgba(16, 185, 129, 0.1)', 
+              padding: '16px', 
+              borderRadius: '12px', 
+              border: `1px solid ${hasClosedShift && totalSelisihKasShift < 0 ? 'rgba(239, 68, 68, 0.4)' : hasClosedShift && totalSelisihKasShift > 0 ? 'rgba(56, 189, 248, 0.4)' : 'rgba(16, 185, 129, 0.2)'}` 
+            }}>
+              <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>AUDIT SETORAN KAS SHIFT</span>
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: hasClosedShift && totalSelisihKasShift < 0 ? '#f87171' : hasClosedShift && totalSelisihKasShift > 0 ? '#38bdf8' : '#34d399', marginTop: '4px' }}>
+                {!hasClosedShift ? 'Belum Ada Shift Tutup' : totalSelisihKasShift === 0 ? 'PAS (Rp 0)' : totalSelisihKasShift < 0 ? `Kurang Setor: -${AppStore.formatRupiah(Math.abs(totalSelisihKasShift))}` : `Lebih Setor: +${AppStore.formatRupiah(totalSelisihKasShift)}`}
+              </h4>
+              <p style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '4px' }}>
+                {!hasClosedShift 
+                  ? 'Kasir belum melakukan tutup shift pada periode ini.' 
+                  : totalSelisihKasShift < 0 
+                  ? `Kasir tekor / kurang setor kas sebesar ${AppStore.formatRupiah(Math.abs(totalSelisihKasShift))}.` 
+                  : totalSelisihKasShift > 0 
+                  ? `Uang kas fisik surplus ${AppStore.formatRupiah(totalSelisihKasShift)}.` 
+                  : 'Seluruh uang kas fisik di laci cocok 100% dengan sistem.'}
+              </p>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 2: Target Penjualan & Capaiannya */}
+      <div className="glass-card animate-fade-in" style={{ padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Target size={22} color="#10b981" /> Target Penjualan & Capaian ({periode.toUpperCase()})
+          </h3>
+          <button
+            onClick={handleOpenEditTargetModal}
+            className="btn btn-secondary btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', borderColor: 'rgba(16, 185, 129, 0.5)', color: '#34d399', background: 'rgba(16, 185, 129, 0.1)' }}
+          >
+            ✏️ Edit Target Penjualan
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+          
+          {/* Target Omzet Progress */}
+          <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '18px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: 600 }}>Target Pendapatan / Omzet</span>
+              <span className={`badge ${persenCapaianOmzet >= 100 ? 'badge-success' : 'badge-warning'}`}>
+                {persenCapaianOmzet >= 100 ? 'TERCAPAI' : 'DALAM PROSES'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+              <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#34d399' }}>
+                {AppStore.formatRupiah(totalOmzet)}
+              </h4>
+              <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                Target: {AppStore.formatRupiah(targetOmzetCurrent)}
+              </span>
+            </div>
+
+            <div style={{ width: '100%', height: '10px', background: 'rgba(255,255,255,0.1)', borderRadius: '5px', overflow: 'hidden' }}>
+              <div style={{
+                width: `${persenCapaianOmzet}%`, height: '100%',
+                background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
+                transition: 'width 0.4s ease'
+              }} />
+            </div>
+            <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginTop: '6px' }}>
+              Capaian: {persenCapaianOmzet}% dari target {periode}
+            </span>
+          </div>
+
+          {/* Target Galon Progress */}
+          <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '18px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: 600 }}>Target Volume Penjualan Galon</span>
+              <span className={`badge ${persenCapaianGalon >= 100 ? 'badge-success' : 'badge-primary'}`}>
+                {persenCapaianGalon >= 100 ? 'TERCAPAI' : 'BERJALAN'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+              <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#38bdf8' }}>
+                {totalGalonTerjual} Galon
+              </h4>
+              <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                Target: {targetGalonCurrent} Galon
+              </span>
+            </div>
+
+            <div style={{ width: '100%', height: '10px', background: 'rgba(255,255,255,0.1)', borderRadius: '5px', overflow: 'hidden' }}>
+              <div style={{
+                width: `${persenCapaianGalon}%`, height: '100%',
+                background: 'linear-gradient(90deg, #0284c7 0%, #38bdf8 100%)',
+                transition: 'width 0.4s ease'
+              }} />
+            </div>
+            <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginTop: '6px' }}>
+              Capaian: {persenCapaianGalon}% dari target {periode} ({totalLiterTerjual} Liter)
+            </span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* TAB CONTENT 2: KEUANGAN & LABA RUGI */}
+      {activeTab === 'keuangan' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* SECTION 3: Laporan Keuangan & Laba Rugi (Profit & Loss) */}
+          {currentUser?.role !== 'admin' && (
+            <div className="glass-card animate-fade-in" style={{ padding: '24px' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <PieChart size={22} color="#38bdf8" /> Laporan Keuangan &amp; Laba Rugi ({periode.toUpperCase()})
+              </h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block' }}>1. Pendapatan Penjualan (Kotor)</span>
+                  <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>
+                    {AppStore.formatRupiah(totalOmzet)}
+                  </h4>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Dari {filteredPesanan.length} transaksi</span>
+                </div>
+
+                <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block' }}>2. HPP Air Baku Terjual</span>
+                  <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fbbf24', marginTop: '4px' }}>
+                    -{AppStore.formatRupiah(totalHppAirTerjual)}
+                  </h4>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                    {totalLiterTerjual} Liter x Rp {hppPerLiterFormatted}/L {isHppEstimated ? '(Standar Depo)' : '(Kas Vendor ÷ Liter)'}
+                  </span>
+                </div>
+
+                <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block' }}>3. Biaya Operasional Lainnya</span>
+                  <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#f87171', marginTop: '4px' }}>
+                    -{AppStore.formatRupiah(totalBiayaOperasionalLainnya)}
+                  </h4>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>BBM, Gaji, Komisi &amp; Operasional Kas</span>
+                </div>
+
+                <div style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(2, 132, 199, 0.2) 100%)', padding: '16px', borderRadius: '12px', border: '2px solid #34d399' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#6ee7b7', fontWeight: 700, display: 'block' }}>4. LABA BERSIH (PROFIT)</span>
+                  <h4 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#34d399', marginTop: '4px' }}>
+                    {AppStore.formatRupiah(labaBersih)}
+                  </h4>
+                  <span style={{ fontSize: '0.75rem', color: '#34d399' }}>
+                    Margin: {profitMarginPercent}% | Laba Kotor: {AppStore.formatRupiah(labaKotor)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SECTION 6: Rekap Kas Setoran & Audit Shift Kasir */}
+          {renderRekapKasAndShiftAuditSection()}
+        </div>
+      )}
+
+      {/* TAB CONTENT 3: GAJI STAF & PIUTANG */}
+      {activeTab === 'karyawan_piutang' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* SECTION: Rekapitulasi Hak Keuangan & Piutang Karyawan / Driver */}
+          <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid #8b5cf6' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Users size={22} color="#8b5cf6" /> Rekapitulasi Hak Keuangan &amp; Piutang Karyawan / Driver
+                </h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.82rem', marginTop: '2px' }}>
+                  Monitoring Kasbon Staf, Talangan Depo, Ongkir Delivery Kurir Terjadi, dan Pembayaran Gaji Bulanan.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('Bersihkan seluruh catatan riwayat transaksi pesanan & pengeluaran ongkir staf menjadi Rp 0?')) {
+                      AppStore.resetSelectedData({ pesanan: true, pengeluaran: true });
+                      window.location.reload();
+                    }
+                  }}
+                  className="btn btn-danger btn-sm"
+                  style={{ padding: '6px 12px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  title="Klik untuk mereset riwayat transaksi & ongkir staf menjadi Rp 0"
+                >
+                  <Trash2 size={13} /> 🧹 Reset Ongkir Staf
+                </button>
+                <span className="badge badge-primary">{(pengaturan.karyawan_list || []).length} Staf Terdaftar</span>
+              </div>
+            </div>
+
+            {/* Total Staf Financial Digest Header */}
+            {(() => {
+              const rekapList = getRekapKaryawanList();
+              const totalKasbonAktifAll = rekapList.reduce((acc, r) => acc + r.sisaKasbonAktif, 0);
+              const totalHutangTokoKeStaf = rekapList.reduce((acc, r) => acc + r.sisaHutangTokoKeKary, 0);
+              const totalOngkirBelumTerbayarAll = rekapList.reduce((acc, r) => acc + r.sisaOngkirBelumTerbayar, 0);
+              const totalOngkirTerjadiAll = rekapList.reduce((acc, r) => acc + r.totalOngkirOrderTerjadi, 0);
+              const totalOngkirTerbayarAll = rekapList.reduce((acc, r) => acc + r.totalOngkirKasKeluar, 0);
+              const totalGajiBelumDibayarAll = rekapList.reduce((acc, r) => acc + r.sisaGajiTerhitung, 0);
+              const totalKonsumsiStaf = rekapList.reduce((acc, r) => acc + r.totalKonsumsiKasKeluar, 0);
+
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                  <div style={{ background: 'rgba(239, 68, 68, 0.12)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#fca5a5', fontWeight: 600 }}>🔴 Total Kasbon Staf Aktif</span>
+                    <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f87171', marginTop: '4px' }}>
+                      {AppStore.formatRupiah(totalKasbonAktifAll)}
+                    </h4>
+                    <span style={{ fontSize: '0.7rem', color: '#cbd5e1' }}>Pinjaman/Kasbon belum lunas</span>
+                  </div>
+
+                  <div style={{ background: 'rgba(251, 191, 36, 0.12)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.3)' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#fef08a', fontWeight: 600 }}>🏢 Hutang Toko Ke Staf (Talangan)</span>
+                    <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fbbf24', marginTop: '4px' }}>
+                      {AppStore.formatRupiah(totalHutangTokoKeStaf)}
+                    </h4>
+                    <span style={{ fontSize: '0.7rem', color: '#cbd5e1' }}>Depo belum bayar ke staf</span>
+                  </div>
+
+                  <div style={{ background: 'rgba(56, 189, 248, 0.12)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#bae6fd', fontWeight: 600 }}>🚚 Ongkir Belum Terbayar</span>
+                    <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: totalOngkirBelumTerbayarAll > 0 ? '#f87171' : '#38bdf8', marginTop: '4px' }}>
+                      {AppStore.formatRupiah(totalOngkirBelumTerbayarAll)}
+                    </h4>
+                    <span style={{ fontSize: '0.7rem', color: '#cbd5e1' }}>
+                      Terjadi: {AppStore.formatRupiah(totalOngkirTerjadiAll)} | Dibayar: {AppStore.formatRupiah(totalOngkirTerbayarAll)}
+                    </span>
+                  </div>
+
+                  <div style={{ background: 'rgba(2, 132, 199, 0.12)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(2, 132, 199, 0.3)' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#7dd3fc', fontWeight: 600 }}>💼 Gaji Belum Dibayar</span>
+                    <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: totalGajiBelumDibayarAll > 0 ? '#fbbf24' : '#34d399', marginTop: '4px' }}>
+                      {AppStore.formatRupiah(totalGajiBelumDibayarAll)}
+                    </h4>
+                    <span style={{ fontSize: '0.7rem', color: '#cbd5e1' }}>Jatuh tempo bulanan staf</span>
+                  </div>
+
+                  <div style={{ background: 'rgba(16, 185, 129, 0.12)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#6ee7b7', fontWeight: 600 }}>☕ Uang Makan / Konsumsi</span>
+                    <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#34d399', marginTop: '4px' }}>
+                      {AppStore.formatRupiah(totalKonsumsiStaf)}
+                    </h4>
+                    <span style={{ fontSize: '0.7rem', color: '#cbd5e1' }}>Total pengeluaran makan staf</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Tabel Rekap Financial Karyawan */}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)', color: '#94a3b8', background: 'rgba(15, 23, 42, 0.6)' }}>
+                    <th style={{ padding: '10px' }}>Nama Staf &amp; Jabatan</th>
+                    <th style={{ padding: '10px' }}>🔴 Kasbon Aktif</th>
+                    <th style={{ padding: '10px' }}>🏢 Hutang Toko</th>
+                    <th style={{ padding: '10px' }}>🚚 Ongkir Belum Terbayar</th>
+                    <th style={{ padding: '10px' }}>☕ Uang Makan</th>
+                    <th style={{ padding: '10px' }}>💼 Gaji Bulanan</th>
+                    <th style={{ padding: '10px' }}>📊 Net Financial</th>
+                    <th style={{ padding: '10px', textAlign: 'center' }}>Aksi Pembayaran</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getRekapKaryawanList().map((item) => {
+                    const {
+                      kary, sisaKasbonAktif, sisaHutangTokoKeKary,
+                      totalOngkirOrderTerjadi, sisaOngkirBelumTerbayar, totalOngkirKasKeluar,
+                      totalGalonDiantar, totalKonsumsiKasKeluar,
+                      sisaGajiBelumDibayar, netPosisi
+                    } = item;
+
+                    return (
+                      <tr key={kary.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <td style={{ padding: '10px', fontWeight: 700, color: '#f8fafc' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '1.1rem' }}>👤</span>
+                            <div>
+                              <div>{kary.nama}</div>
+                              <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 400 }}>{kary.jabatan}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px', fontWeight: 800, color: sisaKasbonAktif > 0 ? '#f87171' : '#94a3b8' }}>
+                          {sisaKasbonAktif > 0 ? AppStore.formatRupiah(sisaKasbonAktif) : 'Rp 0'}
+                          {sisaKasbonAktif > 0 && <span style={{ display: 'block', fontSize: '0.68rem', color: '#fca5a5', fontWeight: 400 }}>Belum lunas</span>}
+                        </td>
+                        <td style={{ padding: '10px', fontWeight: 800, color: sisaHutangTokoKeKary > 0 ? '#fbbf24' : '#94a3b8' }}>
+                          {sisaHutangTokoKeKary > 0 ? AppStore.formatRupiah(sisaHutangTokoKeKary) : 'Rp 0'}
+                          {sisaHutangTokoKeKary > 0 && <span style={{ display: 'block', fontSize: '0.68rem', color: '#fef08a', fontWeight: 400 }}>Talangan Depo</span>}
+                        </td>
+                        <td style={{ padding: '10px', color: '#38bdf8' }}>
+                          <div style={{ fontWeight: 800, color: sisaOngkirBelumTerbayar > 0 ? '#f87171' : '#34d399' }}>
+                            {AppStore.formatRupiah(sisaOngkirBelumTerbayar)} {sisaOngkirBelumTerbayar > 0 ? '(Belum Dibayar)' : '(Lunas)'}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                            Terjadi: {AppStore.formatRupiah(totalOngkirOrderTerjadi)} ({totalGalonDiantar} Galon) | Dibayar: {AppStore.formatRupiah(totalOngkirKasKeluar)}
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px', color: '#34d399' }}>
+                          <div style={{ fontWeight: 700 }}>{AppStore.formatRupiah(totalKonsumsiKasKeluar)}</div>
+                          <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>{AppStore.formatRupiah(kary.uang_makan_per_hari || 0)}/hari</div>
+                        </td>
+                        <td style={{ padding: '10px', color: '#cbd5e1' }}>
+                          <div style={{ fontWeight: 700 }}>{AppStore.formatRupiah(kary.gaji_basic)}</div>
+                          <div style={{ fontSize: '0.72rem', color: !item.isSudahJatuhTempo ? '#fbbf24' : sisaGajiBelumDibayar > 0 ? (item.totalGajiPaid > 0 ? '#f59e0b' : '#f87171') : '#34d399', fontWeight: 600 }}>
+                            {!item.isSudahJatuhTempo 
+                              ? `🔒 Belum Jatuh Tempo (Tgl ${item.dueDay})` 
+                              : sisaGajiBelumDibayar > 0 
+                                ? (item.totalGajiPaid > 0 
+                                    ? `🟠 Dibayar Sebagian (Sisa: ${AppStore.formatRupiah(sisaGajiBelumDibayar)})` 
+                                    : `🔴 Belum Dibayar (Tgl ${item.dueDay})`) 
+                                : `🟢 Gaji Lunas (Bulan Ini)`
+                            }
+                          </div>
+                          {item.totalGajiPaid > 0 && sisaGajiBelumDibayar > 0 && (
+                            <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '2px' }}>
+                              Terbayar: {AppStore.formatRupiah(item.totalGajiPaid)}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px' }}>
+                          {netPosisi > 0 ? (
+                            <span className="badge badge-warning" style={{ fontSize: '0.75rem' }}>
+                              🏢 Depo Bayar {AppStore.formatRupiah(netPosisi)}
+                            </span>
+                          ) : netPosisi < 0 ? (
+                            <span className="badge badge-danger" style={{ fontSize: '0.75rem' }}>
+                              🔴 Staf Hutang {AppStore.formatRupiah(Math.abs(netPosisi))}
+                            </span>
+                          ) : (
+                            <span className="badge badge-success" style={{ fontSize: '0.75rem' }}>
+                              🟢 Impas / Lunas
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <button 
+                              type="button" 
+                              onClick={() => setSelectedDetailKaryawan(item)}
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: '4px 6px', fontSize: '0.72rem', gap: '3px' }}
+                              title="Lihat Rincian Kartu Hutang Piutang Karyawan"
+                            >
+                              <Eye size={12} /> Rincian
+                            </button>
+                            <button 
+                              type="button" 
+                              disabled={sisaGajiBelumDibayar <= 0}
+                              onClick={() => handleOpenBayarOngkirModal(item, 'gaji')}
+                              className="btn btn-primary btn-sm"
+                              style={{ 
+                                padding: '4px 6px', 
+                                fontSize: '0.72rem', 
+                                gap: '3px',
+                                opacity: sisaGajiBelumDibayar <= 0 ? 0.45 : 1,
+                                cursor: sisaGajiBelumDibayar <= 0 ? 'not-allowed' : 'pointer',
+                                background: sisaGajiBelumDibayar <= 0 ? 'rgba(2, 132, 199, 0.4)' : !item.isSudahJatuhTempo ? '#f59e0b' : '#0284c7'
+                              }}
+                              title={sisaGajiBelumDibayar <= 0 ? 'Gaji bulan ini sudah lunas' : !item.isSudahJatuhTempo ? `Bayar Gaji Awal (Jatuh tempo Tgl ${item.dueDay})` : `Proses Bayar Gaji Bulanan (Sisa: ${AppStore.formatRupiah(sisaGajiBelumDibayar)})`}
+                            >
+                              {sisaGajiBelumDibayar <= 0 
+                                ? `🟢 Gaji Lunas` 
+                                : !item.isSudahJatuhTempo 
+                                  ? `💼 Bayar Gaji (Awal)` 
+                                  : (item.totalGajiPaid > 0 ? `💼 Bayar Sisa Gaji` : `💼 Bayar Gaji (Tgl ${item.dueDay})`)}
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => handleOpenBayarOngkirModal(item, 'ongkir')}
+                              className="btn btn-success btn-sm"
+                              style={{ padding: '4px 6px', fontSize: '0.72rem', gap: '3px' }}
+                              title="Proses Bayar Ongkir / Komisi Kurir"
+                            >
+                              🚚 Bayar Ongkir
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => handleOpenBayarOngkirModal(item, 'konsumsi')}
+                              className="btn btn-warning btn-sm"
+                              style={{ padding: '4px 6px', fontSize: '0.72rem', gap: '3px' }}
+                              title="Proses Bayar Uang Makan / Konsumsi Staf"
+                            >
+                              ☕ Uang Makan
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => handleOpenBayarOngkirModal(item, sisaKasbonAktif > 0 ? 'pengembalian_kasbon' : 'kasbon')}
+                              className="btn btn-danger btn-sm"
+                              style={{ padding: '4px 6px', fontSize: '0.72rem', gap: '3px' }}
+                              title={sisaKasbonAktif > 0 ? "Pelunasan Kasbon Staf" : "Beri Pinjaman Kasbon"}
+                            >
+                              💸 {sisaKasbonAktif > 0 ? 'Pelunasan Kasbon' : 'Kasbon'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* SECTION: Rekapitulasi Piutang Pelanggan (Tagihan Menunggak) */}
+          <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid #ef4444' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Users size={22} color="#f87171" /> Rekapitulasi Piutang Pelanggan (Tagihan Menunggak)
+                </h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '2px' }}>
+                  Daftar pelanggan / toko reseller yang memiliki tagihan belum terbayar.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span className="badge badge-danger" style={{ fontSize: '0.85rem', fontWeight: 800 }}>
+                  Total Piutang: {AppStore.formatRupiah(totalPiutangPelanggan)}
+                </span>
+              </div>
+            </div>
+
+            {pelangganBerhutang.length === 0 ? (
+              <div style={{ padding: '16px', textAlign: 'center', background: 'rgba(15, 23, 42, 0.5)', borderRadius: '12px', color: '#34d399', fontSize: '0.9rem' }}>
+                🎉 Tidak ada piutang pelanggan saat ini. Semua tagihan sudah lunas!
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--glass-border)', color: '#94a3b8', background: 'rgba(15, 23, 42, 0.6)' }}>
+                      <th style={{ padding: '12px' }}>Nama Pelanggan / Toko</th>
+                      <th style={{ padding: '12px' }}>Tipe</th>
+                      <th style={{ padding: '12px' }}>No HP / WA</th>
+                      <th style={{ padding: '12px' }}>Limit Hutang</th>
+                      <th style={{ padding: '12px' }}>Hutang / Piutang Saat Ini</th>
+                      <th style={{ padding: '12px' }}>Aksi Penagihan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pelangganBerhutang.map(k => {
+                      const limit = k.limit_hutang || 0;
+                      const hutang = k.hutang_saat_ini || 0;
+                      const isOverLimit = limit > 0 && hutang > limit;
+                      const phone = k.no_hp || '';
+
+                      return (
+                        <tr key={k.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                          <td style={{ padding: '12px', fontWeight: 700, color: '#f8fafc' }}>
+                            {k.nama}
+                            {k.alamat && <span style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>{k.alamat}</span>}
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            <span className="badge badge-primary" style={{ textTransform: 'capitalize' }}>{k.tipe}</span>
+                          </td>
+                          <td style={{ padding: '12px', color: '#cbd5e1' }}>{phone}</td>
+                          <td style={{ padding: '12px', color: '#94a3b8' }}>{AppStore.formatRupiah(limit)}</td>
+                          <td style={{ padding: '12px', fontWeight: 800, color: isOverLimit ? '#ef4444' : '#f87171' }}>
+                            {AppStore.formatRupiah(hutang)}
+                            {isOverLimit && <span style={{ display: 'block', fontSize: '0.7rem', color: '#ef4444' }}>⚠️ Melebihi Limit!</span>}
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            {phone && phone !== '-' ? (
+                              <a 
+                                href={`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Halo Kak ${k.nama}, mengingatkan tagihan air minum depo sebesar ${AppStore.formatRupiah(hutang)}. Terima kasih.`)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn btn-success btn-sm"
+                                style={{ padding: '4px 10px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              >
+                                💬 Tagih via WA
+                              </a>
+                            ) : (
+                              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>-</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* SECTION: Daftar Peminjam Galon Aktif */}
+          <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid #fbbf24' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Package size={22} color="#fbbf24" /> Daftar Peminjam Galon Aktif
+                </h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '2px' }}>
+                  Rekapitulasi seluruh pelanggan &amp; reseller yang sedang membawa / meminjam galon milik depo.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span className="badge badge-warning" style={{ fontSize: '0.85rem', fontWeight: 800 }}>
+                  Total Dipinjam: {((pesananList || []).length === 0 ? [] : (pengaturan.galon_pinjaman_pelanggan || [])).reduce((acc, p) => acc + p.jumlah_galon, 0)} Galon
+                </span>
+              </div>
+            </div>
+
+            {((pesananList || []).length === 0 ? [] : (pengaturan.galon_pinjaman_pelanggan || [])).length === 0 ? (
+              <div style={{ padding: '16px', textAlign: 'center', background: 'rgba(15, 23, 42, 0.5)', borderRadius: '12px', color: '#34d399', fontSize: '0.9rem' }}>
+                🎉 Tidak ada galon yang sedang dipinjamkan saat ini. Semua galon ada di lokasi depo!
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--glass-border)', color: '#94a3b8', background: 'rgba(15, 23, 42, 0.6)' }}>
+                      <th style={{ padding: '12px' }}>Nama Pelanggan / Reseller</th>
+                      <th style={{ padding: '12px' }}>Jumlah Galon Dipinjam</th>
+                      <th style={{ padding: '12px' }}>Tanggal Pinjam</th>
+                      <th style={{ padding: '12px' }}>Catatan / Keperluan</th>
+                      <th style={{ padding: '12px' }}>Aksi Penagihan / Kontak</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {((pesananList || []).length === 0 ? [] : (pengaturan.galon_pinjaman_pelanggan || [])).map((item, idx) => {
+                      const kontak = kontakList.find(k => k.id === item.kontak_id || k.nama.toLowerCase().includes(item.nama_pelanggan.toLowerCase()));
+                      const phone = kontak?.no_hp || '';
+                      return (
+                        <tr key={item.id || idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                          <td style={{ padding: '12px', fontWeight: 700, color: '#f8fafc' }}>
+                            {item.nama_pelanggan}
+                            {kontak && <span className="badge badge-primary" style={{ marginLeft: '8px', fontSize: '0.7rem' }}>{kontak.tipe}</span>}
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            <span className="badge badge-warning" style={{ fontSize: '0.9rem', fontWeight: 800 }}>
+                              {item.jumlah_galon} Galon
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px', color: '#94a3b8' }}>
+                            {item.tanggal_pinjam || '-'}
+                          </td>
+                          <td style={{ padding: '12px', color: '#cbd5e1' }}>
+                            {item.catatan || 'Dipinjamkan'}
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            {phone && phone !== '-' ? (
+                              <a 
+                                href={`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Halo ${item.nama_pelanggan}, mengingatkan penataan/tukar kembali galon pinjaman depo sebanyak ${item.jumlah_galon} galon. Terima kasih.`)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn btn-success btn-sm"
+                                style={{ padding: '4px 10px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              >
+                                💬 WA Peminjam
+                              </a>
+                            ) : (
+                              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>-</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB CONTENT 4: PEMELIHARAAN FILTER */}
+      {activeTab === 'pemeliharaan' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* SECTION 5: Notifikasi Servis Mesin & Air Baku Depo */}
+          <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: isAirBakuMenipis ? '4px solid #ef4444' : '4px solid #fbbf24' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={20} color={isAirBakuMenipis ? '#ef4444' : '#fbbf24'} /> Notifikasi Servis Mesin &amp; Air Baku Depo
+              </h3>
+              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                Total Produksi Terhitung: <strong>{totalLiterTerjual} Liter</strong>
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+              {/* Card Air Baku */}
+              <div style={{
+                background: isAirBakuMenipis ? 'rgba(239, 68, 68, 0.15)' : 'rgba(15, 23, 42, 0.7)',
+                border: isAirBakuMenipis ? '1px solid #ef4444' : '1px solid var(--glass-border)',
+                padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <Droplets size={24} color={isAirBakuMenipis ? '#ef4444' : '#34d399'} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc' }}>Stok Air Baku Tangki</h4>
+                      {isAirBakuMenipis && <span className="badge badge-danger">MENIPIS</span>}
+                    </div>
+                    <p style={{ fontSize: '0.85rem', color: isAirBakuMenipis ? '#f87171' : '#34d399', fontWeight: 700, marginTop: '4px' }}>
+                      {stokAirBakuSaatIni} Liter (Minimum: {minStokAirBaku} Liter)
+                    </p>
+                    <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>
+                      {isAirBakuMenipis ? '⚠️ Segera lakukan pemesanan Truk Tangki Air Baku!' : 'Stok air baku masih mencukupi.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cards Dynamic Komponen Servis */}
+              {activeKomponenList.map(komp => {
+                const terpakaiLiter = Math.max(0, totalLiterTerjual - (komp.liter_terakhir_ganti || 0));
+                const sisaLiter = komp.batas_liter - terpakaiLiter;
+                const persen = Math.min(100, Math.round((terpakaiLiter / komp.batas_liter) * 100));
+                const isPerluGanti = terpakaiLiter >= komp.batas_liter;
+                const isHampirGanti = sisaLiter <= (komp.batas_liter * 0.2);
+
+                return (
+                  <div key={komp.id} style={{
+                    background: isPerluGanti ? 'rgba(239, 68, 68, 0.15)' : isHampirGanti ? 'rgba(245, 158, 11, 0.15)' : 'rgba(15, 23, 42, 0.7)',
+                    border: isPerluGanti ? '1px solid #ef4444' : isHampirGanti ? '1px solid #f59e0b' : '1px solid var(--glass-border)',
+                    padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
+                  }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc' }}>{komp.nama_komponen}</h4>
+                        <span className={`badge ${isPerluGanti ? 'badge-danger' : isHampirGanti ? 'badge-warning' : 'badge-primary'}`}>
+                          {isPerluGanti ? 'WAJIB SERVIS' : isHampirGanti ? 'SERVIS DEKAT' : 'NORMAL'}
+                        </span>
+                      </div>
+
+                      <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                        {komp.keterangan || 'Pemeliharaan berkala'}
+                      </p>
+
+                      <div style={{ marginTop: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#cbd5e1', marginBottom: '4px' }}>
+                          <span>Terpakai: {terpakaiLiter} / {komp.batas_liter} Liter</span>
+                          <span style={{ fontWeight: 700 }}>{persen}%</span>
+                        </div>
+                        <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{
+                            width: `${persen}%`, height: '100%',
+                            background: isPerluGanti ? '#ef4444' : isHampirGanti ? '#f59e0b' : '#34d399',
+                            transition: 'width 0.3s ease'
+                          }} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <button 
+                      type="button" 
+                      onClick={() => handleResetKomponenServis(komp.id)} 
+                      className={`btn btn-sm ${isPerluGanti ? 'btn-danger' : 'btn-secondary'}`}
+                      style={{ marginTop: '14px', width: '100%', justifyContent: 'center' }}
+                    >
+                      <RotateCcw size={14} /> Tandai Sudah Diganti / Servis
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB CONTENT 5: RIWAYAT TRANSAKSI POS */}
+      {activeTab === 'riwayat' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* SECTION 7: Riwayat Transaksi Terkini Table */}
+          <div className="glass-card animate-fade-in" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <HistoryIcon size={22} color="#38bdf8" /> Riwayat Transaksi POS Terakhir ({periode.toUpperCase()})
+                </h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.82rem', marginTop: '2px' }}>
+                  Daftar transaksi penjualan air &amp; galon dari mesin kasir POS.
+                </p>
+              </div>
+
+              {/* Search Bar */}
+              <div style={{ position: 'relative', width: '260px' }}>
+                <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="text"
+                  placeholder="Cari nota / pelanggan..."
+                  value={riwayatSearch}
+                  onChange={(e) => {
+                    setRiwayatSearch(e.target.value);
+                    setRiwayatPage(1);
+                  }}
+                  className="form-input"
+                  style={{ paddingLeft: '36px', fontSize: '0.85rem' }}
+                />
+              </div>
+            </div>
+
+            {paginatedRiwayatPesanan.length === 0 ? (
+              <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                Tidak ada riwayat transaksi yang cocok.
+              </div>
+            ) : (
+              <>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--glass-border)', color: '#94a3b8', background: 'rgba(15, 23, 42, 0.4)' }}>
+                        <th style={{ padding: '12px' }}>Jam Order</th>
+                        <th style={{ padding: '12px' }}>Jam Terkirim</th>
+                        <th style={{ padding: '12px' }}>Total Durasi</th>
+                        <th style={{ padding: '12px' }}>No Nota</th>
+                        <th style={{ padding: '12px' }}>Pengorder / Pelanggan</th>
+                        <th style={{ padding: '12px' }}>Produk &amp; Jumlah</th>
+                        <th style={{ padding: '12px' }}>Total</th>
+                        <th style={{ padding: '12px' }}>Status Bayar</th>
+                        <th style={{ padding: '12px' }}>Status Kirim</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedRiwayatPesanan.map((psn: Pesanan) => {
+                        const durInfo = calculateOrderDuration(psn.created_at, psn.terkirim_at, psn.status_pesanan);
+
+                        return (
+                          <tr key={psn.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                            <td style={{ padding: '12px', fontSize: '0.85rem', color: '#fbbf24', whiteSpace: 'nowrap' }}>
+                              <Clock size={13} style={{ display: 'inline', marginRight: '3px' }} />
+                              {durInfo.jamOrder}
+                            </td>
+                            <td style={{ padding: '12px', fontSize: '0.85rem', color: psn.status_pesanan === 'terkirim' ? '#34d399' : '#94a3b8', whiteSpace: 'nowrap' }}>
+                              {durInfo.jamTerkirim}
+                            </td>
+                            <td style={{ padding: '12px', fontSize: '0.85rem', fontWeight: 700, color: '#38bdf8', whiteSpace: 'nowrap' }}>
+                              {durInfo.formattedDurasi}
+                            </td>
+                            <td style={{ padding: '12px', fontWeight: 700, color: '#38bdf8' }}>{psn.no_nota}</td>
+                            <td style={{ padding: '12px', fontWeight: 600, color: '#f8fafc' }}>{psn.nama_pelanggan}</td>
+                            <td style={{ padding: '12px', color: '#cbd5e1', fontSize: '0.85rem' }}>
+                              {formatProdukRingkas(psn.items)}
+                            </td>
+                            <td style={{ padding: '12px', fontWeight: 700, color: '#34d399' }}>{AppStore.formatRupiah(psn.total_akhir)}</td>
+                            <td style={{ padding: '12px' }}>
+                              <span className={`badge ${psn.status_pembayaran === 'lunas' ? 'badge-success' : 'badge-danger'}`}>
+                                {psn.status_pembayaran}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <span className={`badge ${psn.status_pesanan === 'terkirim' || psn.status_pesanan === 'selesai' ? 'badge-success' : 'badge-warning'}`}>
+                                {psn.status_pesanan}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Riwayat Transaksi */}
+                {renderPagination(currentRiwayatPage, totalRiwayatPages, setRiwayatPage)}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Detail Rekap Keuangan Staf */}
+      {selectedDetailKaryawan && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10005, padding: '16px'
+        }}>
+          <div className="glass-card animate-fade-in" style={{
+            width: '100%', maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', background: '#0f172a',
+            border: '2px solid #38bdf8', boxShadow: '0 25px 50px -12px rgba(56, 189, 248, 0.3)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  👤 Kartu Rincian Hutang Piutang: {selectedDetailKaryawan.kary.nama}
+                </h3>
+                <span style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 600 }}>
+                  Jabatan: {selectedDetailKaryawan.kary.jabatan} | Jatuh Tempo Gaji: Tgl {selectedDetailKaryawan.kary.tanggal_jatuh_tempo_gaji || 25} Setiap Bulan
+                </span>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => window.print()}
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}
+                >
+                  🖨️ Cetak Slip
+                </button>
+                <button type="button" onClick={() => setSelectedDetailKaryawan(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Summary Cards Modal */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+              <div style={{ background: 'rgba(239, 68, 68, 0.15)', padding: '12px', borderRadius: '10px', border: '1px solid #ef4444' }}>
+                <span style={{ fontSize: '0.72rem', color: '#fca5a5' }}>🔴 Sisa Kasbon (Staf Hutang)</span>
+                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#f87171', marginTop: '2px' }}>
+                  {AppStore.formatRupiah(selectedDetailKaryawan.sisaKasbonAktif)}
+                </div>
+              </div>
+              <div style={{ background: 'rgba(251, 191, 36, 0.15)', padding: '12px', borderRadius: '10px', border: '1px solid #fbbf24' }}>
+                <span style={{ fontSize: '0.72rem', color: '#fef08a' }}>🏢 Hutang Depo (Talangan)</span>
+                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fbbf24', marginTop: '2px' }}>
+                  {AppStore.formatRupiah(selectedDetailKaryawan.sisaHutangTokoKeKary)}
+                </div>
+              </div>
+              <div style={{ background: 'rgba(56, 189, 248, 0.15)', padding: '12px', borderRadius: '10px', border: '1px solid #38bdf8' }}>
+                <span style={{ fontSize: '0.72rem', color: '#bae6fd' }}>🚚 Ongkir Belum Dibayar</span>
+                <div style={{ fontSize: '1rem', fontWeight: 800, color: selectedDetailKaryawan.sisaOngkirBelumTerbayar > 0 ? '#f87171' : '#34d399', marginTop: '2px' }}>
+                  {AppStore.formatRupiah(selectedDetailKaryawan.sisaOngkirBelumTerbayar)}
+                </div>
+              </div>
+            </div>
+
+            {/* Comprehensive Net Financial Statement Box */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.9) 100%)',
+              border: '2px dashed #38bdf8', borderRadius: '12px', padding: '16px', marginBottom: '16px'
+            }}>
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#38bdf8', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>📊 RINGKASAN LEGER HAK &amp; KEWAJIBAN</span>
+                <span>{selectedDetailKaryawan.kary.nama}</span>
+              </h4>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.82rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#cbd5e1' }}>+ Gaji Basic Bulanan:</span>
+                  <strong style={{ color: '#34d399' }}>{AppStore.formatRupiah(selectedDetailKaryawan.kary.gaji_basic || 0)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#cbd5e1' }}>+ Sisa Ongkir Delivery Belum Dibayar:</span>
+                  <strong style={{ color: '#38bdf8' }}>{AppStore.formatRupiah(selectedDetailKaryawan.sisaOngkirBelumTerbayar)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#cbd5e1' }}>+ Total Uang Makan / Konsumsi:</span>
+                  <strong style={{ color: '#34d399' }}>{AppStore.formatRupiah(selectedDetailKaryawan.totalKonsumsiKasKeluar)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#cbd5e1' }}>+ Talangan Hutang Depo ke Staf:</span>
+                  <strong style={{ color: '#fef08a' }}>{AppStore.formatRupiah(selectedDetailKaryawan.sisaHutangTokoKeKary)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '4px' }}>
+                  <span style={{ color: '#fca5a5' }}>- Potongan Sisa Kasbon Aktif:</span>
+                  <strong style={{ color: '#f87171' }}>-{AppStore.formatRupiah(selectedDetailKaryawan.sisaKasbonAktif)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px solid rgba(255,255,255,0.15)', paddingTop: '8px', marginTop: '4px' }}>
+                  <strong style={{ color: '#f8fafc', fontSize: '0.9rem' }}>NET REKAPITULASI KEUANGAN:</strong>
+                  {selectedDetailKaryawan.netPosisi > 0 ? (
+                    <span className="badge badge-warning" style={{ fontSize: '0.85rem', padding: '6px 12px' }}>
+                      🏢 DEPO HARUS BAYAR {AppStore.formatRupiah(selectedDetailKaryawan.netPosisi)}
+                    </span>
+                  ) : selectedDetailKaryawan.netPosisi < 0 ? (
+                    <span className="badge badge-danger" style={{ fontSize: '0.85rem', padding: '6px 12px' }}>
+                      🔴 STAF MEMILIKI HUTANG KASBON {AppStore.formatRupiah(Math.abs(selectedDetailKaryawan.netPosisi))}
+                    </span>
+                  ) : (
+                    <span className="badge badge-success" style={{ fontSize: '0.85rem', padding: '6px 12px' }}>
+                      🟢 POSISI KEUANGAN IMPAS / LUNAS
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Sub-sections tabs/details */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+              {/* 1. Kasbon Staf Detail */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '14px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc' }}>
+                    🔴 Rincian Kasbon / Pinjaman Staf
+                  </h4>
+                  <button 
+                    type="button" 
+                    onClick={() => handleOpenBayarOngkirModal(selectedDetailKaryawan, selectedDetailKaryawan.sisaKasbonAktif > 0 ? 'pengembalian_kasbon' : 'kasbon')} 
+                    className="btn btn-danger btn-sm"
+                    style={{ fontSize: '0.7rem', padding: '3px 8px' }}
+                  >
+                    {selectedDetailKaryawan.sisaKasbonAktif > 0 ? '💸 Pelunasan Kasbon' : '+ Beri Kasbon'}
+                  </button>
+                </div>
+                <div style={{ fontSize: '0.82rem', color: selectedDetailKaryawan.sisaKasbonAktif > 0 ? '#f87171' : '#34d399', fontWeight: 700 }}>
+                  Sisa Kasbon Belum Lunas: {AppStore.formatRupiah(selectedDetailKaryawan.sisaKasbonAktif)}
+                </div>
+              </div>
+
+              {/* 2. Ongkir Delivery */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '14px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc' }}>
+                    🚚 Hak Ongkir Kurir / Delivery
+                  </h4>
+                  <button 
+                    type="button" 
+                    onClick={() => handleOpenBayarOngkirModal(selectedDetailKaryawan, 'ongkir')} 
+                    className="btn btn-success btn-sm"
+                    style={{ fontSize: '0.7rem', padding: '3px 8px' }}
+                  >
+                    + Bayar Ongkir Kurir
+                  </button>
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>
+                  Total Ongkir Hak Staf Dari Pesanan: <strong>{AppStore.formatRupiah(selectedDetailKaryawan.totalOngkirOrderTerjadi)} ({selectedDetailKaryawan.totalGalonDiantar} Galon)</strong>
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#34d399', marginTop: '2px' }}>
+                  Ongkir Sudah Dibayarkan Depo: <strong>{AppStore.formatRupiah(selectedDetailKaryawan.totalOngkirKasKeluar)}</strong>
+                </div>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: selectedDetailKaryawan.sisaOngkirBelumTerbayar > 0 ? '#f87171' : '#34d399', marginTop: '4px' }}>
+                  Sisa Ongkir Belum Dibayar: {AppStore.formatRupiah(selectedDetailKaryawan.sisaOngkirBelumTerbayar)}
+                </div>
+              </div>
+
+              {/* 3. Uang Makan / Konsumsi */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '14px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc' }}>
+                    ☕ Uang Makan &amp; Konsumsi Harian
+                  </h4>
+                  <button 
+                    type="button" 
+                    onClick={() => handleOpenBayarOngkirModal(selectedDetailKaryawan, 'konsumsi')} 
+                    className="btn btn-warning btn-sm"
+                    style={{ fontSize: '0.7rem', padding: '3px 8px' }}
+                  >
+                    + Bayar Uang Makan
+                  </button>
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>
+                  Tarif Uang Makan Harian: <strong>{AppStore.formatRupiah(selectedDetailKaryawan.kary.uang_makan_per_hari || 0)} / hari</strong>
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#34d399', fontWeight: 700, marginTop: '4px' }}>
+                  Total Pengeluaran Makan Dicatat: {AppStore.formatRupiah(selectedDetailKaryawan.totalKonsumsiKasKeluar)}
+                </div>
+              </div>
+
+              {/* 4. Gaji Pokok */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '14px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc' }}>
+                    💼 Gaji Pokok (Jatuh Tempo: Tgl {selectedDetailKaryawan.dueDay})
+                  </h4>
+                  <button 
+                    type="button" 
+                    disabled={!selectedDetailKaryawan.isSudahJatuhTempo || selectedDetailKaryawan.sisaGajiBelumDibayar <= 0}
+                    onClick={() => handleOpenBayarOngkirModal(selectedDetailKaryawan, 'gaji')} 
+                    className="btn btn-primary btn-sm"
+                    style={{ 
+                      fontSize: '0.7rem', 
+                      padding: '3px 8px',
+                      opacity: (!selectedDetailKaryawan.isSudahJatuhTempo || selectedDetailKaryawan.sisaGajiBelumDibayar <= 0) ? 0.45 : 1,
+                      cursor: (!selectedDetailKaryawan.isSudahJatuhTempo || selectedDetailKaryawan.sisaGajiBelumDibayar <= 0) ? 'not-allowed' : 'pointer',
+                      background: !selectedDetailKaryawan.isSudahJatuhTempo ? 'rgba(100, 116, 139, 0.4)' : undefined
+                    }}
+                    title={!selectedDetailKaryawan.isSudahJatuhTempo ? `🔒 Belum Jatuh Tempo (Baru bisa dibayar mulai Tgl ${selectedDetailKaryawan.dueDay})` : 'Proses Bayar Gaji'}
+                  >
+                    {!selectedDetailKaryawan.isSudahJatuhTempo ? `🔒 Belum Waktunya (Tgl ${selectedDetailKaryawan.dueDay})` : 'Bayar Gaji'}
+                  </button>
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#cbd5e1', marginBottom: '4px' }}>
+                  Gaji Basic Bulanan: <strong>{AppStore.formatRupiah(selectedDetailKaryawan.kary.gaji_basic || 0)}</strong>
+                </div>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: !selectedDetailKaryawan.isSudahJatuhTempo ? '#fbbf24' : selectedDetailKaryawan.sisaGajiBelumDibayar > 0 ? '#f87171' : '#34d399' }}>
+                  {!selectedDetailKaryawan.isSudahJatuhTempo
+                    ? `🔒 Belum Jatuh Tempo (Gaji baru keluar mulai tanggal ${selectedDetailKaryawan.dueDay} setiap bulannya)`
+                    : selectedDetailKaryawan.sisaGajiBelumDibayar > 0 
+                      ? `🔴 Sisa Gaji Belum Dibayar Bulan Ini: ${AppStore.formatRupiah(selectedDetailKaryawan.sisaGajiBelumDibayar)}` 
+                      : `🟢 Gaji Bulan Ini Sudah Lunas`
+                  }
+                </div>
+              </div>
+
+            </div>
+
+            <button 
+              type="button" 
+              onClick={() => setSelectedDetailKaryawan(null)}
+              className="btn btn-secondary" 
+              style={{ width: '100%', marginTop: '16px', justifyContent: 'center' }}
+            >
+              Tutup Kartu Rincian
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Popup Process Payment Hak Staf / Ongkir */}
+      {showBayarHakModal && targetKaryawanBayar && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10006, padding: '16px'
+        }}>
+          <div className="glass-card animate-fade-in" style={{
+            width: '100%', maxWidth: '500px', padding: '24px', background: '#0f172a',
+            border: '2px solid #10b981', boxShadow: '0 25px 50px -12px rgba(16, 185, 129, 0.3)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Banknote size={22} color="#34d399" /> Entry Pembayaran Hak Staf / Kurir
+              </h3>
+              <button type="button" onClick={() => setShowBayarHakModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                ✕
+              </button>
+            </div>
+
+            <div style={{
+              background: 'rgba(16, 185, 129, 0.12)', border: '1px solid #34d399',
+              borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '0.82rem', color: '#6ee7b7'
+            }}>
+              💸 <strong>KAS KELUAR (-):</strong> Transaksi ini mencatat pengeluaran kas depo untuk membayar hak ongkir / gaji ke <strong>{targetKaryawanBayar.kary.nama}</strong>. Tampilan saldo Ongkir Belum Terbayar akan langsung berkurang/lunas!
+            </div>
+
+            <form onSubmit={handleSaveBayarHakStaf} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="form-group">
+                <label className="form-label">Kategori Pembayaran</label>
+                <select 
+                  value={kategoriBayarStaf} 
+                  onChange={(e) => {
+                    const kat = e.target.value;
+                    setKategoriBayarStaf(kat);
+                    if (kat === 'ongkir') {
+                      setNominalBayarStaf(targetKaryawanBayar.sisaOngkirBelumTerbayar || targetKaryawanBayar.totalOngkirOrderTerjadi || 0);
+                      setPeruntukanBayarStaf(`Pembayaran Ongkir Delivery - ${targetKaryawanBayar.kary.nama}`);
+                    } else if (kat === 'gaji') {
+                      setNominalBayarStaf(targetKaryawanBayar.kary.gaji_basic || 0);
+                      setPeruntukanBayarStaf(`Pembayaran Gaji Bulan Ini - ${targetKaryawanBayar.kary.nama}`);
+                    } else {
+                      setNominalBayarStaf(targetKaryawanBayar.totalKonsumsiKasKeluar || targetKaryawanBayar.kary.uang_makan_per_hari || 0);
+                      setPeruntukanBayarStaf(`Uang Makan / Konsumsi - ${targetKaryawanBayar.kary.nama}`);
+                    }
+                  }} 
+                  className="form-select"
+                >
+                  <option value="ongkir">🚚 Ongkir / Transportasi Delivery</option>
+                  <option value="gaji">💼 Pembayaran Gaji Karyawan</option>
+                  <option value="konsumsi">☕ Konsumsi / Uang Makan Staf</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Penerima (Nama Staf)</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={`${targetKaryawanBayar.kary.nama} (${targetKaryawanBayar.kary.jabatan})`} 
+                  disabled 
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Isian Peruntukan / Keperluan <span style={{ color: '#ef4444' }}>*</span></label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={peruntukanBayarStaf} 
+                  onChange={(e) => setPeruntukanBayarStaf(e.target.value)} 
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Nominal Uang Disetorkan (Rp) <span style={{ color: '#ef4444' }}>*</span></label>
+                <input 
+                  type="number" 
+                  className="form-input" 
+                  value={nominalBayarStaf || ''} 
+                  onChange={(e) => setNominalBayarStaf(Number(e.target.value))} 
+                  required 
+                  min={100} 
+                />
+                {kategoriBayarStaf === 'ongkir' && targetKaryawanBayar.sisaOngkirBelumTerbayar > 0 && (
+                  <span style={{ fontSize: '0.75rem', color: '#fbbf24', marginTop: '4px', display: 'block' }}>
+                    💡 Saldo sisa ongkir belum dibayar: <strong>{AppStore.formatRupiah(targetKaryawanBayar.sisaOngkirBelumTerbayar)}</strong>
+                  </span>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Catatan Tambahan (Opsional)</label>
+                <textarea 
+                  className="form-textarea" 
+                  rows={2} 
+                  value={catatanBayarStaf} 
+                  onChange={(e) => setCatatanBayarStaf(e.target.value)} 
+                  placeholder="Keterangan tanggal/no nota antaran..." 
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button type="button" onClick={() => setShowBayarHakModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>
+                  Batal
+                </button>
+                <button type="submit" className="btn btn-success" style={{ flex: 1, fontWeight: 700 }}>
+                  <Check size={18} /> Simpan Pembayaran Kas
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 6: Rekap Kas Setoran & Audit Shift Kasir */}
+      {renderRekapKasAndShiftAuditSection()}
+
+      {/* MODAL EDIT TARGET PENJUALAN */}
+      {showEditTargetModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px'
+        }}>
+          <div className="glass-card animate-fade-in" style={{ maxWidth: '550px', width: '100%', padding: '24px', borderRadius: '16px', border: '1px solid var(--glass-border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Target size={22} color="#10b981" /> Edit Target Penjualan
+              </h3>
+              <button onClick={() => setShowEditTargetModal(false)} className="btn btn-secondary btn-sm" style={{ padding: '4px 8px' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTargetPenjualan} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                Atur target omzet pendapatan (Rp) dan volume penjualan galon untuk memantau performa depo secara harian, mingguan, dan bulanan.
+              </p>
+
+              {/* TARGET HARIAN */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#34d399', marginBottom: '10px' }}>
+                  🎯 Target Penjualan HARIAN
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Target Omzet Harian (Rp)</label>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      value={targetOmzetHarianInput} 
+                      onChange={(e) => setTargetOmzetHarianInput(Number(e.target.value))}
+                      placeholder="500000"
+                      required 
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Target Volume Galon Harian</label>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      value={targetGalonHarianInput} 
+                      onChange={(e) => setTargetGalonHarianInput(Number(e.target.value))}
+                      placeholder="50"
+                      required 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* TARGET MINGGUAN */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#38bdf8', marginBottom: '10px' }}>
+                  📅 Target Penjualan MINGGUAN
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Target Omzet Mingguan (Rp)</label>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      value={targetOmzetMingguanInput} 
+                      onChange={(e) => setTargetOmzetMingguanInput(Number(e.target.value))}
+                      placeholder="3500000"
+                      required 
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Target Volume Galon Mingguan</label>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      value={targetGalonMingguanInput} 
+                      onChange={(e) => setTargetGalonMingguanInput(Number(e.target.value))}
+                      placeholder="350"
+                      required 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* TARGET BULANAN */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fbbf24', marginBottom: '10px' }}>
+                  📆 Target Penjualan BULANAN
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Target Omzet Bulanan (Rp)</label>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      value={targetOmzetBulananInput} 
+                      onChange={(e) => setTargetOmzetBulananInput(Number(e.target.value))}
+                      placeholder="15000000"
+                      required 
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Target Volume Galon Bulanan</label>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      value={targetGalonBulananInput} 
+                      onChange={(e) => setTargetGalonBulananInput(Number(e.target.value))}
+                      placeholder="1500"
+                      required 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button type="button" onClick={() => setShowEditTargetModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>
+                  Batal
+                </button>
+                <button type="submit" className="btn btn-success" style={{ flex: 1, fontWeight: 700 }}>
+                  <Check size={18} /> Simpan Target
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Adjust Meteran Air & Stok Air Baku Depo (Owner Only) */}
+      {showOwnerMeterAdjustModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '16px'
+        }}>
+          <div className="glass-card animate-fade-in" style={{
+            width: '100%', maxWidth: '480px', padding: '26px', background: '#0f172a',
+            border: '2px solid #38bdf8', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.8)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Droplets size={22} color="#38bdf8" /> Adjust Meter &amp; Stok Air Baku (Owner Only)
+              </h3>
+              <button type="button" onClick={() => setShowOwnerMeterAdjustModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const { pengaturan: updatedP, shiftList: updatedShiftList } = AppStore.adjustMeterAndStokByOwner(
+                Number(newStokAirInput) || 0,
+                Number(newMeterAirInput) || 0
+              );
+              setPengaturan(updatedP);
+              setShiftList(updatedShiftList);
+              setShowOwnerMeterAdjustModal(false);
+              alert('✅ Adjust Meteran Air & Stok Air Baku Depo Berhasil Disimpan!\n\nCatatan meteran kasir & selisih telah dikalibrasi sesuai angka meteran terbaru.');
+            }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 700 }}>
+                  Stok Air Baku Tangki Depo Saat Ini (Liter)
+                </label>
+                <input 
+                  type="number" 
+                  className="form-input" 
+                  value={newStokAirInput}
+                  onChange={(e) => setNewStokAirInput(Number(e.target.value))}
+                  required 
+                  min={0}
+                  style={{ fontSize: '1.1rem', fontWeight: 700 }}
+                />
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
+                  Jumlah total air baku fisik yang tersisa di dalam tangki depo.
+                </span>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 700 }}>
+                  Posisi Meteran Air Depo (Liter / Baseline Flowmeter)
+                </label>
+                <input 
+                  type="number" 
+                  className="form-input" 
+                  value={newMeterAirInput}
+                  onChange={(e) => setNewMeterAirInput(Number(e.target.value))}
+                  required 
+                  min={0}
+                  style={{ fontSize: '1.1rem', fontWeight: 700 }}
+                />
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
+                  Posisi angka meteran air fisik depo saat ini (Setara {((Number(newMeterAirInput) || 0) / 1000).toFixed(1)} M³).
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button type="button" onClick={() => setShowOwnerMeterAdjustModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>
+                  Batal
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1, fontWeight: 700, background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)' }}>
+                  <Check size={18} /> Simpan Adjust Owner
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
