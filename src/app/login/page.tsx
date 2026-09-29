@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [selectedUsername, setSelectedUsername] = useState(defaultUsername);
   const [customUsername, setCustomUsername] = useState('');
   const [isCustomMode, setIsCustomMode] = useState(false);
-  const [password, setPassword] = useState('123456');
+  const [password, setPassword] = useState('');
   const [pengaturan, setPengaturan] = useState(AppStore.getPengaturan());
 
   const handleLogin = (e: React.FormEvent) => {
@@ -52,16 +52,7 @@ export default function LoginPage() {
       AppStore.setCurrentUser(fullUser);
       redirectUser(fullUser.role);
     } else {
-      // Fallback: create temporary session user
-      const tempUser: UserApp = {
-        id: `usr-${Date.now()}`,
-        nama: isCustomMode ? customUsername : targetUsername,
-        username: targetUsername,
-        role: 'kasir',
-        aktif: true
-      };
-      AppStore.setCurrentUser(tempUser);
-      redirectUser('kasir');
+      alert(`❌ User "${targetUsername}" tidak terdaftar. Tambahkan karyawan lewat Pengaturan Toko terlebih dahulu.`);
     }
   };
 

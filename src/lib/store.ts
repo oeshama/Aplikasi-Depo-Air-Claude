@@ -6,9 +6,17 @@ import {
   DEMO_USERS, INITIAL_PRODUK, INITIAL_ZONA, INITIAL_KONTAK, 
   INITIAL_PESANAN, INITIAL_PENGATURAN 
 } from './mockData';
+import { recordLocalChange } from './sync';
 
 // Helper to interact with LocalStorage for offline-first speed
 export class AppStore {
+  // Simpan ke cache lokal lalu antrekan perubahan untuk dikirim ke Supabase
+  private static persist(key: string, value: unknown) {
+    const oldRaw = localStorage.getItem(key);
+    localStorage.setItem(key, JSON.stringify(value));
+    recordLocalChange(key, oldRaw, value);
+  }
+
   static getPengaturan(): PengaturanDepo {
     if (typeof window === 'undefined') return INITIAL_PENGATURAN;
     const stored = localStorage.getItem('depo_pengaturan');
@@ -16,7 +24,7 @@ export class AppStore {
   }
 
   static savePengaturan(data: PengaturanDepo) {
-    localStorage.setItem('depo_pengaturan', JSON.stringify(data));
+    this.persist('depo_pengaturan', data);
 
     if (data.nama_owner && typeof window !== 'undefined') {
       const users = this.getUsers();
@@ -52,7 +60,7 @@ export class AppStore {
   }
 
   static saveProduk(data: Produk[]) {
-    localStorage.setItem('depo_produk', JSON.stringify(data));
+    this.persist('depo_produk', data);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('depo_produk_updated'));
     }
@@ -65,7 +73,7 @@ export class AppStore {
   }
 
   static saveZona(data: ZoneOngkir[]) {
-    localStorage.setItem('depo_zona', JSON.stringify(data));
+    this.persist('depo_zona', data);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('depo_zona_updated'));
     }
@@ -78,7 +86,7 @@ export class AppStore {
   }
 
   static saveKontak(data: Kontak[]) {
-    localStorage.setItem('depo_kontak', JSON.stringify(data));
+    this.persist('depo_kontak', data);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('depo_kontak_updated'));
     }
@@ -145,7 +153,7 @@ export class AppStore {
   }
 
   static savePesanan(data: Pesanan[]) {
-    localStorage.setItem('depo_pesanan', JSON.stringify(data));
+    this.persist('depo_pesanan', data);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('depo_pesanan_updated'));
     }
@@ -162,7 +170,8 @@ export class AppStore {
     const idx = list.findIndex(p => p.id === id);
     if (idx !== -1) {
       list[idx].status_pesanan = status;
-      if (statusBayar) list[idx].status_pembayaran = statusBayar;
+      // Pesanan hutang tetap berstatus hutang sampai dilunasi lewat menu Bayar Hutang
+      if (statusBayar && list[idx].status_pembayaran !== 'hutang') list[idx].status_pembayaran = statusBayar;
       if (status === 'terkirim' || status === 'selesai') {
         if (!list[idx].terkirim_at) {
           list[idx].terkirim_at = new Date().toISOString();
@@ -200,6 +209,26 @@ export class AppStore {
     }
   }
 
+  // User yang benar-benar sudah login (null jika belum login / sudah logout)
+  static getSessionUser(): UserApp | null {
+    if (typeof window === 'undefined') return null;
+    if (!localStorage.getItem('depo_current_user')) return null;
+    return this.getCurrentUser();
+  }
+
+  static logout() {
+    localStorage.removeItem('depo_current_user');
+    window.dispatchEvent(new Event('depo_user_updated'));
+  }
+
+  static tambahHutangPelanggan(kontakId: string, jumlah: number) {
+    const kontakList = this.getKontak();
+    const idx = kontakList.findIndex(k => k.id === kontakId);
+    if (idx === -1) return;
+    kontakList[idx].hutang_saat_ini = (kontakList[idx].hutang_saat_ini || 0) + jumlah;
+    this.saveKontak(kontakList);
+  }
+
   static setCurrentUser(user: UserApp) {
     localStorage.setItem('depo_current_user', JSON.stringify(user));
     if (typeof window !== 'undefined') {
@@ -222,7 +251,7 @@ export class AppStore {
   }
 
   static savePengeluaran(data: Pengeluaran[]) {
-    localStorage.setItem('depo_pengeluaran', JSON.stringify(data));
+    this.persist('depo_pengeluaran', data);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('depo_pengeluaran_updated'));
     }
@@ -302,7 +331,7 @@ export class AppStore {
   }
 
   static saveHutangToko(data: HutangToko[]) {
-    localStorage.setItem('depo_hutang_toko', JSON.stringify(data));
+    this.persist('depo_hutang_toko', data);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('depo_hutang_toko_updated'));
     }
@@ -363,7 +392,7 @@ export class AppStore {
   }
 
   static saveShiftList(data: ShiftKasir[]) {
-    localStorage.setItem('depo_shift', JSON.stringify(data));
+    this.persist('depo_shift', data);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('depo_shift_updated'));
     }
@@ -511,21 +540,18 @@ export class AppStore {
     if (typeof window === 'undefined') return;
 
     if (options.factoryAll) {
-      localStorage.removeItem('depo_pesanan');
-      localStorage.removeItem('depo_kontak');
-      localStorage.removeItem('depo_produk');
-      localStorage.removeItem('depo_zona');
-      localStorage.removeItem('depo_pengaturan');
-      localStorage.removeItem('depo_pengeluaran');
-      localStorage.removeItem('depo_hutang_toko');
-      localStorage.removeItem('depo_shift');
+      // Ditulis ulang ke nilai awal (bukan dihapus) supaya reset ikut tersinkron ke perangkat lain
+      this.persist('depo_pesanan', INITIAL_PESANAN);
+      this.persist('depo_produk', INITIAL_PRODUK);
+      this.persist('depo_zona', INITIAL_ZONA);
+      this.persist('depo_pengeluaran', []);
+      this.persist('depo_hutang_toko', []);
+      this.persist('depo_shift', []);
 
       const cleanKontak = INITIAL_KONTAK.map(k => ({ ...k, hutang_saat_ini: 0, galon_dipinjam: 0 }));
-      localStorage.setItem('depo_kontak', JSON.stringify(cleanKontak));
+      this.persist('depo_kontak', cleanKontak);
 
-      const p = this.getPengaturan();
-      p.galon_pinjaman_pelanggan = [];
-      localStorage.setItem('depo_pengaturan', JSON.stringify(p));
+      this.persist('depo_pengaturan', { ...INITIAL_PENGATURAN, galon_pinjaman_pelanggan: [] });
 
       window.dispatchEvent(new Event('depo_pesanan_updated'));
       window.dispatchEvent(new Event('depo_kontak_updated'));
@@ -539,20 +565,20 @@ export class AppStore {
     }
 
     if (options.pengeluaran) {
-      localStorage.setItem('depo_pengeluaran', JSON.stringify([]));
+      this.persist('depo_pengeluaran', []);
       window.dispatchEvent(new Event('depo_pengeluaran_updated'));
     }
 
     if (options.pesanan) {
-      localStorage.setItem('depo_pesanan', JSON.stringify([]));
-      localStorage.setItem('depo_pengeluaran', JSON.stringify([]));
-      localStorage.setItem('depo_hutang_toko', JSON.stringify([]));
-      localStorage.setItem('depo_shift', JSON.stringify([]));
+      this.persist('depo_pesanan', []);
+      this.persist('depo_pengeluaran', []);
+      this.persist('depo_hutang_toko', []);
+      this.persist('depo_shift', []);
 
       // Reset all contact debts & borrowed galons
       const currentKontak = this.getKontak();
       const cleanKontak = currentKontak.map(k => ({ ...k, hutang_saat_ini: 0, galon_dipinjam: 0 }));
-      localStorage.setItem('depo_kontak', JSON.stringify(cleanKontak));
+      this.persist('depo_kontak', cleanKontak);
 
       // Clear borrowed galons
       const p = this.getPengaturan();
@@ -569,7 +595,7 @@ export class AppStore {
 
     if (options.kontak) {
       const cleanKontak = INITIAL_KONTAK.map(k => ({ ...k, hutang_saat_ini: 0, galon_dipinjam: 0 }));
-      localStorage.setItem('depo_kontak', JSON.stringify(cleanKontak));
+      this.persist('depo_kontak', cleanKontak);
 
       const p = this.getPengaturan();
       p.galon_pinjaman_pelanggan = [];
@@ -580,12 +606,12 @@ export class AppStore {
     }
 
     if (options.produk) {
-      localStorage.setItem('depo_produk', JSON.stringify(INITIAL_PRODUK));
+      this.persist('depo_produk', INITIAL_PRODUK);
       window.dispatchEvent(new Event('depo_produk_updated'));
     }
 
     if (options.zona) {
-      localStorage.setItem('depo_zona', JSON.stringify(INITIAL_ZONA));
+      this.persist('depo_zona', INITIAL_ZONA);
       window.dispatchEvent(new Event('depo_zona_updated'));
     }
 
@@ -594,7 +620,7 @@ export class AppStore {
       if (options.servis) {
         p.stok_air_baku_saat_ini = 5000;
         p.meteran_air_awal_liter = 0;
-        localStorage.setItem('depo_shift', JSON.stringify([]));
+        this.persist('depo_shift', []);
         window.dispatchEvent(new Event('depo_shift_updated'));
         if (p.komponen_servis_list) {
           p.komponen_servis_list = p.komponen_servis_list.map(c => ({ ...c, liter_terakhir_ganti: 0 }));

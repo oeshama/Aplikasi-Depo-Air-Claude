@@ -429,6 +429,8 @@ export default function KasirPage() {
     window.addEventListener('depo_kontak_updated', loadData);
     window.addEventListener('depo_pesanan_updated', loadData);
     window.addEventListener('depo_pengaturan_updated', loadData);
+    window.addEventListener('depo_shift_updated', loadData);
+    window.addEventListener('depo_pengeluaran_updated', loadData);
 
     const interval = setInterval(() => setNowTick(Date.now()), 10000);
 
@@ -438,6 +440,8 @@ export default function KasirPage() {
       window.removeEventListener('depo_kontak_updated', loadData);
       window.removeEventListener('depo_pesanan_updated', loadData);
       window.removeEventListener('depo_pengaturan_updated', loadData);
+      window.removeEventListener('depo_shift_updated', loadData);
+      window.removeEventListener('depo_pengeluaran_updated', loadData);
       clearInterval(interval);
     };
   }, []);
@@ -526,7 +530,7 @@ export default function KasirPage() {
       delete copy[id];
       return copy;
     });
-    alert('Pengiriman berhasil dikonfirmasi! Status pesanan berubah menjadi Terkirim & Lunas.');
+    alert('Pengiriman berhasil dikonfirmasi! Status pesanan berubah menjadi Terkirim (pesanan hutang tetap tercatat sebagai hutang).');
   };
 
   const formatProdukRingkas = (items: Pesanan['items']) => {
@@ -748,6 +752,10 @@ export default function KasirPage() {
     };
 
     AppStore.addPesanan(newPesanan);
+
+    if (metodePembayaran === 'hutang') {
+      AppStore.tambahHutangPelanggan(selectedKontak.id, totalAkhir);
+    }
 
     // Auto update Pinjaman Galon Pelanggan di PengaturanDepo jika tipe_transaksi === 'pinjam_galon'
     if (tipeTransaksi === 'pinjam_galon' && selectedKontak && selectedKontak.id !== 'kt-1') {

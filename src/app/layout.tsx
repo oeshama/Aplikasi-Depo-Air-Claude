@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import Navbar from '@/components/Navbar';
+import ClientShell from '@/components/ClientShell';
 
 export const metadata: Metadata = {
   title: 'Depo Air Isi Ulang - Sistem Kasir & Manajemen PWA',
@@ -28,10 +28,7 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body>
-        <Navbar />
-        <main style={{ padding: '0 16px 40px 16px', maxWidth: '1280px', margin: '0 auto' }}>
-          {children}
-        </main>
+        <ClientShell>{children}</ClientShell>
       </body>
     </html>
   );

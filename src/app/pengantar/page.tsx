@@ -108,7 +108,7 @@ export default function PengantarPage() {
       delete copy[id];
       return copy;
     });
-    alert('Pengiriman berhasil dikonfirmasi! Status pesanan berubah menjadi Terkirim & Lunas.');
+    alert('Pengiriman berhasil dikonfirmasi! Status pesanan berubah menjadi Terkirim (pesanan hutang tetap tercatat sebagai hutang).');
   };
 
   const formatProdukRingkas = (items: Pesanan['items']) => {

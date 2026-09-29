@@ -14,7 +14,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
   const [kasAwal, setKasAwal] = useState<number>(100000);
   const [meterAwal, setMeterAwal] = useState<number>(0);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [password, setPassword] = useState<string>('123456');
+  const [password, setPassword] = useState<string>('');
 
   const [openedShiftResult, setOpenedShiftResult] = useState<{
     shift: ShiftKasir;
@@ -36,7 +36,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
       setMeterAwal(p.meteran_air_awal_liter ?? 0);
       const cur = AppStore.getCurrentUser();
       setSelectedUserId(cur ? cur.id : (userList[0]?.id || 'usr-owner'));
-      setPassword('123456');
+      setPassword('');
       setOpenedShiftResult(null);
     }
   }, [isOpen]);

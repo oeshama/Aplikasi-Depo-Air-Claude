@@ -1,0 +1,79 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { AppStore } from '@/lib/store';
+import { initSync } from '@/lib/sync';
+import { UserRole } from '@/lib/types';
+import Navbar from '@/components/Navbar';
+
+// Halaman yang boleh dibuka tiap peran (prefix path)
+const ROLE_ACCESS: Record<UserRole, string[]> = {
+  owner: ['/owner', '/admin', '/kasir', '/pengantar'],
+  admin: ['/owner/dashboard', '/admin/kontak'],
+  kasir: ['/kasir'],
+  pengantar: ['/pengantar'],
+};
+
+export function homeForRole(role: UserRole): string {
+  if (role === 'owner' || role === 'admin') return '/owner/dashboard';
+  if (role === 'pengantar') return '/pengantar';
+  return '/kasir';
+}
+
+// Semua data aplikasi ada di localStorage, jadi halaman hanya dirender di browser
+// (mencegah hydration error) dan dicek dulu sesi login-nya.
+export default function ClientShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const [synced, setSynced] = useState(false);
+  const [allowed, setAllowed] = useState(false);
+
+  // Ambil data terbaru dari Supabase sebelum halaman membaca localStorage
+  useEffect(() => {
+    initSync().finally(() => setSynced(true));
+  }, []);
+
+  useEffect(() => {
+    if (!synced) return;
+    setAllowed(false);
+    if (pathname === '/login') {
+      setAllowed(true);
+      return;
+    }
+
+    const user = AppStore.getSessionUser();
+    if (!user) {
+      window.location.replace('/login');
+      return;
+    }
+
+    if (pathname !== '/') {
+      const ok = ROLE_ACCESS[user.role]?.some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'));
+      if (!ok) {
+        window.location.replace(homeForRole(user.role));
+        return;
+      }
+    }
+
+    setAllowed(true);
+  }, [pathname, synced]);
+
+  if (!synced) {
+    return (
+      <div style={{ display: 'flex', minHeight: '80vh', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+        Menyinkronkan data...
+      </div>
+    );
+  }
+
+  if (!allowed) return null;
+
+  return (
+    <>
+      <Navbar />
+      <main style={{ padding: '0 16px 40px 16px', maxWidth: '1280px', margin: '0 auto' }}>
+        {children}
+      </main>
+    </>
+  );
+}

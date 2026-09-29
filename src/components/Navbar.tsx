@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 import TutupShiftModal from '@/components/TutupShiftModal';
+import { getSyncStatus, SyncStatus } from '@/lib/sync';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -58,6 +59,15 @@ export default function Navbar() {
 
     setKasDiTanganNav(Math.max(0, (modalAwal + tunaiMasuk + kasbonKembali) - kasKeluar));
   };
+
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({ mode: 'local', pending: 0 });
+
+  useEffect(() => {
+    setSyncStatus(getSyncStatus());
+    const handleSync = (e: Event) => setSyncStatus((e as CustomEvent<SyncStatus>).detail);
+    window.addEventListener('depo_sync_status', handleSync);
+    return () => window.removeEventListener('depo_sync_status', handleSync);
+  }, []);
 
   useEffect(() => {
     setCurrentUser(AppStore.getCurrentUser());
@@ -129,16 +139,17 @@ export default function Navbar() {
     if (currentUser?.role === 'kasir') {
       const shiftAktif = AppStore.getShiftAktif(currentUser.id);
       if (shiftAktif) {
-        setPendingNextAction(() => () => {
-          if (typeof window !== 'undefined') window.location.href = '/login';
-          else router.push('/login');
-        });
+        setPendingNextAction(() => doLogout);
         setShowTutupShiftModal(true);
         return;
       }
     }
-    if (typeof window !== 'undefined') window.location.href = '/login';
-    else router.push('/login');
+    doLogout();
+  };
+
+  const doLogout = () => {
+    AppStore.logout();
+    window.location.href = '/login';
   };
 
   if (pathname === '/login') return null;
@@ -228,6 +239,23 @@ export default function Navbar() {
             <span className="badge badge-primary">{currentUser?.role}</span>
           </div>
 
+          {syncStatus.mode !== 'local' && (
+            <span
+              title={syncStatus.mode === 'online'
+                ? 'Data tersinkron dengan perangkat lain'
+                : 'Tidak terhubung ke server. Data disimpan di perangkat ini dan dikirim otomatis saat online.'}
+              style={{
+                fontSize: '0.75rem', fontWeight: 700, padding: '4px 8px', borderRadius: '8px',
+                color: syncStatus.mode === 'online' && syncStatus.pending === 0 ? '#34d399' : '#fbbf24',
+                background: syncStatus.mode === 'online' && syncStatus.pending === 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+              }}
+            >
+              {syncStatus.mode === 'online'
+                ? (syncStatus.pending > 0 ? `● Mengirim ${syncStatus.pending}` : '● Tersinkron')
+                : `● Offline${syncStatus.pending > 0 ? ` (${syncStatus.pending} antre)` : ''}`}
+            </span>
+          )}
+
           {currentUser?.role === 'kasir' && (
             <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #34d399', borderRadius: '8px', padding: '4px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ color: '#94a3b8' }}>Kas di Tangan:</span>
@@ -235,17 +263,20 @@ export default function Navbar() {
             </div>
           )}
 
-          <select 
-            value={currentUser?.role || 'kasir'} 
-            onChange={(e) => handleRoleSwitch(e.target.value as UserRole)}
-            className="form-select"
-            style={{ width: 'auto', padding: '6px 10px', fontSize: '0.8rem' }}
-          >
-            <option value="kasir">Switch to: Kasir</option>
-            <option value="owner">Switch to: Owner</option>
-            <option value="admin">Switch to: Admin</option>
-            <option value="pengantar">Switch to: Pengantar</option>
-          </select>
+          {/* Pindah peran tanpa password hanya boleh untuk Owner */}
+          {currentUser?.role === 'owner' && (
+            <select
+              value={currentUser.role}
+              onChange={(e) => handleRoleSwitch(e.target.value as UserRole)}
+              className="form-select"
+              style={{ width: 'auto', padding: '6px 10px', fontSize: '0.8rem' }}
+            >
+              <option value="kasir">Switch to: Kasir</option>
+              <option value="owner">Switch to: Owner</option>
+              <option value="admin">Switch to: Admin</option>
+              <option value="pengantar">Switch to: Pengantar</option>
+            </select>
+          )}
 
           <button onClick={handleLogoutClick} className="btn btn-secondary btn-sm" title="Logout">
             <LogOut size={16} />
@@ -263,7 +294,7 @@ export default function Navbar() {
             pendingNextAction();
             setPendingNextAction(null);
           } else {
-            router.push('/login');
+            doLogout();
           }
         }}
       />

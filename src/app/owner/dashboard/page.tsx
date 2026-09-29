@@ -186,7 +186,9 @@ export default function OwnerDashboardPage() {
     window.addEventListener('depo_pengeluaran_updated', handleUpdate);
     window.addEventListener('depo_hutang_toko_updated', handleUpdate);
     window.addEventListener('depo_shift_updated', handleUpdate);
-    
+    window.addEventListener('depo_kontak_updated', handleUpdate);
+    window.addEventListener('depo_produk_updated', handleUpdate);
+
     // Interval for dynamic duration updates
     const interval = setInterval(() => setNowTick(Date.now()), 10000);
 
@@ -196,6 +198,8 @@ export default function OwnerDashboardPage() {
       window.removeEventListener('depo_pengeluaran_updated', handleUpdate);
       window.removeEventListener('depo_hutang_toko_updated', handleUpdate);
       window.removeEventListener('depo_shift_updated', handleUpdate);
+      window.removeEventListener('depo_kontak_updated', handleUpdate);
+      window.removeEventListener('depo_produk_updated', handleUpdate);
       clearInterval(interval);
     };
   }, []);

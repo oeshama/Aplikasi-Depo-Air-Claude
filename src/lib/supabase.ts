@@ -1,24 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Tanpa .env.local aplikasi tetap jalan dalam mode lokal (data hanya di perangkat ini)
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-export async function fetchProdukFromSupabase() {
-  const { data, error } = await supabase.from('produk').select('*');
-  if (error) {
-    console.warn('Supabase fetch error, fallback to local storage:', error.message);
-    return null;
-  }
-  return data;
-}
-
-export async function fetchKontakFromSupabase() {
-  const { data, error } = await supabase.from('kontak').select('*');
-  if (error) {
-    console.warn('Supabase fetch error, fallback to local storage:', error.message);
-    return null;
-  }
-  return data;
-}
+export const supabase: SupabaseClient | null = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } })
+  : null;
