@@ -45,6 +45,10 @@ create trigger depo_records_touch
 -- Jangan sebarkan file .env.local.
 alter table public.depo_records enable row level security;
 
+-- Izin tabel untuk aplikasi (diperlukan jika "Automatically expose new tables" dimatikan)
+grant usage on schema public to anon;
+grant select, insert, update on public.depo_records to anon;
+
 drop policy if exists "depo app read" on public.depo_records;
 drop policy if exists "depo app insert" on public.depo_records;
 drop policy if exists "depo app update" on public.depo_records;
