@@ -1,7 +1,7 @@
 import {
   UserApp, Produk, ZoneOngkir, Kontak, Pesanan, TitipGalon,
   PengaturanDepo, ShiftKasir, UserRole, Pengeluaran, HutangToko,
-  SetoranKurir, SetoranOwner, NotifikasiOwner, SaldoKurir, MetodePembayaran
+  SetoranKurir, SetoranOwner, Rekening, MutasiKeuangan, JenisMutasi, NotifikasiOwner, SaldoKurir, MetodePembayaran
 } from './types';
 import { 
   DEMO_USERS, INITIAL_PRODUK, INITIAL_ZONA, INITIAL_KONTAK, 
@@ -244,7 +244,7 @@ export class AppStore {
     const setoranKurir = this.getSetoranKurir()
       .filter(s => !s.dibatalkan && dalam(s.tanggal))
       .reduce((acc, s) => acc + (s.nominal || 0), 0);
-    const pengeluaranLaci = this.getPengeluaran().filter(p => dalam(p.tanggal) && p.sumber_kas !== 'kas_besar');
+    const pengeluaranLaci = this.getPengeluaran().filter(p => dalam(p.tanggal) && (!p.sumber_kas || p.sumber_kas === 'laci'));
     const adaMasuk = (p: Pengeluaran) => p.tipe_arus_kas === 'masuk' || p.kategori === 'pengembalian_kasbon';
     const kasbonKembali = pengeluaranLaci.filter(adaMasuk).reduce((acc, p) => acc + (p.nominal || 0), 0);
     const keluar = pengeluaranLaci.filter(p => !adaMasuk(p)).reduce((acc, p) => acc + (p.nominal || 0), 0);
@@ -370,6 +370,217 @@ export class AppStore {
     s.status = 'dibatalkan';
     this.saveSetoranOwner(list);
     return s;
+  }
+
+  // ===== Keuangan Owner: kas besar (tunai) dan rekening =====
+
+  static getRekening(): Rekening[] {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem('depo_rekening');
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  static saveRekening(data: Rekening[]) {
+    this.persist('depo_rekening', data);
+    window.dispatchEvent(new Event('depo_rekening_updated'));
+  }
+
+  static getMutasiKeuangan(): MutasiKeuangan[] {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem('depo_mutasi_keuangan');
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  static saveMutasiKeuangan(data: MutasiKeuangan[]) {
+    this.persist('depo_mutasi_keuangan', data);
+    window.dispatchEvent(new Event('depo_mutasi_keuangan_updated'));
+  }
+
+  static keuanganSudahMulai(): boolean {
+    return !!this.getPengaturan().keuangan_mulai;
+  }
+
+  // Rekening tujuan uang dari metode non-tunai (bawaan: rekening aktif pertama)
+  static getRekeningUntukMetode(metode: 'transfer' | 'qris' | 'edc'): string | undefined {
+    const aktif = this.getRekening().filter(r => r.aktif);
+    const dipilih = this.getPengaturan().rekening_metode?.[metode];
+    if (dipilih && aktif.some(r => r.id === dipilih)) return dipilih;
+    return aktif[0]?.id;
+  }
+
+  static namaAkun(akun: string): string {
+    if (akun === 'kas_besar') return 'Kas besar (tunai)';
+    return this.getRekening().find(r => r.id === akun)?.nama || 'Rekening';
+  }
+
+  // Buku kas satu akun ('kas_besar' atau id rekening), urut dari yang terlama, lengkap dengan saldo berjalan.
+  // Uang yang masuk otomatis (setoran diterima, penjualan non-tunai, pengeluaran) dihitung langsung dari datanya.
+  static getBukuKas(akun: string): { id: string; waktu: string; keterangan: string; masuk: number; keluar: number; saldo: number }[] {
+    const mulaiIso = this.getPengaturan().keuangan_mulai;
+    if (!mulaiIso) return [];
+    const mulai = new Date(mulaiIso).getTime();
+    const baris: { id: string; waktu: string; keterangan: string; masuk: number; keluar: number }[] = [];
+    const label: Record<JenisMutasi, string> = {
+      saldo_awal: 'Saldo awal', tambah_modal: 'Tambah modal', prive: 'Prive (diambil pribadi)', setor_bank: 'Setor tunai ke bank',
+      tarik_bank: 'Tarik tunai dari bank', transfer_rekening: 'Transfer antar rekening', modal_laci: 'Modal untuk laci kasir', koreksi: 'Koreksi saldo'
+    };
+
+    this.getMutasiKeuangan().filter(m => m.akun === akun).forEach(m => {
+      baris.push({
+        id: m.id, waktu: m.waktu,
+        keterangan: label[m.jenis] + (m.keterangan ? ` - ${m.keterangan}` : ''),
+        masuk: m.arah === 'masuk' ? m.nominal : 0, keluar: m.arah === 'keluar' ? m.nominal : 0
+      });
+    });
+
+    if (akun === 'kas_besar') {
+      this.getSetoranOwner().filter(s => s.status === 'diterima' && s.diterima_at && new Date(s.diterima_at).getTime() >= mulai).forEach(s => {
+        baris.push({
+          id: s.id, waktu: s.diterima_at as string,
+          keterangan: s.jenis === 'ambil_owner' ? 'Diambil dari laci kasir' : `Setoran kasir ${s.kasir_nama}`,
+          masuk: s.nominal_diterima ?? s.nominal, keluar: 0
+        });
+      });
+    }
+
+    this.getPengeluaran().filter(p => new Date(p.tanggal).getTime() >= mulai).forEach(p => {
+      const dariAkun = p.sumber_kas === 'kas_besar' ? 'kas_besar' : p.sumber_kas === 'rekening' ? p.rekening_id : undefined;
+      if (dariAkun !== akun) return;
+      const masuk = p.tipe_arus_kas === 'masuk' || p.kategori === 'pengembalian_kasbon';
+      baris.push({ id: p.id, waktu: p.tanggal, keterangan: p.peruntukan, masuk: masuk ? p.nominal : 0, keluar: masuk ? 0 : p.nominal });
+    });
+
+    if (akun !== 'kas_besar') {
+      const metodeUntukAkun = (['transfer', 'qris', 'edc'] as const).filter(m => this.getRekeningUntukMetode(m) === akun);
+      if (metodeUntukAkun.length > 0) {
+        this.getPesanan().filter(p => p && p.status_pesanan !== 'batal' && new Date(p.created_at).getTime() >= mulai).forEach(p => {
+          (p.pembayaran_details || []).forEach(d => {
+            if (d && (metodeUntukAkun as string[]).includes(d.metode) && d.jumlah > 0) {
+              baris.push({ id: `${p.id}-${d.metode}`, waktu: p.created_at, keterangan: `Penjualan ${String(d.metode).toUpperCase()} ${p.no_nota || ''}`.trim(), masuk: d.jumlah, keluar: 0 });
+            }
+          });
+        });
+      }
+    }
+
+    baris.sort((a, b) => new Date(a.waktu).getTime() - new Date(b.waktu).getTime());
+    let saldo = 0;
+    return baris.map(b => { saldo += b.masuk - b.keluar; return { ...b, saldo }; });
+  }
+
+  static getSaldoAkun(akun: string): number {
+    const buku = this.getBukuKas(akun);
+    return buku.length ? buku[buku.length - 1].saldo : 0;
+  }
+
+  // Total uang usaha di kas besar dan semua rekening aktif
+  static getTotalUangOwner(): number {
+    return this.getSaldoAkun('kas_besar') + this.getRekening().filter(r => r.aktif).reduce((acc, r) => acc + this.getSaldoAkun(r.id), 0);
+  }
+
+  private static tambahMutasi(item: Omit<MutasiKeuangan, 'id' | 'waktu' | 'oleh'> & { waktu?: string }, idSuffix = ''): MutasiKeuangan {
+    const user = this.getCurrentUser();
+    const m: MutasiKeuangan = { ...item, id: `mut-${Date.now()}${idSuffix}`, waktu: item.waktu || new Date().toISOString(), oleh: user.nama };
+    const list = this.getMutasiKeuangan();
+    list.unshift(m);
+    this.saveMutasiKeuangan(list);
+    return m;
+  }
+
+  // Mulai pencatatan: isi saldo awal kas besar dan rekening. Riwayat sebelum saat ini tidak dihitung ulang.
+  static mulaiKeuangan(saldoKasBesar: number, rekening: { nama: string; saldo: number }[]) {
+    if (this.keuanganSudahMulai()) throw new Error('Pencatatan keuangan sudah dimulai.');
+    const kasBesar = Math.max(0, Math.round(saldoKasBesar || 0));
+    const daftar = rekening.filter(r => r.nama.trim());
+    const p = this.getPengaturan();
+    const mulai = new Date().toISOString();
+    const rekeningBaru: Rekening[] = daftar.map((r, i) => ({ id: `rek-${Date.now()}-${i}`, nama: r.nama.trim(), aktif: true }));
+    this.saveRekening(rekeningBaru);
+    p.keuangan_mulai = mulai;
+    this.savePengaturan(p);
+    if (kasBesar > 0) this.tambahMutasi({ akun: 'kas_besar', arah: 'masuk', nominal: kasBesar, jenis: 'saldo_awal', waktu: mulai }, '-kb');
+    rekeningBaru.forEach((r, i) => {
+      const saldo = Math.max(0, Math.round(daftar[i].saldo || 0));
+      if (saldo > 0) this.tambahMutasi({ akun: r.id, arah: 'masuk', nominal: saldo, jenis: 'saldo_awal', waktu: mulai }, `-r${i}`);
+    });
+  }
+
+  static tambahRekening(nama: string, saldoAwal: number): Rekening {
+    if (!nama.trim()) throw new Error('Nama rekening wajib diisi.');
+    const r: Rekening = { id: `rek-${Date.now()}`, nama: nama.trim(), aktif: true };
+    const list = this.getRekening();
+    list.push(r);
+    this.saveRekening(list);
+    const saldo = Math.max(0, Math.round(saldoAwal || 0));
+    if (saldo > 0) this.tambahMutasi({ akun: r.id, arah: 'masuk', nominal: saldo, jenis: 'saldo_awal' });
+    return r;
+  }
+
+  static setRekeningMetode(metode: 'transfer' | 'qris' | 'edc', rekeningId: string) {
+    const p = this.getPengaturan();
+    p.rekening_metode = { ...(p.rekening_metode || {}), [metode]: rekeningId };
+    this.savePengaturan(p);
+  }
+
+  private static cekNominal(nominal: number): number {
+    const n = Math.round(nominal);
+    if (!(n > 0)) throw new Error('Nominal harus lebih besar dari Rp 0!');
+    return n;
+  }
+
+  private static cekSaldoCukup(akun: string, nominal: number) {
+    const saldo = this.getSaldoAkun(akun);
+    if (nominal > saldo) throw new Error(`Saldo ${this.namaAkun(akun)} hanya ${this.formatRupiah(saldo)}, tidak cukup untuk ${this.formatRupiah(nominal)}.`);
+  }
+
+  static tambahModal(akun: string, nominal: number, keterangan?: string) {
+    const n = this.cekNominal(nominal);
+    this.tambahMutasi({ akun, arah: 'masuk', nominal: n, jenis: 'tambah_modal', keterangan: keterangan?.trim() || undefined });
+  }
+
+  static catatPrive(akun: string, nominal: number, keterangan?: string) {
+    const n = this.cekNominal(nominal);
+    this.cekSaldoCukup(akun, n);
+    this.tambahMutasi({ akun, arah: 'keluar', nominal: n, jenis: 'prive', keterangan: keterangan?.trim() || undefined });
+  }
+
+  // Pindah uang antar akun: setor tunai ke bank, tarik tunai, atau transfer antar rekening
+  static pindahDana(dari: string, ke: string, nominal: number, keterangan?: string) {
+    if (dari === ke) throw new Error('Akun asal dan tujuan tidak boleh sama.');
+    const n = this.cekNominal(nominal);
+    this.cekSaldoCukup(dari, n);
+    const jenis: JenisMutasi = dari === 'kas_besar' ? 'setor_bank' : ke === 'kas_besar' ? 'tarik_bank' : 'transfer_rekening';
+    const ket = keterangan?.trim() || undefined;
+    const pasangan = `psg-${Date.now()}`;
+    this.tambahMutasi({ akun: dari, arah: 'keluar', nominal: n, jenis, keterangan: ket, pasangan_id: pasangan }, '-a');
+    this.tambahMutasi({ akun: ke, arah: 'masuk', nominal: n, jenis, keterangan: ket, pasangan_id: pasangan }, '-b');
+  }
+
+  // Modal untuk laci kasir: keluar dari kas besar, otomatis muncul sebagai modal awal shift berikutnya
+  static modalUntukLaci(nominal: number, keterangan?: string) {
+    const n = this.cekNominal(nominal);
+    this.cekSaldoCukup('kas_besar', n);
+    this.tambahMutasi({ akun: 'kas_besar', arah: 'keluar', nominal: n, jenis: 'modal_laci', keterangan: keterangan?.trim() || undefined, dipakai: false });
+  }
+
+  static getModalLaciTersedia(): number {
+    return this.getMutasiKeuangan().filter(m => m.jenis === 'modal_laci' && !m.dipakai).reduce((acc, m) => acc + m.nominal, 0);
+  }
+
+  static tandaiModalLaciDipakai() {
+    const list = this.getMutasiKeuangan();
+    if (!list.some(m => m.jenis === 'modal_laci' && !m.dipakai)) return;
+    this.saveMutasiKeuangan(list.map(m => (m.jenis === 'modal_laci' && !m.dipakai ? { ...m, dipakai: true } : m)));
+  }
+
+  // Samakan saldo di aplikasi dengan saldo sebenarnya (mis. mutasi bank); selisihnya dicatat dengan alasan
+  static koreksiSaldo(akun: string, saldoSebenarnya: number, alasan: string) {
+    if (!alasan.trim()) throw new Error('Alasan koreksi wajib diisi.');
+    const target = Math.round(saldoSebenarnya);
+    if (!(target >= 0)) throw new Error('Saldo sebenarnya tidak valid.');
+    const selisih = target - this.getSaldoAkun(akun);
+    if (selisih === 0) throw new Error('Saldonya sudah sama, tidak ada yang dikoreksi.');
+    this.tambahMutasi({ akun, arah: selisih > 0 ? 'masuk' : 'keluar', nominal: Math.abs(selisih), jenis: 'koreksi', keterangan: alasan.trim() });
   }
 
   // Saldo tunai yang sedang dibawa tiap kurir
@@ -829,6 +1040,7 @@ export class AppStore {
 
     list.unshift(newShift);
     this.saveShiftList(list);
+    this.tandaiModalLaciDipakai();
 
     const p = this.getPengaturan();
     p.meteran_air_awal_liter = meterAwal;
@@ -975,6 +1187,8 @@ export class AppStore {
       this.persist('depo_pesanan', INITIAL_PESANAN);
       this.persist('depo_setoran_kurir', []);
       this.persist('depo_setoran_owner', []);
+      this.persist('depo_rekening', []);
+      this.persist('depo_mutasi_keuangan', []);
       this.persist('depo_notifikasi', []);
       this.persist('depo_produk', INITIAL_PRODUK);
       this.persist('depo_zona', INITIAL_ZONA);
@@ -990,6 +1204,8 @@ export class AppStore {
       window.dispatchEvent(new Event('depo_pesanan_updated'));
       window.dispatchEvent(new Event('depo_setoran_kurir_updated'));
       window.dispatchEvent(new Event('depo_setoran_owner_updated'));
+      window.dispatchEvent(new Event('depo_rekening_updated'));
+      window.dispatchEvent(new Event('depo_mutasi_keuangan_updated'));
       window.dispatchEvent(new Event('depo_notifikasi_updated'));
       window.dispatchEvent(new Event('depo_kontak_updated'));
       window.dispatchEvent(new Event('depo_produk_updated'));

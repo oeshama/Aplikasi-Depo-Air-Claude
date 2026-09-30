@@ -57,7 +57,8 @@ export default function OwnerDashboardPage() {
   const [nominalBayarStaf, setNominalBayarStaf] = useState<number>(0);
   const [peruntukanBayarStaf, setPeruntukanBayarStaf] = useState<string>('');
   const [catatanBayarStaf, setCatatanBayarStaf] = useState<string>('');
-  const [sumberBayarStaf, setSumberBayarStaf] = useState<'kas_besar' | 'laci'>('kas_besar');
+  const [sumberBayarStaf, setSumberBayarStaf] = useState<'kas_besar' | 'laci' | 'rekening'>('kas_besar');
+  const [rekeningBayarStaf, setRekeningBayarStaf] = useState<string>('');
 
   // Owner Water Meter & Stock Adjust Modal State
   const [showOwnerMeterAdjustModal, setShowOwnerMeterAdjustModal] = useState<boolean>(false);
@@ -143,6 +144,11 @@ export default function OwnerDashboardPage() {
       return;
     }
 
+    if (sumberBayarStaf === 'rekening' && !rekeningBayarStaf) {
+      alert('Pilih rekening yang dipakai membayar.');
+      return;
+    }
+
     const currentUser = AppStore.getCurrentUser();
     const isKasMasuk = kategoriBayarStaf === 'pengembalian_kasbon';
 
@@ -156,6 +162,7 @@ export default function OwnerDashboardPage() {
       karyawan_nama: targetKaryawanBayar.kary.nama,
       tipe_arus_kas: isKasMasuk ? 'masuk' : 'keluar',
       sumber_kas: sumberBayarStaf,
+      rekening_id: sumberBayarStaf === 'rekening' ? rekeningBayarStaf : undefined,
       kasir_id: currentUser.id,
       kasir_nama: currentUser.nama,
       catatan: catatanBayarStaf.trim() || undefined
@@ -2717,23 +2724,35 @@ export default function OwnerDashboardPage() {
               <div className="form-group">
                 <div className="form-label" id="label-sumber-bayar-staf" style={{ marginBottom: '6px' }}>Dibayar dari</div>
                 <div className="seg-grid" role="radiogroup" aria-labelledby="label-sumber-bayar-staf">
-                  {([['kas_besar', 'Kas besar (owner)'], ['laci', 'Laci kasir']] as const).map(([nilai, label]) => (
+                  {([['kas_besar', 'Kas besar'], ['rekening', 'Rekening'], ['laci', 'Laci kasir']] as const)
+                    .filter(([nilai]) => nilai !== 'rekening' || AppStore.getRekening().some(r => r.aktif))
+                    .map(([nilai, label]) => (
                     <button
                       key={nilai}
                       type="button"
                       role="radio"
                       aria-checked={sumberBayarStaf === nilai}
                       className="seg-btn"
-                      onClick={() => setSumberBayarStaf(nilai)}
+                      onClick={() => {
+                        setSumberBayarStaf(nilai);
+                        if (nilai === 'rekening' && !rekeningBayarStaf) setRekeningBayarStaf(AppStore.getRekening().find(r => r.aktif)?.id || '');
+                      }}
                     >
                       {label}
                     </button>
                   ))}
                 </div>
+                {sumberBayarStaf === 'rekening' && (
+                  <select aria-label="Pilih rekening" className="form-input" value={rekeningBayarStaf} onChange={(e) => setRekeningBayarStaf(e.target.value)} style={{ marginTop: '8px' }}>
+                    {AppStore.getRekening().filter(r => r.aktif).map(r => <option key={r.id} value={r.id}>{r.nama}</option>)}
+                  </select>
+                )}
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
                   {sumberBayarStaf === 'laci'
                     ? 'Uang diambil dari laci kasir, jadi mengurangi uang laci.'
-                    : 'Dibayar owner dari kas besar, tidak mengurangi uang laci kasir.'}
+                    : sumberBayarStaf === 'rekening'
+                      ? 'Ditransfer dari rekening, tidak mengurangi uang laci kasir.'
+                      : 'Dibayar owner dari kas besar, tidak mengurangi uang laci kasir.'}
                 </span>
               </div>
 

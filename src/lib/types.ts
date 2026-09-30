@@ -176,7 +176,32 @@ export interface SetoranOwner {
 }
 
 // Asal uang pengeluaran: hanya 'laci' yang mengurangi kas laci kasir
-export type SumberKas = 'laci' | 'kas_besar';
+export type SumberKas = 'laci' | 'kas_besar' | 'rekening';
+
+// Rekening bank / dompet digital milik usaha (saldo dihitung dari saldo awal + semua mutasi)
+export interface Rekening {
+  id: string;
+  nama: string;
+  aktif: boolean;
+}
+
+export type JenisMutasi =
+  | 'saldo_awal' | 'tambah_modal' | 'prive' | 'setor_bank' | 'tarik_bank'
+  | 'transfer_rekening' | 'modal_laci' | 'koreksi';
+
+// Catatan manual keluar/masuk uang di kas besar atau rekening. akun = 'kas_besar' atau id rekening.
+export interface MutasiKeuangan {
+  id: string;
+  waktu: string;
+  akun: string;
+  arah: 'masuk' | 'keluar';
+  nominal: number;
+  jenis: JenisMutasi;
+  keterangan?: string;
+  pasangan_id?: string;   // transaksi dua sisi (setor bank, transfer rekening)
+  dipakai?: boolean;      // modal_laci: sudah dipakai sebagai modal awal shift
+  oleh: string;
+}
 
 // Saldo uang tunai yang sedang dibawa satu kurir (belum disetor ke kasir)
 export interface SaldoKurir {
@@ -254,6 +279,10 @@ export interface PengaturanDepo {
   // Koordinat depo (untuk peta sebaran pelanggan dan validasi zona ongkir)
   lokasi_depo_lat?: number;
   lokasi_depo_lng?: number;
+  // Keuangan Owner: pencatatan dimulai tanggal ini; penjualan non-tunai sebelum itu tidak dihitung
+  keuangan_mulai?: string;
+  // Rekening tujuan uang dari tiap metode non-tunai
+  rekening_metode?: { transfer?: string; qris?: string; edc?: string };
   min_stok_air_baku_liter: number;
   stok_air_baku_saat_ini: number;
   notifikasi_air_baku_aktif?: boolean;
@@ -305,6 +334,7 @@ export interface Pengeluaran {
   karyawan_nama?: string;
   tipe_arus_kas?: 'keluar' | 'masuk';
   sumber_kas?: SumberKas; // kosong = laci (data lama)
+  rekening_id?: string;   // bila sumber_kas = 'rekening'
   kasir_id: string;
   kasir_nama: string;
   catatan?: string;

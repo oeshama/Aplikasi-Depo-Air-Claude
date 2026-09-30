@@ -17,6 +17,7 @@ interface BukaShiftModalProps {
 export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmitted }: BukaShiftModalProps) {
   const [kasAwal, setKasAwal] = useState<number>(0);
   const [sisaLaci, setSisaLaci] = useState<number>(0);
+  const [modalOwner, setModalOwner] = useState<number>(0); // modal untuk laci yang dicatat owner dari kas besar
   const [meterAwal, setMeterAwal] = useState<number>(0);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -39,7 +40,10 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
     if (isOpen) {
       const p = AppStore.getPengaturan();
       setMeterAwal(p.meteran_air_awal_liter ?? 0);
-      setKasAwal(0); // bawaan 0; modal dari owner dicatat lewat petunjuk sisa laci atau diketik manual
+      // Bawaan 0; bila owner sudah mencatat "modal untuk laci" dari kas besar, angkanya muncul otomatis
+      const modal = AppStore.getModalLaciTersedia();
+      setModalOwner(modal);
+      setKasAwal(modal);
       setSisaLaci(AppStore.getSisaLaciShiftTerakhir());
       const cur = AppStore.getCurrentUser();
       setSelectedUserId(cur ? cur.id : (userList[0]?.id || 'usr-owner'));
@@ -273,10 +277,15 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
                 min="0"
                 style={{ fontSize: '1.1rem', fontWeight: 700, padding: '12px 14px' }}
               />
-              {sisaLaci > 0 && kasAwal !== sisaLaci && (
+              {modalOwner > 0 && (
+                <div style={{ marginTop: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Modal dari owner (kas besar): <strong style={{ color: 'var(--text-main)' }}>{AppStore.formatRupiah(modalOwner)}</strong>
+                </div>
+              )}
+              {sisaLaci > 0 && kasAwal !== modalOwner + sisaLaci && (
                 <div role="status" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                   <span>Sisa laci shift sebelumnya: <strong style={{ color: 'var(--text-main)' }}>{AppStore.formatRupiah(sisaLaci)}</strong></span>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setKasAwal(sisaLaci)}>Gunakan</button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setKasAwal(modalOwner + sisaLaci)}>{modalOwner > 0 ? 'Tambahkan' : 'Gunakan'}</button>
                 </div>
               )}
             </div>
