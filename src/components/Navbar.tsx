@@ -7,7 +7,7 @@ import { AppStore } from '@/lib/store';
 import { UserApp, UserRole } from '@/lib/types';
 import { 
   Droplets, ShoppingCart, Users, Package, MapPin, 
-  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet
+  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet, Map
 } from 'lucide-react';
 import { getTheme, setTheme, Theme } from '@/lib/theme';
 
@@ -259,6 +259,9 @@ export default function Navbar() {
               <Link href="/kasir/shift" aria-current={pathname === '/kasir/shift' ? 'page' : undefined} className={linkClass(pathname === '/kasir/shift')}>
                 <Receipt size={16} aria-hidden="true" /> Rekap Shift
               </Link>
+              <Link href="/peta" aria-current={pathname === '/peta' ? 'page' : undefined} className={linkClass(pathname === '/peta')}>
+                <Map size={16} aria-hidden="true" /> Peta Pelanggan
+              </Link>
             </>
           )}
 
@@ -278,6 +281,11 @@ export default function Navbar() {
           {(role === 'admin' || role === 'owner') && (
             <Link href="/admin/kontak" aria-current={pathname === '/admin/kontak' ? 'page' : undefined} className={linkClass(pathname === '/admin/kontak')}>
               <Users size={16} aria-hidden="true" /> Pelanggan & Reseller
+            </Link>
+          )}
+          {(role === 'admin' || role === 'owner') && (
+            <Link href="/peta" aria-current={pathname === '/peta' ? 'page' : undefined} className={linkClass(pathname === '/peta')}>
+              <Map size={16} aria-hidden="true" /> Peta Pelanggan
             </Link>
           )}
 
