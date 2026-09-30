@@ -35,6 +35,8 @@ const SYNC_COLLECTIONS: CollectionDef[] = [
   { key: 'depo_pengeluaran', collection: 'pengeluaran', event: 'depo_pengeluaran_updated', kind: 'list', newestFirst: true, initial: () => [] },
   { key: 'depo_hutang_toko', collection: 'hutang_toko', event: 'depo_hutang_toko_updated', kind: 'list', newestFirst: true, initial: () => [] },
   { key: 'depo_shift', collection: 'shift', event: 'depo_shift_updated', kind: 'list', newestFirst: true, initial: () => [] },
+  { key: 'depo_setoran_kurir', collection: 'setoran_kurir', event: 'depo_setoran_kurir_updated', kind: 'list', newestFirst: true, initial: () => [] },
+  { key: 'depo_notifikasi', collection: 'notifikasi', event: 'depo_notifikasi_updated', kind: 'list', newestFirst: true, initial: () => [] },
 ];
 
 const byKey = new Map(SYNC_COLLECTIONS.map(d => [d.key, d]));

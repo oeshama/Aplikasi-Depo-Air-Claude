@@ -33,7 +33,8 @@ export default function ReceiptModal({ pesanan, onClose }: ReceiptModalProps) {
     }
     msg += `--------------------------------\n`;
     msg += `*TOTAL: ${AppStore.formatRupiah(pesanan.total_akhir)}*\n`;
-    msg += `Status Bayar: ${pesanan.status_pembayaran.toUpperCase()}\n`;
+    const menungguKurir = !!pesanan.bayar_ke_kurir && !pesanan.kurir_diterima_at;
+    msg += `Status Bayar: ${menungguKurir ? 'BAYAR TUNAI KE KURIR' : pesanan.status_pembayaran.toUpperCase()}\n`;
     msg += `Catatan: ${pesanan.catatan || '-'}\n\n`;
     msg += `${pengaturan.footer_struk}`;
 
@@ -110,7 +111,11 @@ export default function ReceiptModal({ pesanan, onClose }: ReceiptModalProps) {
               <span>{AppStore.formatRupiah(pesanan.total_akhir)}</span>
             </div>
 
-            {pesanan.pembayaran_details.map((pay, idx) => (
+            {pesanan.bayar_ke_kurir && !pesanan.kurir_diterima_at ? (
+              <div style={{ fontSize: '0.8rem', marginTop: '4px', fontWeight: 'bold' }}>
+                Bayar tunai ke kurir saat barang tiba
+              </div>
+            ) : pesanan.pembayaran_details.map((pay, idx) => (
               <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginTop: '2px' }}>
                 <span>Bayar ({pay.metode.toUpperCase()})</span>
                 <span>{AppStore.formatRupiah(pay.jumlah)}</span>

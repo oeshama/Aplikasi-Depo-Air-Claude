@@ -57,18 +57,23 @@ export default function ShiftKasirPage() {
     window.addEventListener('depo_pengeluaran_updated', handleUpdate);
     window.addEventListener('depo_hutang_toko_updated', handleUpdate);
     window.addEventListener('depo_shift_updated', handleUpdate);
+    window.addEventListener('depo_setoran_kurir_updated', handleUpdate);
 
     return () => {
       window.removeEventListener('depo_pesanan_updated', handleUpdate);
       window.removeEventListener('depo_pengeluaran_updated', handleUpdate);
       window.removeEventListener('depo_hutang_toko_updated', handleUpdate);
       window.removeEventListener('depo_shift_updated', handleUpdate);
+      window.removeEventListener('depo_setoran_kurir_updated', handleUpdate);
     };
   }, []);
 
-  const totalTunai = pesananHariIni
-    .filter(p => p.pembayaran_details.some(d => d.metode === 'tunai'))
-    .reduce((acc, p) => acc + p.total_akhir, 0);
+  // Tunai langsung + setoran kurir hari ini (pesanan antar tunai baru masuk laci saat kurir menyetor)
+  const totalSetoranHariIni = AppStore.getSetoranKurir()
+    .filter(s => !s.dibatalkan && new Date(s.tanggal).toDateString() === new Date().toDateString())
+    .reduce((acc, s) => acc + s.nominal, 0);
+  const totalTunai = AppStore.totalTunaiLangsung(pesananHariIni) + totalSetoranHariIni;
+  const uangDiKurir = AppStore.getTotalUangDiKurir();
 
   const totalNonTunai = pesananHariIni
     .filter(p => p.pembayaran_details.some(d => d.metode !== 'tunai' && d.metode !== 'hutang'))
@@ -237,6 +242,11 @@ export default function ShiftKasirPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
             <div style={{ textAlign: 'right', background: 'var(--inset-60)', padding: '10px 16px', borderRadius: '12px' }}>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Kas Penjualan Tunai: <strong style={{ color: 'var(--c-sky)' }}>+{AppStore.formatRupiah(totalTunai)}</strong></div>
+              {(uangDiKurir > 0 || totalSetoranHariIni > 0) && (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Termasuk setoran kurir {AppStore.formatRupiah(totalSetoranHariIni)} - masih di kurir: <strong style={{ color: 'var(--c-amber)' }}>{AppStore.formatRupiah(uangDiKurir)}</strong>
+                </div>
+              )}
               {totalPengembalianKasbon > 0 && (
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>Pengembalian Kasbon: <strong style={{ color: 'var(--c-green)' }}>+{AppStore.formatRupiah(totalPengembalianKasbon)}</strong></div>
               )}

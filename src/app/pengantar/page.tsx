@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Pesanan, PengaturanDepo } from '@/lib/types';
+import { Pesanan, PengaturanDepo, SaldoKurir, UserApp } from '@/lib/types';
 import { AppStore } from '@/lib/store';
+import KonfirmasiTerkirimSheet from '@/components/KonfirmasiTerkirimSheet';
 import { calculateOrderDuration, alarmSound, formatThresholdText } from '@/lib/audioAndTimer';
 import { Truck, MapPin, Phone, CheckCircle, Navigation, Clock, BellOff, AlertTriangle, Volume2, Package } from 'lucide-react';
 
@@ -12,22 +13,29 @@ export default function PengantarPage() {
   const [mutedIds, setMutedIds] = useState<string[]>([]);
   const [snoozedUntilMap, setSnoozedUntilMap] = useState<Record<string, number>>({});
   const [nowTick, setNowTick] = useState<number>(Date.now());
+  const [konfirmasiPesanan, setKonfirmasiPesanan] = useState<Pesanan | null>(null);
+  const [saldoKurirList, setSaldoKurirList] = useState<SaldoKurir[]>([]);
+  const [pengguna, setPengguna] = useState<UserApp | null>(null);
 
   const loadData = () => {
     setPesananList(AppStore.getPesanan());
     setPengaturan(AppStore.getPengaturan());
+    setSaldoKurirList(AppStore.getSaldoKurirList());
+    setPengguna(AppStore.getCurrentUser());
   };
 
   useEffect(() => {
     loadData();
     window.addEventListener('depo_pesanan_updated', loadData);
     window.addEventListener('depo_pengaturan_updated', loadData);
-    
+    window.addEventListener('depo_setoran_kurir_updated', loadData);
+
     // Refresh timer every 10 seconds to update duration
     const interval = setInterval(() => setNowTick(Date.now()), 10000);
     return () => {
       window.removeEventListener('depo_pesanan_updated', loadData);
       window.removeEventListener('depo_pengaturan_updated', loadData);
+      window.removeEventListener('depo_setoran_kurir_updated', loadData);
       clearInterval(interval);
     };
   }, []);
@@ -101,14 +109,21 @@ export default function PengantarPage() {
     setMutedIds(prev => prev.filter(mId => !allDelayedIds.includes(mId)));
   };
 
+  // Buka lembar konfirmasi: kurir mencatat cara bayar dari pelanggan
   const handleKonfirmasiTerkirim = (id: string) => {
-    AppStore.updatePesananStatus(id, 'terkirim', 'lunas');
+    setKonfirmasiPesanan(pesananList.find(p => p.id === id) || null);
+  };
+
+  const selesaiKonfirmasiTerkirim = (hasil: Pesanan) => {
     setSnoozedUntilMap(prev => {
       const copy = { ...prev };
-      delete copy[id];
+      delete copy[hasil.id];
       return copy;
     });
-    alert('Pengiriman berhasil dikonfirmasi! Status pesanan berubah menjadi Terkirim (pesanan hutang tetap tercatat sebagai hutang).');
+    setKonfirmasiPesanan(null);
+    alert(hasil.kurir_diterima_at
+      ? 'Pengiriman dikonfirmasi. Uang tunai tercatat kamu bawa, setorkan ke kasir ya.'
+      : 'Pengiriman berhasil dikonfirmasi.');
   };
 
   const formatProdukRingkas = (items: Pesanan['items']) => {
@@ -133,6 +148,39 @@ export default function PengantarPage() {
           <span className="badge badge-warning">{deliveryJobs.length} Antaran</span>
         </div>
       </div>
+
+      {/* Uang tunai yang sedang dibawa (belum disetor ke kasir) */}
+      {(() => {
+        const dibawa = pengguna?.role === 'pengantar'
+          ? saldoKurirList.filter(k => k.kurir_id === pengguna.id)
+          : saldoKurirList.filter(k => k.saldo > 0);
+        const total = dibawa.reduce((acc, k) => acc + Math.max(0, k.saldo), 0);
+        return (
+          <div className="glass-card animate-fade-in" style={{
+            padding: '14px 18px', borderLeft: `4px solid ${total > 0 ? 'var(--c-amber)' : 'var(--c-green)'}`
+          }}>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+              {pengguna?.role === 'pengantar' ? 'Uang tunai yang kamu bawa' : 'Uang tunai di kurir (belum disetor)'}
+            </div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: total > 0 ? 'var(--c-amber)' : 'var(--c-green)' }}>
+              {AppStore.formatRupiah(total)}
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              {total > 0
+                ? (pengguna?.role === 'pengantar' ? 'Setorkan ke kasir kapan saja. Kasir akan mencatat setorannya.' : dibawa.map(k => `${k.kurir_nama} ${AppStore.formatRupiah(k.saldo)}`).join(' - '))
+                : 'Tidak ada uang yang perlu disetor.'}
+            </div>
+          </div>
+        );
+      })()}
+
+      <KonfirmasiTerkirimSheet
+        pesanan={konfirmasiPesanan}
+        defaultKurirId={pengguna?.role === 'pengantar' ? pengguna.id : undefined}
+        kurirOptions={pengguna?.role === 'pengantar' ? undefined : AppStore.getUsers().filter(u => u.role === 'pengantar').map(u => ({ id: u.id, nama: u.nama }))}
+        onClose={() => setKonfirmasiPesanan(null)}
+        onDone={selesaiKonfirmasiTerkirim}
+      />
 
       {/* Alarm Sound Alert Banner if Delayed */}
       {delayedJobs.length > 0 && (
@@ -440,8 +488,10 @@ export default function PengantarPage() {
 
               {/* Payment Collection Info */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--glass-border)', marginBottom: '14px' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Tagihan Di Lapangan:</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--c-green)' }}>
+                <span style={{ fontSize: '0.85rem', color: job.bayar_ke_kurir ? 'var(--c-amber)' : 'var(--text-muted)', fontWeight: job.bayar_ke_kurir ? 700 : 400 }}>
+                  {job.bayar_ke_kurir ? 'Tagih tunai ke pelanggan:' : job.status_pembayaran === 'lunas' ? 'Sudah dibayar:' : 'Tagihan Di Lapangan:'}
+                </span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: job.bayar_ke_kurir ? 'var(--c-amber)' : 'var(--c-green)' }}>
                   {AppStore.formatRupiah(job.total_akhir)}
                 </span>
               </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Pesanan, Kontak, Produk, PengaturanDepo, KomponenServis, Pengeluaran, HutangToko, UserApp, ShiftKasir } from '@/lib/types';
+import { Pesanan, Kontak, Produk, PengaturanDepo, KomponenServis, Pengeluaran, HutangToko, UserApp, ShiftKasir, SetoranKurir, NotifikasiOwner, SaldoKurir } from '@/lib/types';
 import { AppStore } from '@/lib/store';
 import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
 import { calculateOrderDuration, alarmSound, formatThresholdText } from '@/lib/audioAndTimer';
@@ -24,6 +24,9 @@ export default function OwnerDashboardPage() {
   const [pengeluaranList, setPengeluaranList] = useState<Pengeluaran[]>([]);
   const [hutangTokoList, setHutangTokoList] = useState<HutangToko[]>([]);
   const [shiftList, setShiftList] = useState<ShiftKasir[]>([]);
+  const [setoranList, setSetoranList] = useState<SetoranKurir[]>([]);
+  const [notifList, setNotifList] = useState<NotifikasiOwner[]>([]);
+  const [saldoKurirList, setSaldoKurirList] = useState<SaldoKurir[]>([]);
   const [pengaturan, setPengaturan] = useState<PengaturanDepo>(AppStore.getPengaturan());
   const [activeExpenseReceipt, setActiveExpenseReceipt] = useState<Pengeluaran | null>(null);
   
@@ -173,6 +176,9 @@ export default function OwnerDashboardPage() {
     setHutangTokoList(AppStore.getHutangToko());
     setPengaturan(AppStore.getPengaturan());
     setShiftList(AppStore.getShiftList());
+    setSetoranList(AppStore.getSetoranKurir());
+    setNotifList(AppStore.getNotifikasi());
+    setSaldoKurirList(AppStore.getSaldoKurirList());
   };
 
   useEffect(() => {
@@ -189,6 +195,8 @@ export default function OwnerDashboardPage() {
     window.addEventListener('depo_shift_updated', handleUpdate);
     window.addEventListener('depo_kontak_updated', handleUpdate);
     window.addEventListener('depo_produk_updated', handleUpdate);
+    window.addEventListener('depo_setoran_kurir_updated', handleUpdate);
+    window.addEventListener('depo_notifikasi_updated', handleUpdate);
 
     // Interval for dynamic duration updates
     const interval = setInterval(() => setNowTick(Date.now()), 10000);
@@ -201,6 +209,8 @@ export default function OwnerDashboardPage() {
       window.removeEventListener('depo_shift_updated', handleUpdate);
       window.removeEventListener('depo_kontak_updated', handleUpdate);
       window.removeEventListener('depo_produk_updated', handleUpdate);
+      window.removeEventListener('depo_setoran_kurir_updated', handleUpdate);
+      window.removeEventListener('depo_notifikasi_updated', handleUpdate);
       clearInterval(interval);
     };
   }, []);
@@ -465,14 +475,30 @@ export default function OwnerDashboardPage() {
     });
   };
 
+  // Setoran kurir yang diterima kasir pada periode terpilih
+  const getFilteredSetoran = () => {
+    const now = new Date();
+    return (setoranList || []).filter(s => {
+      if (!s || !s.tanggal || s.dibatalkan) return false;
+      const sDate = new Date(s.tanggal);
+      if (periode === 'harian') return sDate.toDateString() === now.toDateString();
+      if (periode === 'mingguan') return Math.ceil(Math.abs(now.getTime() - sDate.getTime()) / (1000 * 60 * 60 * 24)) <= 7;
+      if (periode === 'bulanan') return sDate.getMonth() === now.getMonth() && sDate.getFullYear() === now.getFullYear();
+      if (periode === 'tahunan') return sDate.getFullYear() === now.getFullYear();
+      return true;
+    });
+  };
+
   const filteredPesanan = getFilteredPesanan();
   const filteredPengeluaran = getFilteredPengeluaran();
+  const totalSetoranPeriode = getFilteredSetoran().reduce((acc, s) => acc + (s.nominal || 0), 0);
+  const totalUangDiKurir = saldoKurirList.reduce((acc, k) => acc + Math.max(0, k.saldo), 0);
+  const kurirMembawaUang = saldoKurirList.filter(k => k.saldo > 0);
 
   // Metrics Calculations
   const totalOmzet = filteredPesanan.reduce((acc, p) => acc + (p?.total_akhir || 0), 0);
-  const totalTunaiMasuk = filteredPesanan
-    .filter(p => p && p.pembayaran_details && Array.isArray(p.pembayaran_details) && p.pembayaran_details.some(d => d && d.metode === 'tunai'))
-    .reduce((acc, p) => acc + (p?.total_akhir || 0), 0);
+  // Tunai langsung + setoran kurir (pesanan antar tunai baru dihitung saat kurir menyetor)
+  const totalTunaiMasuk = AppStore.totalTunaiLangsung(filteredPesanan) + totalSetoranPeriode;
 
   const totalPengeluaranKeluar = filteredPengeluaran
     .filter(p => p && p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon')
@@ -846,9 +872,8 @@ export default function OwnerDashboardPage() {
                       return t >= shiftBukaTime && t <= shiftTutupTime;
                     });
 
-                    const tunaiMasukShift = s.total_tunai_masuk ?? pesananShift
-                      .filter(p => p.pembayaran_details?.some(d => d.metode === 'tunai'))
-                      .reduce((sum, p) => sum + (p.total_akhir || 0), 0);
+                    const tunaiMasukShift = s.total_tunai_masuk ?? (AppStore.totalTunaiLangsung(pesananShift)
+                      + (setoranList || []).filter(x => !x.dibatalkan && new Date(x.tanggal).getTime() >= shiftBukaTime && new Date(x.tanggal).getTime() <= shiftTutupTime).reduce((sum, x) => sum + (x.nominal || 0), 0));
 
                     const kasKeluarShift = pengeluaranShift
                       .filter(p => p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon')
@@ -1163,7 +1188,35 @@ export default function OwnerDashboardPage() {
       {/* TAB CONTENT 1: RINGKASAN & METERAN (OVERVIEW) */}
       {activeTab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* IKHTISAR: 4 angka utama dan hal yang perlu perhatian */}
+          {/* PEMBERITAHUAN: mis. kasir mengoreksi setoran kurir */}
+          {notifList.length > 0 && (
+            <section aria-labelledby="judul-pemberitahuan" className="glass-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--c-amber)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                <h2 id="judul-pemberitahuan" style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                  Pemberitahuan {notifList.filter(n => !n.dibaca).length > 0 && <span className="badge badge-danger">{notifList.filter(n => !n.dibaca).length} baru</span>}
+                </h2>
+                {notifList.some(n => !n.dibaca) && (
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => AppStore.tandaiNotifikasiDibaca()}>Tandai semua dibaca</button>
+                )}
+              </div>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {notifList.slice(0, 5).map(n => (
+                  <li key={n.id} style={{ padding: '10px 12px', borderRadius: '10px', background: n.dibaca ? 'var(--inset-50)' : 'rgba(245, 158, 11, 0.14)', border: '1px solid var(--glass-border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                      <strong style={{ color: n.dibaca ? 'var(--text-main)' : 'var(--c-amber)' }}>{n.judul}</strong>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(n.waktu).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div style={{ fontSize: '0.88rem', marginTop: '2px' }}>{n.pesan}</div>
+                    {!n.dibaca && (
+                      <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: '8px' }} onClick={() => AppStore.tandaiNotifikasiDibaca(n.id)}>Tandai dibaca</button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* IKHTISAR: angka utama dan hal yang perlu perhatian */}
           <section aria-labelledby="judul-ikhtisar">
             <h2 id="judul-ikhtisar" style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '10px' }}>
               Ikhtisar {periode === 'semua' ? 'seluruh waktu' : periode}
@@ -1204,6 +1257,18 @@ export default function OwnerDashboardPage() {
                 </div>
                 <div style={{ fontSize: '0.78rem', color: delayedPending.length > 0 ? 'var(--c-red-soft)' : 'var(--text-muted)', marginTop: '2px' }}>
                   {delayedPending.length > 0 ? `${delayedPending.length} terlambat` : 'Tidak ada yang terlambat'}
+                </div>
+              </div>
+
+              <div className="glass-card" style={{ padding: '14px', borderColor: totalUangDiKurir > 0 ? 'var(--c-amber)' : undefined }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Uang di kurir</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: totalUangDiKurir > 0 ? 'var(--c-amber)' : 'var(--c-green)', marginTop: '4px' }}>
+                  {AppStore.formatRupiah(totalUangDiKurir)}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  {kurirMembawaUang.length > 0
+                    ? kurirMembawaUang.map(k => k.kurir_nama + ' ' + AppStore.formatRupiah(k.saldo)).join(' - ')
+                    : 'Belum disetor: tidak ada'}
                 </div>
               </div>
             </div>

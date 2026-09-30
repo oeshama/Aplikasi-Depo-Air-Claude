@@ -26,6 +26,8 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
     totalTunai: number;
     totalKeluar: number;
     totalPengembalian: number;
+    totalSetoranKurir: number;
+    uangDiKurir: number;
   } | null>(null);
 
   useEffect(() => {
@@ -40,9 +42,12 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
 
   const shiftBukaTime = new Date(shiftAktif.waktu_buka).getTime();
   const allPesanan = AppStore.getPesanan().filter(p => new Date(p.created_at).getTime() >= shiftBukaTime);
-  const totalTunai = allPesanan
-    .filter(p => p && p.pembayaran_details && Array.isArray(p.pembayaran_details) && p.pembayaran_details.some(d => d && d.metode === 'tunai'))
-    .reduce((acc, p) => acc + (p.total_akhir || 0), 0);
+  // Tunai langsung (pesanan antar tunai tidak dihitung, uangnya lewat kurir) + setoran kurir yang diterima
+  const totalTunaiLangsung = AppStore.totalTunaiLangsung(allPesanan);
+  const totalSetoranKurir = AppStore.totalSetoranSejak(shiftBukaTime);
+  const totalTunai = totalTunaiLangsung + totalSetoranKurir;
+  const kurirMembawaUang = AppStore.getSaldoKurirList().filter(k => k.saldo > 0);
+  const uangDiKurir = kurirMembawaUang.reduce((acc, k) => acc + k.saldo, 0);
 
   const allPengeluaran = AppStore.getPengeluaran().filter(p => new Date(p.tanggal).getTime() >= shiftBukaTime);
   const totalKeluar = allPengeluaran
@@ -52,7 +57,7 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
     .filter(p => p.tipe_arus_kas === 'masuk' || p.kategori === 'pengembalian_kasbon')
     .reduce((acc, p) => acc + (p.nominal || 0), 0);
 
-  const saldoEkspektasiKas = (shiftAktif.saldo_awal + totalTunai + totalPengembalian) - totalKeluar;
+  const saldoEkspektasiKas = (shiftAktif.saldo_awal + totalTunai + totalPengembalian) - totalKeluar; // totalTunai sudah termasuk setoran kurir
   const numericKasAkhir = Number(kasAkhir) || 0;
   const numericMeterAkhir = Number(meterAkhir) || 0;
   const selisihKas = numericKasAkhir - saldoEkspektasiKas;
@@ -85,7 +90,9 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
         pemakaianAir,
         totalTunai,
         totalKeluar,
-        totalPengembalian
+        totalPengembalian,
+        totalSetoranKurir,
+        uangDiKurir
       });
     } catch (err: any) {
       alert(err.message || 'Gagal menutup shift!');
@@ -98,7 +105,7 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
 
   const handleSendWAOwner = () => {
     if (!closedShiftResult) return;
-    const { shift, kasFisik, meterAkhir, saldoEkspektasiKas, selisihKas, pemakaianAir, totalTunai, totalKeluar, totalPengembalian } = closedShiftResult;
+    const { shift, kasFisik, meterAkhir, saldoEkspektasiKas, selisihKas, pemakaianAir, totalTunai, totalKeluar, totalPengembalian, totalSetoranKurir, uangDiKurir } = closedShiftResult;
     const pengaturan = AppStore.getPengaturan();
     const users = AppStore.getUsers();
     const ownerUser = users.find((u: UserApp) => u.role === 'owner');
@@ -118,7 +125,10 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
     msg += `--------------------------------\n`;
     msg += `*Rincian Arus Uang Kas Laci:*\n`;
     msg += `• Modal Kas Awal: ${AppStore.formatRupiah(shift.saldo_awal)}\n`;
-    msg += `• Penjualan Tunai Masuk: +${AppStore.formatRupiah(totalTunai)}\n`;
+    msg += `• Penjualan Tunai Masuk: +${AppStore.formatRupiah(totalTunai - totalSetoranKurir)}\n`;
+    if (totalSetoranKurir > 0) {
+      msg += `• Setoran Kurir Masuk: +${AppStore.formatRupiah(totalSetoranKurir)}\n`;
+    }
     if (totalPengembalian > 0) {
       msg += `• Pelunasan Kasbon Masuk: +${AppStore.formatRupiah(totalPengembalian)}\n`;
     }
@@ -212,11 +222,29 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
                 <span style={{ color: 'var(--text-muted)' }}>Meteran Air Awal:</span>
                 <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{(shiftAktif.meter_awal || 0).toLocaleString('id-ID')} Liter</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px dashed #334155' }}>
+              {totalSetoranKurir > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Setoran kurir diterima:</span>
+                  <span style={{ fontWeight: 700, color: 'var(--c-green)' }}>+{AppStore.formatRupiah(totalSetoranKurir)}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px dashed var(--w-30)' }}>
                 <span style={{ color: 'var(--c-blue-soft)', fontWeight: 600 }}>Ekspektasi Kas Laci:</span>
                 <span style={{ fontWeight: 800, color: 'var(--c-green)' }}>{AppStore.formatRupiah(saldoEkspektasiKas)}</span>
               </div>
             </div>
+
+            {uangDiKurir > 0 && (
+              <div role="status" style={{
+                marginBottom: '18px', padding: '12px 14px', borderRadius: '12px', fontSize: '0.85rem',
+                background: 'rgba(245, 158, 11, 0.14)', border: '1px solid rgba(180, 83, 9, 0.45)', color: 'var(--text-main)'
+              }}>
+                <strong style={{ color: 'var(--c-amber)' }}>Masih ada uang di kurir: {AppStore.formatRupiah(uangDiKurir)}</strong>
+                <div style={{ marginTop: '4px', color: 'var(--text-muted)' }}>
+                  {kurirMembawaUang.map(k => k.kurir_nama + ' ' + AppStore.formatRupiah(k.saldo)).join(' - ')}. Uang ini belum masuk laci, jadi tidak dihitung dalam ekspektasi kas. Kalau kurirnya ada di depo, catat setorannya dulu lewat menu Lainnya. Kalau tidak, tutup shift tetap bisa dan saldo kurir dibawa ke shift berikutnya.
+                </div>
+              </div>
+            )}
 
             <div className="form-group" style={{ marginBottom: '16px' }}>
               <label className="form-label" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -314,8 +342,14 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Penjualan Tunai (+)</span>
-                  <span>{AppStore.formatRupiah(closedShiftResult.totalTunai)}</span>
+                  <span>{AppStore.formatRupiah(closedShiftResult.totalTunai - closedShiftResult.totalSetoranKurir)}</span>
                 </div>
+                {closedShiftResult.totalSetoranKurir > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Setoran Kurir (+)</span>
+                    <span>{AppStore.formatRupiah(closedShiftResult.totalSetoranKurir)}</span>
+                  </div>
+                )}
                 {closedShiftResult.totalPengembalian > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Pelunasan Kasbon (+)</span>
@@ -331,6 +365,12 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
                   <span>Ekspektasi Uang Kas</span>
                   <span>{AppStore.formatRupiah(closedShiftResult.saldoEkspektasiKas)}</span>
                 </div>
+                {closedShiftResult.uangDiKurir > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                    <span>Uang di kurir (belum disetor)</span>
+                    <span>{AppStore.formatRupiah(closedShiftResult.uangDiKurir)}</span>
+                  </div>
+                )}
               </div>
 
               <div style={{ borderTop: '2px solid #000', borderBottom: '2px solid #000', padding: '6px 0', margin: '8px 0' }}>

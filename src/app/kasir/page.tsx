@@ -11,6 +11,8 @@ import ReceiptModal from '@/components/ReceiptModal';
 import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
 import BukaShiftModal from '@/components/BukaShiftModal';
 import ZonaSelect from '@/components/ZonaSelect';
+import KonfirmasiTerkirimSheet from '@/components/KonfirmasiTerkirimSheet';
+import SetoranKurirSheet from '@/components/SetoranKurirSheet';
 import {
   ShoppingCart, Plus, Minus, User, Truck, Receipt,
   CreditCard, DollarSign, QrCode, Building, Clock, AlertTriangle, Check,
@@ -48,6 +50,8 @@ export default function KasirPage() {
   const [showAlertPanel, setShowAlertPanel] = useState<boolean>(false);
   const [showMenuLainnya, setShowMenuLainnya] = useState<boolean>(false);
   const [showKasDetail, setShowKasDetail] = useState<boolean>(false);
+  const [konfirmasiPesanan, setKonfirmasiPesanan] = useState<Pesanan | null>(null);
+  const [showSetoranKurir, setShowSetoranKurir] = useState<boolean>(false);
 
   // Alarm & Snooze State
   const [mutedIds, setMutedIds] = useState<string[]>([]);
@@ -466,6 +470,7 @@ export default function KasirPage() {
     window.addEventListener('depo_pengaturan_updated', loadData);
     window.addEventListener('depo_shift_updated', loadData);
     window.addEventListener('depo_pengeluaran_updated', loadData);
+    window.addEventListener('depo_setoran_kurir_updated', loadData);
 
     const interval = setInterval(() => setNowTick(Date.now()), 10000);
 
@@ -477,6 +482,7 @@ export default function KasirPage() {
       window.removeEventListener('depo_pengaturan_updated', loadData);
       window.removeEventListener('depo_shift_updated', loadData);
       window.removeEventListener('depo_pengeluaran_updated', loadData);
+      window.removeEventListener('depo_setoran_kurir_updated', loadData);
       clearInterval(interval);
     };
   }, []);
@@ -558,14 +564,22 @@ export default function KasirPage() {
     setMutedIds(prev => prev.filter(mId => !allDelayedIds.includes(mId)));
   };
 
+  // Buka lembar konfirmasi: kasir memilih kurir dan mencatat cara bayar pelanggan
   const handleKonfirmasiTerkirim = (id: string) => {
-    AppStore.updatePesananStatus(id, 'terkirim', 'lunas');
+    const target = pesananList.find(p => p.id === id) || AppStore.getPesanan().find(p => p.id === id) || null;
+    setKonfirmasiPesanan(target);
+  };
+
+  const selesaiKonfirmasiTerkirim = (hasil: Pesanan) => {
     setSnoozedUntilMap(prev => {
       const copy = { ...prev };
-      delete copy[id];
+      delete copy[hasil.id];
       return copy;
     });
-    alert('Pengiriman berhasil dikonfirmasi! Status pesanan berubah menjadi Terkirim (pesanan hutang tetap tercatat sebagai hutang).');
+    setKonfirmasiPesanan(null);
+    alert(hasil.kurir_diterima_at
+      ? 'Pengiriman dikonfirmasi. Uang tunai tercatat dibawa kurir sampai kurir menyetor ke kasir.'
+      : 'Pengiriman berhasil dikonfirmasi.');
   };
 
   const formatProdukRingkas = (items: Pesanan['items']) => {
@@ -769,6 +783,13 @@ export default function KasirPage() {
       pembayaranDetails.push({ metode: metodePembayaran, jumlah: totalAkhir });
     }
 
+    // Pesanan antar bayar tunai: uangnya diterima kurir dulu, baru masuk laci saat kurir menyetor
+    const bayarKeKurir = isDelivery && metodePembayaran === 'tunai';
+    if (bayarKeKurir) {
+      statusBayar = 'belum_bayar';
+      totalDibayar = 0;
+    }
+
     const currentUser = AppStore.getCurrentUser();
     const newNotaNo = `INV-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(100 + Math.random() * 900)}`;
 
@@ -793,6 +814,7 @@ export default function KasirPage() {
       sisa_hutang: sisaHutang,
       kasir_id: currentUser.id,
       catatan: catatan,
+      bayar_ke_kurir: bayarKeKurir || undefined,
       created_at: new Date().toISOString()
     };
 
@@ -882,9 +904,14 @@ export default function KasirPage() {
 
   const modalAwalKasir = activeShiftInfo ? activeShiftInfo.saldo_awal : 0;
 
-  const totalTunaiShift = shiftPesananList
-    .filter(p => p.pembayaran_details.some(d => d.metode === 'tunai'))
-    .reduce((acc, p) => acc + p.total_akhir, 0);
+  // Tunai langsung (pesanan antar tunai tidak dihitung, uangnya lewat kurir) + setoran kurir yang diterima
+  const totalTunaiShift = AppStore.totalTunaiLangsung(shiftPesananList);
+  const totalSetoranShift = AppStore.getSetoranKurir()
+    .filter(s => !s.dibatalkan && (activeShiftInfo
+      ? new Date(s.tanggal).getTime() >= shiftBukaTime
+      : new Date(s.tanggal).toDateString() === new Date().toDateString()))
+    .reduce((acc, s) => acc + s.nominal, 0);
+  const uangDiKurir = AppStore.getTotalUangDiKurir();
 
   const totalPengeluaranShiftKeluar = shiftPengeluaranList
     .filter(p => p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon')
@@ -894,7 +921,7 @@ export default function KasirPage() {
     .filter(p => p.tipe_arus_kas === 'masuk' || p.kategori === 'pengembalian_kasbon')
     .reduce((acc, p) => acc + p.nominal, 0);
 
-  const saldoKasDiTangan = Math.max(0, (modalAwalKasir + totalTunaiShift + totalPengembalianKasbonShift) - totalPengeluaranShiftKeluar);
+  const saldoKasDiTangan = Math.max(0, (modalAwalKasir + totalTunaiShift + totalSetoranShift + totalPengembalianKasbonShift) - totalPengeluaranShiftKeluar);
 
   const alertCount = (isWaterStockCriticalCalc ? 1 : 0) + pendingDelivery.length;
   const alertUrgent = isWaterStockCriticalCalc || delayedPending.length > 0;
@@ -950,6 +977,14 @@ export default function KasirPage() {
           setShowBukaShiftModal(false);
         }}
       />
+
+      <KonfirmasiTerkirimSheet
+        pesanan={konfirmasiPesanan}
+        kurirOptions={AppStore.getUsers().filter(u => u.role === 'pengantar').map(u => ({ id: u.id, nama: u.nama }))}
+        onClose={() => setKonfirmasiPesanan(null)}
+        onDone={selesaiKonfirmasiTerkirim}
+      />
+      <SetoranKurirSheet isOpen={showSetoranKurir} onClose={() => setShowSetoranKurir(false)} />
 
       {/* Popup buka shift ditutup: ingatkan, dan bisa dibuka lagi kapan saja */}
       {needsShift && !showBukaShiftModal && (
@@ -1021,12 +1056,19 @@ export default function KasirPage() {
             </div>
             <div style={{ background: 'var(--inset-70)', padding: '8px 12px', borderRadius: '10px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Tunai masuk: </span>
-              <strong style={{ color: 'var(--c-sky)' }}>+{AppStore.formatRupiah(totalTunaiShift + totalPengembalianKasbonShift)}</strong>
+              <strong style={{ color: 'var(--c-sky)' }}>+{AppStore.formatRupiah(totalTunaiShift + totalSetoranShift + totalPengembalianKasbonShift)}</strong>
             </div>
             <div style={{ background: 'var(--inset-70)', padding: '8px 12px', borderRadius: '10px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Pengeluaran: </span>
               <strong style={{ color: 'var(--c-red)' }}>-{AppStore.formatRupiah(totalPengeluaranShiftKeluar)}</strong>
             </div>
+            {(uangDiKurir > 0 || totalSetoranShift > 0) && (
+              <div style={{ background: 'var(--inset-70)', padding: '8px 12px', borderRadius: '10px' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Uang di kurir: </span>
+                <strong style={{ color: uangDiKurir > 0 ? 'var(--c-amber)' : 'var(--c-green)' }}>{AppStore.formatRupiah(uangDiKurir)}</strong>
+                {totalSetoranShift > 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}> (setoran shift ini {AppStore.formatRupiah(totalSetoranShift)})</span>}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1358,6 +1400,7 @@ export default function KasirPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {[
+                { Icon: Truck, title: 'Setoran kurir', desc: uangDiKurir > 0 ? ('Uang di kurir saat ini ' + AppStore.formatRupiah(uangDiKurir)) : 'Terima uang tunai dari kurir', action: () => { if (needsShift) { setShowBukaShiftModal(true); } else { setShowSetoranKurir(true); } } },
                 { Icon: CreditCard, title: 'Bayar utang pelanggan', desc: 'Catat pelunasan utang pelanggan', action: () => openBayarHutangModal() },
                 { Icon: TrendingDown, title: 'Catat pengeluaran kas', desc: 'Bensin, gaji, beli air baku, dan lainnya', action: () => setShowAddPengeluaranModal(true) },
                 { Icon: FileText, title: 'Catat hutang toko', desc: 'Utang toko ke karyawan atau pihak ketiga', action: () => setShowAddHutangTokoModal(true) },

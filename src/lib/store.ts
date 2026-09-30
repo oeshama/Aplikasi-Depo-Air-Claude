@@ -1,6 +1,7 @@
-import { 
-  UserApp, Produk, ZoneOngkir, Kontak, Pesanan, TitipGalon, 
-  PengaturanDepo, ShiftKasir, UserRole, Pengeluaran, HutangToko 
+import {
+  UserApp, Produk, ZoneOngkir, Kontak, Pesanan, TitipGalon,
+  PengaturanDepo, ShiftKasir, UserRole, Pengeluaran, HutangToko,
+  SetoranKurir, NotifikasiOwner, SaldoKurir, MetodePembayaran
 } from './types';
 import { 
   DEMO_USERS, INITIAL_PRODUK, INITIAL_ZONA, INITIAL_KONTAK, 
@@ -181,6 +182,238 @@ export class AppStore {
       }
       this.savePesanan(list);
     }
+  }
+
+  // ---------------------------------------------------------------------
+  // Uang antar (kurir) dan kas laci
+  //
+  // Pesanan antar bayar tunai: uangnya diterima KURIR dulu (bukan langsung masuk laci).
+  // Uang baru masuk laci saat kasir mencatat SETORAN dari kurir, kapan saja dan berapa saja.
+  //   saldo kurir = tunai yang diterima kurir - total setoran yang sudah diterima kasir
+  // ---------------------------------------------------------------------
+
+  // Tunai yang langsung masuk laci dari satu pesanan (pesanan antar tunai tidak dihitung: lewat kurir)
+  static tunaiLangsung(p: Pesanan): number {
+    if (!p || p.bayar_ke_kurir) return 0;
+    const adaTunai = Array.isArray(p.pembayaran_details) && p.pembayaran_details.some(d => d && d.metode === 'tunai');
+    return adaTunai ? (p.total_akhir || 0) : 0;
+  }
+
+  static totalTunaiLangsung(list: Pesanan[]): number {
+    return (list || []).reduce((acc, p) => acc + this.tunaiLangsung(p), 0);
+  }
+
+  static getSetoranKurir(): SetoranKurir[] {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem('depo_setoran_kurir');
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  static saveSetoranKurir(data: SetoranKurir[]) {
+    this.persist('depo_setoran_kurir', data);
+    window.dispatchEvent(new Event('depo_setoran_kurir_updated'));
+  }
+
+  // Total setoran kurir yang diterima kasir sejak waktu tertentu (setoran yang dibatalkan tidak dihitung)
+  static totalSetoranSejak(sinceMs: number): number {
+    return this.getSetoranKurir()
+      .filter(s => !s.dibatalkan && new Date(s.tanggal).getTime() >= sinceMs)
+      .reduce((acc, s) => acc + (s.nominal || 0), 0);
+  }
+
+  // Saldo tunai yang sedang dibawa tiap kurir
+  static getSaldoKurirList(): SaldoKurir[] {
+    const map = new Map<string, SaldoKurir>();
+    const ensure = (id: string, nama: string) => {
+      if (!map.has(id)) map.set(id, { kurir_id: id, kurir_nama: nama, uang_diterima: 0, disetor: 0, saldo: 0 });
+      return map.get(id)!;
+    };
+
+    this.getUsers().filter(u => u.role === 'pengantar').forEach(u => ensure(u.id, u.nama));
+
+    this.getPesanan().forEach(p => {
+      if (p.bayar_ke_kurir && p.pengantar_id && (p.kurir_uang_diterima || 0) > 0) {
+        const nama = map.get(p.pengantar_id)?.kurir_nama || this.getUsers().find(u => u.id === p.pengantar_id)?.nama || 'Kurir';
+        ensure(p.pengantar_id, nama).uang_diterima += p.kurir_uang_diterima || 0;
+      }
+    });
+
+    this.getSetoranKurir().filter(s => !s.dibatalkan).forEach(s => {
+      ensure(s.kurir_id, s.kurir_nama).disetor += s.nominal || 0;
+    });
+
+    map.forEach(k => { k.saldo = k.uang_diterima - k.disetor; });
+    return Array.from(map.values());
+  }
+
+  static getSaldoKurir(kurirId: string): number {
+    return this.getSaldoKurirList().find(k => k.kurir_id === kurirId)?.saldo || 0;
+  }
+
+  static getTotalUangDiKurir(): number {
+    return this.getSaldoKurirList().reduce((acc, k) => acc + Math.max(0, k.saldo), 0);
+  }
+
+  // Pesanan antar tunai yang uangnya sudah diterima kurir (untuk rincian di layar setoran)
+  static getPesananTunaiKurir(kurirId: string): Pesanan[] {
+    return this.getPesanan()
+      .filter(p => p.bayar_ke_kurir && p.pengantar_id === kurirId && (p.kurir_uang_diterima || 0) > 0)
+      .sort((a, b) => (b.kurir_diterima_at || b.created_at).localeCompare(a.kurir_diterima_at || a.created_at));
+  }
+
+  // Kurir/kasir menandai pesanan antar sudah sampai, sekaligus mencatat cara bayar dari pelanggan
+  static konfirmasiTerkirim(
+    pesananId: string,
+    opsi: { metode?: MetodePembayaran; jumlahDiterima?: number; kurirId?: string }
+  ): Pesanan {
+    const list = this.getPesanan();
+    const idx = list.findIndex(p => p.id === pesananId);
+    if (idx === -1) throw new Error('Pesanan tidak ditemukan!');
+    const p = list[idx];
+
+    if ((p.status_pesanan === 'terkirim' || p.status_pesanan === 'selesai') && p.kurir_diterima_at) {
+      throw new Error('Pesanan ini sudah dikonfirmasi terkirim sebelumnya.');
+    }
+
+    if (opsi.kurirId) p.pengantar_id = opsi.kurirId;
+    p.status_pesanan = 'terkirim';
+    if (!p.terkirim_at) p.terkirim_at = new Date().toISOString();
+
+    // Pesanan yang uangnya masih menunggu kurir: catat cara bayar yang sebenarnya
+    if (p.bayar_ke_kurir) {
+      const metode = opsi.metode || 'tunai';
+      const total = p.total_akhir || 0;
+
+      if (metode === 'tunai') {
+        if (!p.pengantar_id) throw new Error('Pilih kurir yang mengantar dulu.');
+        const diterima = Math.max(0, Math.round(opsi.jumlahDiterima ?? total));
+        const sisa = Math.max(0, total - diterima);
+        p.kurir_uang_diterima = diterima;
+        p.kurir_diterima_at = new Date().toISOString();
+        p.total_dibayar = diterima;
+        p.sisa_hutang = sisa;
+        p.status_pembayaran = sisa === 0 ? 'lunas' : (diterima > 0 ? 'dp' : 'hutang');
+        p.pembayaran_details = [
+          ...(diterima > 0 ? [{ metode: 'tunai' as MetodePembayaran, jumlah: diterima }] : []),
+          ...(sisa > 0 ? [{ metode: 'hutang' as MetodePembayaran, jumlah: sisa }] : [])
+        ];
+        if (sisa > 0 && p.kontak_id) this.tambahHutangPelanggan(p.kontak_id, sisa);
+      } else if (metode === 'hutang') {
+        p.bayar_ke_kurir = false;
+        p.total_dibayar = 0;
+        p.sisa_hutang = total;
+        p.status_pembayaran = 'hutang';
+        p.pembayaran_details = [{ metode: 'hutang', jumlah: total }];
+        if (p.kontak_id) this.tambahHutangPelanggan(p.kontak_id, total);
+      } else {
+        // Transfer / QRIS / EDC: uang tidak lewat kurir
+        p.bayar_ke_kurir = false;
+        p.total_dibayar = total;
+        p.sisa_hutang = 0;
+        p.status_pembayaran = 'lunas';
+        p.pembayaran_details = [{ metode, jumlah: total }];
+      }
+    } else if (p.status_pembayaran === 'belum_bayar') {
+      p.status_pembayaran = 'lunas';
+    }
+
+    this.savePesanan(list);
+    return p;
+  }
+
+  // Kasir menerima setoran uang dari kurir
+  static tambahSetoran(kurirId: string, nominal: number, catatan?: string): SetoranKurir {
+    const kurir = this.getSaldoKurirList().find(k => k.kurir_id === kurirId);
+    if (!kurir) throw new Error('Kurir tidak ditemukan!');
+    const jumlah = Math.round(nominal);
+    if (!(jumlah > 0)) throw new Error('Nominal setoran harus lebih besar dari Rp 0!');
+    if (jumlah > kurir.saldo) {
+      throw new Error(`Setoran (${this.formatRupiah(jumlah)}) melebihi uang yang dibawa kurir (${this.formatRupiah(kurir.saldo)}).`);
+    }
+
+    const user = this.getCurrentUser();
+    const setoran: SetoranKurir = {
+      id: `stor-${Date.now()}`,
+      tanggal: new Date().toISOString(),
+      kurir_id: kurir.kurir_id,
+      kurir_nama: kurir.kurir_nama,
+      nominal: jumlah,
+      kasir_id: user.id,
+      kasir_nama: user.nama,
+      catatan: catatan?.trim() || undefined
+    };
+    const list = this.getSetoranKurir();
+    list.unshift(setoran);
+    this.saveSetoranKurir(list);
+    return setoran;
+  }
+
+  // Koreksi setoran (nominal baru 0 = batalkan). Owner otomatis mendapat pemberitahuan.
+  static koreksiSetoran(setoranId: string, nominalBaru: number, alasan: string): SetoranKurir {
+    if (!alasan.trim()) throw new Error('Alasan koreksi wajib diisi supaya owner tahu sebabnya.');
+    const list = this.getSetoranKurir();
+    const idx = list.findIndex(s => s.id === setoranId);
+    if (idx === -1) throw new Error('Data setoran tidak ditemukan!');
+    const s = list[idx];
+    if (s.dibatalkan) throw new Error('Setoran ini sudah dibatalkan.');
+
+    const baru = Math.max(0, Math.round(nominalBaru));
+    if (baru === s.nominal) throw new Error('Nominalnya sama dengan yang tercatat, tidak ada yang dikoreksi.');
+
+    // Saldo kurir setelah koreksi tidak boleh minus
+    const saldoSekarang = this.getSaldoKurir(s.kurir_id);
+    if (saldoSekarang + s.nominal - baru < 0) {
+      throw new Error('Nominal baru melebihi uang yang seharusnya dibawa kurir.');
+    }
+
+    const user = this.getCurrentUser();
+    const dari = s.nominal;
+    s.riwayat_koreksi = [...(s.riwayat_koreksi || []), {
+      waktu: new Date().toISOString(), dari, ke: baru, oleh: user.nama, alasan: alasan.trim()
+    }];
+    if (baru === 0) {
+      s.dibatalkan = true;
+    } else {
+      s.nominal = baru;
+    }
+    this.saveSetoranKurir(list);
+
+    const batal = baru === 0;
+    this.addNotifikasi({
+      jenis: batal ? 'pembatalan_setoran' : 'koreksi_setoran',
+      judul: batal ? 'Setoran kurir dibatalkan' : 'Setoran kurir dikoreksi',
+      pesan: batal
+        ? `${user.nama} membatalkan setoran ${s.kurir_nama} sebesar ${this.formatRupiah(dari)}. Alasan: ${alasan.trim()}`
+        : `${user.nama} mengoreksi setoran ${s.kurir_nama} dari ${this.formatRupiah(dari)} menjadi ${this.formatRupiah(baru)}. Alasan: ${alasan.trim()}`,
+      dibuat_oleh: user.nama
+    });
+    return s;
+  }
+
+  static getNotifikasi(): NotifikasiOwner[] {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem('depo_notifikasi');
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  static saveNotifikasi(data: NotifikasiOwner[]) {
+    this.persist('depo_notifikasi', data);
+    window.dispatchEvent(new Event('depo_notifikasi_updated'));
+  }
+
+  static addNotifikasi(n: Omit<NotifikasiOwner, 'id' | 'waktu' | 'dibaca'>) {
+    const list = this.getNotifikasi();
+    list.unshift({ ...n, id: `ntf-${Date.now()}`, waktu: new Date().toISOString(), dibaca: false });
+    this.saveNotifikasi(list);
+  }
+
+  static tandaiNotifikasiDibaca(id?: string) {
+    const list = this.getNotifikasi().map(n => (!id || n.id === id) ? { ...n, dibaca: true } : n);
+    this.saveNotifikasi(list);
+  }
+
+  static jumlahNotifikasiBelumDibaca(): number {
+    return this.getNotifikasi().filter(n => !n.dibaca).length;
   }
 
   static getCurrentUser(): UserApp {
@@ -463,9 +696,9 @@ export class AppStore {
     
     // Filter pesanan & pengeluaran yang terjadi SEJAK SHIFT DIBUKA (bukan seluruh pesanan hari ini)
     const allPesanan = this.getPesanan().filter(p => new Date(p.created_at).getTime() >= shiftBukaTime);
-    const totalTunai = allPesanan
-      .filter(p => p && p.pembayaran_details && Array.isArray(p.pembayaran_details) && p.pembayaran_details.some(d => d && d.metode === 'tunai'))
-      .reduce((acc, p) => acc + (p.total_akhir || 0), 0);
+    // Tunai langsung masuk laci + setoran kurir yang diterima selama shift ini
+    const totalTunai = this.totalTunaiLangsung(allPesanan) + this.totalSetoranSejak(shiftBukaTime);
+    const totalSetoranKurir = this.totalSetoranSejak(shiftBukaTime);
     const totalNonTunai = allPesanan
       .filter(p => p && p.pembayaran_details && Array.isArray(p.pembayaran_details) && p.pembayaran_details.some(d => d && d.metode !== 'tunai' && d.metode !== 'hutang'))
       .reduce((acc, p) => acc + (p.total_akhir || 0), 0);
@@ -487,6 +720,8 @@ export class AppStore {
     target.meter_akhir = meterAkhir;
     target.total_pemakaian_air_liter = totalPemakaianAir;
     target.total_tunai_masuk = totalTunai;
+    target.total_setoran_kurir = totalSetoranKurir;
+    target.uang_di_kurir_saat_tutup = this.getTotalUangDiKurir();
     target.total_non_tunai = totalNonTunai;
     target.selisih = selisihKas;
     target.status = 'tutup';
@@ -564,6 +799,8 @@ export class AppStore {
     if (options.factoryAll) {
       // Ditulis ulang ke nilai awal (bukan dihapus) supaya reset ikut tersinkron ke perangkat lain
       this.persist('depo_pesanan', INITIAL_PESANAN);
+      this.persist('depo_setoran_kurir', []);
+      this.persist('depo_notifikasi', []);
       this.persist('depo_produk', INITIAL_PRODUK);
       this.persist('depo_zona', INITIAL_ZONA);
       this.persist('depo_pengeluaran', []);
@@ -576,6 +813,8 @@ export class AppStore {
       this.persist('depo_pengaturan', { ...INITIAL_PENGATURAN, galon_pinjaman_pelanggan: [] });
 
       window.dispatchEvent(new Event('depo_pesanan_updated'));
+      window.dispatchEvent(new Event('depo_setoran_kurir_updated'));
+      window.dispatchEvent(new Event('depo_notifikasi_updated'));
       window.dispatchEvent(new Event('depo_kontak_updated'));
       window.dispatchEvent(new Event('depo_produk_updated'));
       window.dispatchEvent(new Event('depo_zona_updated'));
@@ -593,6 +832,8 @@ export class AppStore {
 
     if (options.pesanan) {
       this.persist('depo_pesanan', []);
+      this.persist('depo_setoran_kurir', []);
+      this.persist('depo_notifikasi', []);
       this.persist('depo_pengeluaran', []);
       this.persist('depo_hutang_toko', []);
       this.persist('depo_shift', []);
@@ -608,6 +849,8 @@ export class AppStore {
       this.savePengaturan(p);
 
       window.dispatchEvent(new Event('depo_pesanan_updated'));
+      window.dispatchEvent(new Event('depo_setoran_kurir_updated'));
+      window.dispatchEvent(new Event('depo_notifikasi_updated'));
       window.dispatchEvent(new Event('depo_pengeluaran_updated'));
       window.dispatchEvent(new Event('depo_hutang_toko_updated'));
       window.dispatchEvent(new Event('depo_shift_updated'));

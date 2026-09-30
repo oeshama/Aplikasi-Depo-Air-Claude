@@ -7,7 +7,7 @@ import { AppStore } from '@/lib/store';
 import { UserApp, UserRole } from '@/lib/types';
 import { 
   Droplets, ShoppingCart, Users, Package, MapPin, 
-  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon
+  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell
 } from 'lucide-react';
 import { getTheme, setTheme, Theme } from '@/lib/theme';
 
@@ -30,6 +30,7 @@ export default function Navbar() {
   };
 
   const [kasDiTanganNav, setKasDiTanganNav] = useState<number>(0);
+  const [notifCount, setNotifCount] = useState<number>(0);
 
   const calculateKasDiTangan = () => {
     const activeShift = AppStore.getShiftAktif();
@@ -46,9 +47,13 @@ export default function Navbar() {
       ? allPengeluaran.filter(p => new Date(p.tanggal).getTime() >= shiftBukaTime)
       : allPengeluaran.filter(p => new Date(p.tanggal).toDateString() === new Date().toDateString());
 
-    const tunaiMasuk = shiftPesanan
-      .filter(p => p.pembayaran_details.some(d => d.metode === 'tunai'))
-      .reduce((acc, p) => acc + p.total_akhir, 0);
+    // Tunai langsung + setoran kurir (pesanan antar tunai baru masuk laci saat kurir menyetor)
+    const setoranKurir = AppStore.getSetoranKurir()
+      .filter(s => !s.dibatalkan && (activeShift
+        ? new Date(s.tanggal).getTime() >= shiftBukaTime
+        : new Date(s.tanggal).toDateString() === new Date().toDateString()))
+      .reduce((acc, s) => acc + s.nominal, 0);
+    const tunaiMasuk = AppStore.totalTunaiLangsung(shiftPesanan) + setoranKurir;
 
     const kasKeluar = shiftPengeluaran
       .filter(p => p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon')
@@ -59,6 +64,7 @@ export default function Navbar() {
       .reduce((acc, p) => acc + p.nominal, 0);
 
     setKasDiTanganNav(Math.max(0, (modalAwal + tunaiMasuk + kasbonKembali) - kasKeluar));
+    setNotifCount(AppStore.jumlahNotifikasiBelumDibaca());
   };
 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ mode: 'local', pending: 0 });
@@ -100,6 +106,8 @@ export default function Navbar() {
     window.addEventListener('depo_pesanan_updated', handleUpdate);
     window.addEventListener('depo_pengeluaran_updated', handleUpdate);
     window.addEventListener('depo_shift_updated', handleUpdate);
+    window.addEventListener('depo_setoran_kurir_updated', handleUpdate);
+    window.addEventListener('depo_notifikasi_updated', handleUpdate);
 
     return () => {
       window.removeEventListener('depo_pengaturan_updated', handleUpdate);
@@ -107,6 +115,8 @@ export default function Navbar() {
       window.removeEventListener('depo_pesanan_updated', handleUpdate);
       window.removeEventListener('depo_pengeluaran_updated', handleUpdate);
       window.removeEventListener('depo_shift_updated', handleUpdate);
+      window.removeEventListener('depo_setoran_kurir_updated', handleUpdate);
+      window.removeEventListener('depo_notifikasi_updated', handleUpdate);
     };
   }, []);
 
@@ -228,6 +238,22 @@ export default function Navbar() {
               <span className="show-mobile" style={{ color: 'var(--text-muted)' }}>Kas </span>
               <strong style={{ color: 'var(--c-green)', fontWeight: 800 }}>{AppStore.formatRupiah(kasDiTanganNav)}</strong>
             </div>
+          )}
+
+          {(role === 'owner' || role === 'admin') && notifCount > 0 && (
+            <Link
+              href="/owner/dashboard"
+              className="icon-btn"
+              aria-label={`${notifCount} pemberitahuan baru, buka dashboard`}
+              style={{ position: 'relative' }}
+            >
+              <Bell size={20} aria-hidden="true" />
+              <span aria-hidden="true" style={{
+                position: 'absolute', top: '2px', right: '2px', minWidth: '18px', height: '18px', padding: '0 4px',
+                borderRadius: '9px', background: '#dc2626', color: '#ffffff', fontSize: '0.7rem', fontWeight: 800,
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>{notifCount}</span>
+            </Link>
           )}
 
           <button

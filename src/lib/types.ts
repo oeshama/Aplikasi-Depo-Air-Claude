@@ -114,6 +114,52 @@ export interface Pesanan {
   catatan?: string;
   created_at: string;
   terkirim_at?: string;
+  // Pesanan antar bayar tunai: uangnya diterima kurir dulu, baru masuk laci saat kurir menyetor
+  bayar_ke_kurir?: boolean;
+  kurir_uang_diterima?: number;   // tunai yang benar-benar diterima kurir dari pelanggan
+  kurir_diterima_at?: string;
+}
+
+// Setoran uang dari kurir ke kasir (boleh kapan saja, berapa saja)
+export interface KoreksiSetoran {
+  waktu: string;
+  dari: number;
+  ke: number;
+  oleh: string;
+  alasan: string;
+}
+
+export interface SetoranKurir {
+  id: string;
+  tanggal: string;
+  kurir_id: string;
+  kurir_nama: string;
+  nominal: number;
+  kasir_id: string;
+  kasir_nama: string;
+  catatan?: string;
+  dibatalkan?: boolean;
+  riwayat_koreksi?: KoreksiSetoran[];
+}
+
+// Pemberitahuan untuk owner/admin di dashboard (mis. kasir mengoreksi setoran)
+export interface NotifikasiOwner {
+  id: string;
+  waktu: string;
+  jenis: 'koreksi_setoran' | 'pembatalan_setoran';
+  judul: string;
+  pesan: string;
+  dibaca: boolean;
+  dibuat_oleh: string;
+}
+
+// Saldo uang tunai yang sedang dibawa satu kurir (belum disetor ke kasir)
+export interface SaldoKurir {
+  kurir_id: string;
+  kurir_nama: string;
+  uang_diterima: number;
+  disetor: number;
+  saldo: number;
 }
 
 export interface TitipGalon {
@@ -212,6 +258,8 @@ export interface ShiftKasir {
   meter_akhir?: number;
   total_pemakaian_air_liter?: number;
   selisih?: number;
+  total_setoran_kurir?: number;        // setoran kurir yang diterima selama shift ini
+  uang_di_kurir_saat_tutup?: number;   // uang tunai yang masih dibawa kurir saat shift ditutup
   status: 'buka' | 'tutup';
 }
 
