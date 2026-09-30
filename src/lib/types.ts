@@ -22,6 +22,8 @@ export interface Kontak {
   alamat_maps?: string;
   lat?: number;
   lng?: number;
+  // Zona ongkir langganan pelanggan ini (id dari ZoneOngkir); kosong = belum ditentukan
+  zona_id?: string;
   galon_per_minggu?: number;
   qr_code?: string;
   pesanan_terakhir?: any;

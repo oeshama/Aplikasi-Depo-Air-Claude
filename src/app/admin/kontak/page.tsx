@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Kontak, TipeKontak, Pesanan, PengaturanDepo } from '@/lib/types';
+import { Kontak, TipeKontak, Pesanan, PengaturanDepo, ZoneOngkir } from '@/lib/types';
+import ZonaSelect from '@/components/ZonaSelect';
 import { AppStore } from '@/lib/store';
 import { Users, UserPlus, Phone, MapPin, Search, Edit3, Trash2, Shield, X, Check, ChevronDown, ChevronUp, Target } from 'lucide-react';
 
@@ -20,16 +21,20 @@ export default function AdminKontakPage() {
   const [noHp, setNoHp] = useState('');
   const [alamat, setAlamat] = useState('');
   const [limitHutang, setLimitHutang] = useState<number>(100000);
+  const [zonaId, setZonaId] = useState<string>('');
+  const [zonaList, setZonaList] = useState<ZoneOngkir[]>([]);
 
   useEffect(() => {
     loadData();
     window.addEventListener('depo_kontak_updated', loadData);
     window.addEventListener('depo_pesanan_updated', loadData);
     window.addEventListener('depo_pengaturan_updated', loadData);
+    window.addEventListener('depo_zona_updated', loadData);
     return () => {
       window.removeEventListener('depo_kontak_updated', loadData);
       window.removeEventListener('depo_pesanan_updated', loadData);
       window.removeEventListener('depo_pengaturan_updated', loadData);
+      window.removeEventListener('depo_zona_updated', loadData);
     };
   }, []);
 
@@ -37,6 +42,7 @@ export default function AdminKontakPage() {
     setKontakList(AppStore.getKontak());
     setPesananList(AppStore.getPesanan());
     setPengaturan(AppStore.getPengaturan());
+    setZonaList(AppStore.getZona());
   };
 
   const openAddModal = () => {
@@ -46,6 +52,7 @@ export default function AdminKontakPage() {
     setNoHp('');
     setAlamat('');
     setLimitHutang(100000);
+    setZonaId('');
     setShowModal(true);
   };
 
@@ -56,6 +63,7 @@ export default function AdminKontakPage() {
     setNoHp(kontak.no_hp);
     setAlamat(kontak.alamat || '');
     setLimitHutang(kontak.limit_hutang || 100000);
+    setZonaId(kontak.zona_id || '');
     setShowModal(true);
   };
 
@@ -80,7 +88,8 @@ export default function AdminKontakPage() {
             tipe,
             no_hp: noHp,
             alamat,
-            limit_hutang: limitHutang
+            limit_hutang: limitHutang,
+            zona_id: zonaId || undefined
           };
         }
         return k;
@@ -96,6 +105,7 @@ export default function AdminKontakPage() {
         no_hp: noHp,
         alamat,
         limit_hutang: limitHutang,
+        zona_id: zonaId || undefined,
         hutang_saat_ini: 0,
         aktif: true
       };
@@ -282,6 +292,8 @@ export default function AdminKontakPage() {
                 <textarea className="form-textarea" rows={3} value={alamat} onChange={(e) => setAlamat(e.target.value)} placeholder="Jl. Merpati No..." required />
               </div>
 
+              <ZonaSelect value={zonaId} onChange={setZonaId} id="zona-kontak" />
+
               <div className="form-group">
                 <label className="form-label">Limit Maksimum Hutang (Rp)</label>
                 <input type="number" className="form-input" value={limitHutang} onChange={(e) => setLimitHutang(Number(e.target.value))} placeholder="100000" required />
@@ -321,6 +333,7 @@ export default function AdminKontakPage() {
                     <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Nama Pelanggan / Toko</th>
                     <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Nomor Kontak / WA</th>
                     <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Alamat Lengkap</th>
+                    <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Zona Ongkir</th>
                     <th style={{ padding: '8px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>Hutang Aktif</th>
                     <th style={{ padding: '8px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>Limit Hutang</th>
                     <th style={{ padding: '8px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>Aksi</th>
@@ -365,6 +378,11 @@ export default function AdminKontakPage() {
                             <MapPin size={13} color="#34d399" style={{ flexShrink: 0 }} />
                             <span>{kontak.alamat || '-'}</span>
                           </div>
+                        </td>
+
+                        {/* Zona Ongkir */}
+                        <td style={{ padding: '8px 12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          {zonaList.find(z => z.id === kontak.zona_id)?.nama_zona || '-'}
                         </td>
 
                         {/* Hutang Aktif */}

@@ -10,6 +10,7 @@ import { calculateOrderDuration, alarmSound, formatThresholdText } from '@/lib/a
 import ReceiptModal from '@/components/ReceiptModal';
 import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
 import BukaShiftModal from '@/components/BukaShiftModal';
+import ZonaSelect from '@/components/ZonaSelect';
 import {
   ShoppingCart, Plus, Minus, User, Truck, Receipt,
   CreditCard, DollarSign, QrCode, Building, Clock, AlertTriangle, Check,
@@ -89,6 +90,7 @@ export default function KasirPage() {
   const [newNoHp, setNewNoHp] = useState<string>('');
   const [newAlamat, setNewAlamat] = useState<string>('');
   const [newLimitHutang, setNewLimitHutang] = useState<number>(100000);
+  const [newZonaId, setNewZonaId] = useState<string>('');
 
   const handleSaveNewKontak = (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,6 +106,7 @@ export default function KasirPage() {
       no_hp: newNoHp.trim() || '-',
       alamat: newAlamat.trim() || '-',
       limit_hutang: newLimitHutang || 100000,
+      zona_id: newZonaId || undefined,
       hutang_saat_ini: 0,
       aktif: true
     };
@@ -115,6 +118,7 @@ export default function KasirPage() {
     // Refresh kontak list & auto-select new customer
     setKontakList(updated.filter(k => k.aktif));
     setSelectedKontakId(newKontak.id);
+    if (newZonaId) setSelectedZonaId(newZonaId);
 
     // Reset form & close modal
     setNewNama('');
@@ -122,6 +126,7 @@ export default function KasirPage() {
     setNewNoHp('');
     setNewAlamat('');
     setNewLimitHutang(100000);
+    setNewZonaId('');
     setShowAddKontakModal(false);
 
     alert(`Pelanggan baru "${newKontak.nama}" berhasil ditambahkan dan dipilih!`);
@@ -573,6 +578,9 @@ export default function KasirPage() {
 
   const handleSelectCustomer = (id: string) => {
     setSelectedKontakId(id);
+    // Pelanggan punya zona langganan: ongkir antar terisi otomatis
+    const zonaPelanggan = kontakList.find(k => k.id === id)?.zona_id;
+    if (zonaPelanggan && zonaList.some(z => z.id === zonaPelanggan)) setSelectedZonaId(zonaPelanggan);
     if (isDelivery && (id === 'kt-1' || id === 'walk-in')) {
       alert('Transaksi Layanan Kirim Antar (Delivery) Memerlukan Nama & Alamat Pelanggan!\n\nWalk-in Pelanggan Biasa tidak memiliki alamat pengantaran. Silakan daftarkan atau pilih Pelanggan Baru terlebih dahulu.');
       setShowAddKontakModal(true);
@@ -1228,6 +1236,7 @@ export default function KasirPage() {
                         onChange={(e) => {
                           const checked = e.target.checked;
                           setIsDelivery(checked);
+                          if (checked && selectedKontak?.zona_id && zonaList.some(z => z.id === selectedKontak.zona_id)) setSelectedZonaId(selectedKontak.zona_id);
                           if (checked && (selectedKontakId === 'kt-1' || selectedKontak?.id === 'kt-1')) {
                             alert('Kirim antar butuh nama dan alamat pelanggan. Walk-in tidak punya alamat. Pilih atau daftarkan pelanggan dulu.');
                             setShowAddKontakModal(true);
@@ -1240,7 +1249,7 @@ export default function KasirPage() {
 
                     {isDelivery && (
                       <div className="form-group" style={{ marginTop: '8px', marginBottom: 0 }}>
-                        <label className="form-label" htmlFor="pilih-zona">Zona ongkir tujuan</label>
+                        <label className="form-label" htmlFor="pilih-zona">Zona ongkir tujuan{selectedKontak?.zona_id && selectedKontak.zona_id === selectedZonaId ? ' (sesuai data pelanggan)' : ''}</label>
                         <select id="pilih-zona" value={selectedZonaId} onChange={(e) => setSelectedZonaId(e.target.value)} className="form-select">
                           {zonaList.map(z => (
                             <option key={z.id} value={z.id}>
@@ -1781,6 +1790,8 @@ export default function KasirPage() {
                   placeholder="Jl. Merpati No..." 
                 />
               </div>
+
+              <ZonaSelect value={newZonaId} onChange={setNewZonaId} id="zona-pelanggan-baru" />
 
               <div className="form-group">
                 <label className="form-label">Limit Maksimum Hutang (Rp)</label>
