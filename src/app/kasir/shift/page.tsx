@@ -176,16 +176,16 @@ export default function ShiftKasirPage() {
           padding: '16px 20px',
           marginBottom: '16px',
           background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(185, 28, 28, 0.35) 100%)',
-          border: '2px solid #ef4444'
+          border: '2px solid var(--c-red-strong)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <Droplets size={26} color="#ef4444" className="animate-pulse" />
               <div>
-                <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#ffffff' }}>
-                  🚨 ALARM: STOK AIR BAKU TANGKI DEPO MENIPIS! ({stokAirBakuShift.toLocaleString('id-ID')} Liter)
+                <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-strong)' }}>
+                  ALARM: STOK AIR BAKU TANGKI DEPO MENIPIS! ({stokAirBakuShift.toLocaleString('id-ID')} Liter)
                 </h4>
-                <p style={{ fontSize: '0.82rem', color: '#fca5a5', marginTop: '2px' }}>
+                <p style={{ fontSize: '0.82rem', color: 'var(--c-red-soft)', marginTop: '2px' }}>
                   Stok saat ini ({stokAirBakuShift.toLocaleString('id-ID')} L) telah mencapai / di bawah batas minimum pengingat (Min: {minStokAirBakuShift.toLocaleString('id-ID')} L). Segera infokan ke Owner / Admin atau pesan pasokan air baku tangki!
                 </p>
               </div>
@@ -197,10 +197,10 @@ export default function ShiftKasirPage() {
       <div className="glass-card animate-fade-in" style={{ padding: '28px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Receipt size={24} color="#0284c7" /> Rekap Shift &amp; Kas Setoran Owner
-            </h2>
-            <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '2px' }}>
+            </h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2px' }}>
               Tanggal: {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           </div>
@@ -220,27 +220,27 @@ export default function ShiftKasirPage() {
         {/* Highlight Card: Kas Fisik Bersih Disetor Ke Owner */}
         <div style={{
           background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(16, 185, 129, 0.25) 100%)',
-          border: '2px solid #34d399', borderRadius: '16px', padding: '20px', marginBottom: '24px',
+          border: '2px solid var(--c-green)', borderRadius: '16px', padding: '20px', marginBottom: '24px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px'
         }}>
           <div>
-            <span style={{ fontSize: '0.85rem', color: '#93c5fd', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--c-blue-soft)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Banknote size={18} color="#34d399" /> ESTIMASI KAS FISIK KASIR DISETOR KE OWNER
             </span>
-            <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#34d399', marginTop: '4px' }}>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--c-green)', marginTop: '4px' }}>
               {AppStore.formatRupiah(saldoKasirDisetorOwner)}
             </h2>
-            <p style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '2px' }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-2)', marginTop: '2px' }}>
               Formula: (Modal Awal + Tunai Masuk + Pelunasan Kasbon) - Total Pengeluaran Keluar
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
-            <div style={{ textAlign: 'right', background: 'rgba(15, 23, 42, 0.6)', padding: '10px 16px', borderRadius: '12px' }}>
-              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Kas Penjualan Tunai: <strong style={{ color: '#38bdf8' }}>+{AppStore.formatRupiah(totalTunai)}</strong></div>
+            <div style={{ textAlign: 'right', background: 'var(--inset-60)', padding: '10px 16px', borderRadius: '12px' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Kas Penjualan Tunai: <strong style={{ color: 'var(--c-sky)' }}>+{AppStore.formatRupiah(totalTunai)}</strong></div>
               {totalPengembalianKasbon > 0 && (
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>Pengembalian Kasbon: <strong style={{ color: '#34d399' }}>+{AppStore.formatRupiah(totalPengembalianKasbon)}</strong></div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>Pengembalian Kasbon: <strong style={{ color: 'var(--c-green)' }}>+{AppStore.formatRupiah(totalPengembalianKasbon)}</strong></div>
               )}
-              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>Total Pengeluaran Kas: <strong style={{ color: '#f87171' }}>-{AppStore.formatRupiah(totalPengeluaranKeluar)}</strong></div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>Total Pengeluaran Kas: <strong style={{ color: 'var(--c-red)' }}>-{AppStore.formatRupiah(totalPengeluaranKeluar)}</strong></div>
             </div>
             <div className="no-print" style={{ display: 'flex', gap: '6px' }}>
               <button onClick={handlePrintRekap} className="btn btn-secondary btn-sm" style={{ padding: '4px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -255,71 +255,71 @@ export default function ShiftKasirPage() {
 
         {/* Ringkasan Kas Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-          <div className="glass-card" style={{ padding: '16px', background: 'rgba(15, 23, 42, 0.6)' }}>
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Total Penjualan Omzet</span>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>
+          <div className="glass-card" style={{ padding: '16px', background: 'var(--inset-60)' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Penjualan Omzet</span>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--c-sky)', marginTop: '4px' }}>
               {AppStore.formatRupiah(totalOmzet)}
             </h3>
-            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{pesananHariIni.length} Transaksi Hari Ini</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{pesananHariIni.length} Transaksi Hari Ini</span>
           </div>
 
-          <div className="glass-card" style={{ padding: '16px', background: 'rgba(15, 23, 42, 0.6)' }}>
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Kas Tunai Masuk</span>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#34d399', marginTop: '4px' }}>
+          <div className="glass-card" style={{ padding: '16px', background: 'var(--inset-60)' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Kas Tunai Masuk</span>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--c-green)', marginTop: '4px' }}>
               {AppStore.formatRupiah(totalTunai)}
             </h3>
-            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Terima Uang Tunai</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Terima Uang Tunai</span>
           </div>
 
           <div className="glass-card" style={{ padding: '16px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-            <span style={{ fontSize: '0.8rem', color: '#fca5a5', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--c-red-soft)', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <TrendingDown size={14} color="#f87171" /> Pengeluaran Kasir
             </span>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f87171', marginTop: '4px' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--c-red)', marginTop: '4px' }}>
               -{AppStore.formatRupiah(totalPengeluaranKeluar)}
             </h3>
-            <span style={{ fontSize: '0.75rem', color: '#fca5a5' }}>Ongkir, Gaji, Kasbon, dll</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--c-red-soft)' }}>Ongkir, Gaji, Kasbon, dll</span>
           </div>
 
           <div className="glass-card" style={{ padding: '16px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-            <span style={{ fontSize: '0.8rem', color: '#6ee7b7' }}>Pengembalian Kasbon</span>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#34d399', marginTop: '4px' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--c-green-soft)' }}>Pengembalian Kasbon</span>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--c-green)', marginTop: '4px' }}>
               +{AppStore.formatRupiah(totalPengembalianKasbon)}
             </h3>
-            <span style={{ fontSize: '0.75rem', color: '#6ee7b7' }}>Masuk Laci Kasir</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--c-green-soft)' }}>Masuk Laci Kasir</span>
           </div>
 
           <div className="glass-card" style={{ padding: '16px', background: 'rgba(2, 132, 199, 0.12)', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
-            <span style={{ fontSize: '0.8rem', color: '#93c5fd', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--c-blue-soft)', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Droplets size={14} color="#38bdf8" /> Meteran Air Depo
             </span>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--c-sky)', marginTop: '4px' }}>
               Awal: {(shiftAktif?.meter_awal ?? AppStore.getPengaturan().meteran_air_awal_liter ?? 0).toLocaleString('id-ID')} L
             </h3>
-            <span style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-2)' }}>
               {shiftAktif?.meter_akhir ? `Akhir: ${shiftAktif.meter_akhir.toLocaleString('id-ID')} L (Pakai: ${(shiftAktif.total_pemakaian_air_liter || 0).toLocaleString('id-ID')} L)` : 'Shift sedang berlangsung'}
             </span>
           </div>
         </div>
 
         {/* Section: Daftar Entry Transaksi Kas & Peruntukan Hari Ini */}
-        <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '20px', borderRadius: '16px', border: '1px solid var(--glass-border)', marginBottom: '24px' }}>
+        <div style={{ background: 'var(--inset-70)', padding: '20px', borderRadius: '16px', border: '1px solid var(--glass-border)', marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <TrendingDown size={18} color="#f87171" /> Daftar Transaksi Kas &amp; Peruntukan Karyawan Hari Ini
             </h4>
             <span className="badge badge-warning">{pengeluaranHariIni.length} Transaksi Kas</span>
           </div>
 
           {pengeluaranHariIni.length === 0 ? (
-            <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', fontStyle: 'italic', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '10px' }}>
+            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic', background: 'var(--inset-40)', borderRadius: '10px' }}>
               Belum ada entry transaksi pengeluaran/kasbon kasir hari ini.
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--glass-border)', color: '#94a3b8', textAlign: 'left', background: 'rgba(15, 23, 42, 0.6)' }}>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)', textAlign: 'left', background: 'var(--inset-60)' }}>
                     <th style={{ padding: '10px' }}>Waktu</th>
                     <th style={{ padding: '10px' }}>Isian Peruntukan / Keperluan</th>
                     <th style={{ padding: '10px' }}>Karyawan Terkait</th>
@@ -334,26 +334,26 @@ export default function ShiftKasirPage() {
                     const isMasuk = item.tipe_arus_kas === 'masuk' || item.kategori === 'pengembalian_kasbon';
 
                     return (
-                      <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                        <td style={{ padding: '10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                      <tr key={item.id} style={{ borderBottom: '1px solid var(--w-6)' }}>
+                        <td style={{ padding: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                           {new Date(item.tanggal).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                         </td>
-                        <td style={{ padding: '10px', fontWeight: 700, color: '#f8fafc' }}>
+                        <td style={{ padding: '10px', fontWeight: 700, color: 'var(--text-main)' }}>
                           {item.peruntukan}
                           {item.kategori === 'pembelian_air_baku' && (
-                            <div style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: '2px', fontWeight: 500 }}>
-                              🚛 Vendor: {item.nama_vendor_pengirim || '-'} | Vol: {item.volume_air_masuk_liter || 0} Liter | Harga Air: {AppStore.formatRupiah(item.harga_perolehan_air || 0)} | Tips Sopir: {AppStore.formatRupiah(item.tips_sopir_pengirim || 0)}
+                            <div style={{ fontSize: '0.75rem', color: 'var(--c-sky)', marginTop: '2px', fontWeight: 500 }}>
+                              Vendor: {item.nama_vendor_pengirim || '-'} | Vol: {item.volume_air_masuk_liter || 0} Liter | Harga Air: {AppStore.formatRupiah(item.harga_perolehan_air || 0)} | Tips Sopir: {AppStore.formatRupiah(item.tips_sopir_pengirim || 0)}
                             </div>
                           )}
                           {item.catatan && (
-                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>{item.catatan}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>{item.catatan}</div>
                           )}
                         </td>
-                        <td style={{ padding: '10px', color: '#38bdf8', fontWeight: 600 }}>
+                        <td style={{ padding: '10px', color: 'var(--c-sky)', fontWeight: 600 }}>
                           {item.karyawan_nama ? (
-                            <span>👤 {item.karyawan_nama}</span>
+                            <span>{item.karyawan_nama}</span>
                           ) : (
-                            <span style={{ color: '#64748b' }}>-</span>
+                            <span style={{ color: 'var(--text-muted)' }}>-</span>
                           )}
                         </td>
                         <td style={{ padding: '10px' }}>
@@ -361,8 +361,8 @@ export default function ShiftKasirPage() {
                             {(item.kategori || 'lain_lain').replace('_', ' ').toUpperCase()}
                           </span>
                         </td>
-                        <td style={{ padding: '10px', color: '#cbd5e1' }}>{item.kasir_nama}</td>
-                        <td style={{ padding: '10px', textAlign: 'right', fontWeight: 800, color: isMasuk ? '#34d399' : '#f87171' }}>
+                        <td style={{ padding: '10px', color: 'var(--text-2)' }}>{item.kasir_nama}</td>
+                        <td style={{ padding: '10px', textAlign: 'right', fontWeight: 800, color: isMasuk ? 'var(--c-green)' : 'var(--c-red)' }}>
                           {isMasuk ? `+${AppStore.formatRupiah(item.nominal)}` : `-${AppStore.formatRupiah(item.nominal)}`}
                         </td>
                         <td style={{ padding: '10px', textAlign: 'center' }}>
@@ -385,13 +385,13 @@ export default function ShiftKasirPage() {
         </div>
 
         {/* Section: Daftar Catatan Hutang Toko (Karyawan & Orang Ketiga) */}
-        <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(251, 191, 36, 0.3)', marginBottom: '24px' }}>
+        <div style={{ background: 'var(--inset-70)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(251, 191, 36, 0.3)', marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div>
-              <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <BookOpen size={18} color="#fbbf24" /> Catatan Hutang Toko (Ke Karyawan &amp; Orang Ketiga)
               </h4>
-              <p style={{ color: '#94a3b8', fontSize: '0.78rem', marginTop: '2px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '2px' }}>
                 Pelunasan hutang toko menggunakan uang kasir akan dicatat otomatis sebagai pengeluaran kas.
               </p>
             </div>
@@ -399,14 +399,14 @@ export default function ShiftKasirPage() {
           </div>
 
           {hutangTokoList.length === 0 ? (
-            <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', fontStyle: 'italic', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '10px' }}>
+            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic', background: 'var(--inset-40)', borderRadius: '10px' }}>
               Tidak ada catatan hutang toko.
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--glass-border)', color: '#94a3b8', textAlign: 'left', background: 'rgba(15, 23, 42, 0.6)' }}>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)', textAlign: 'left', background: 'var(--inset-60)' }}>
                     <th style={{ padding: '10px' }}>Tanggal</th>
                     <th style={{ padding: '10px' }}>Nama Pihak (Kreditur)</th>
                     <th style={{ padding: '10px' }}>Tipe</th>
@@ -419,26 +419,26 @@ export default function ShiftKasirPage() {
                 </thead>
                 <tbody>
                   {hutangTokoList.map(item => (
-                    <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                      <td style={{ padding: '10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                    <tr key={item.id} style={{ borderBottom: '1px solid var(--w-6)' }}>
+                      <td style={{ padding: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                         {new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
-                      <td style={{ padding: '10px', fontWeight: 700, color: '#f8fafc' }}>
+                      <td style={{ padding: '10px', fontWeight: 700, color: 'var(--text-main)' }}>
                         {item.nama_pihak}
                       </td>
                       <td style={{ padding: '10px' }}>
                         <span className={`badge ${item.tipe_pihak === 'karyawan' ? 'badge-primary' : 'badge-secondary'}`} style={{ fontSize: '0.68rem' }}>
-                          {item.tipe_pihak === 'karyawan' ? '👤 KARYAWAN' : '🏢 ORANG KE-3'}
+                          {item.tipe_pihak === 'karyawan' ? 'KARYAWAN' : 'ORANG KE-3'}
                         </span>
                       </td>
-                      <td style={{ padding: '10px', color: '#cbd5e1' }}>
+                      <td style={{ padding: '10px', color: 'var(--text-2)' }}>
                         {item.peruntukan}
-                        {item.catatan && <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{item.catatan}</div>}
+                        {item.catatan && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{item.catatan}</div>}
                       </td>
-                      <td style={{ padding: '10px', textAlign: 'right', fontWeight: 600, color: '#cbd5e1' }}>
+                      <td style={{ padding: '10px', textAlign: 'right', fontWeight: 600, color: 'var(--text-2)' }}>
                         {AppStore.formatRupiah(item.nominal_hutang)}
                       </td>
-                      <td style={{ padding: '10px', textAlign: 'right', fontWeight: 800, color: item.sisa_hutang > 0 ? '#f87171' : '#34d399' }}>
+                      <td style={{ padding: '10px', textAlign: 'right', fontWeight: 800, color: item.sisa_hutang > 0 ? 'var(--c-red)' : 'var(--c-green)' }}>
                         {AppStore.formatRupiah(item.sisa_hutang)}
                       </td>
                       <td style={{ padding: '10px', textAlign: 'center' }}>
@@ -467,7 +467,7 @@ export default function ShiftKasirPage() {
                               className="btn btn-success btn-sm"
                               style={{ padding: '4px 8px', fontSize: '0.72rem' }}
                             >
-                              💳 Bayar Kas
+                              Bayar Kas
                             </button>
                           )}
                           <button 
@@ -493,8 +493,8 @@ export default function ShiftKasirPage() {
         </div>
 
         {/* Input Penghitungan Kas Fisik & Penutupan */}
-        <div style={{ background: 'rgba(15, 23, 42, 0.8)', padding: '20px', borderRadius: '16px', border: '1px solid var(--glass-border)', marginBottom: '24px' }}>
-          <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '14px', color: '#f8fafc' }}>
+        <div style={{ background: 'var(--inset-70)', padding: '20px', borderRadius: '16px', border: '1px solid var(--glass-border)', marginBottom: '24px' }}>
+          <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '14px', color: 'var(--text-main)' }}>
             Penghitungan Uang Fisik Di Laci Kasir
           </h4>
 
@@ -524,11 +524,11 @@ export default function ShiftKasirPage() {
           <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px dashed var(--glass-border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem' }}>
               <span>Ekspektasi Uang Di Laci (Awal + Tunai - Pengeluaran):</span>
-              <span style={{ fontWeight: 700, color: '#34d399' }}>{AppStore.formatRupiah(saldoEkspektasiKas)}</span>
+              <span style={{ fontWeight: 700, color: 'var(--c-green)' }}>{AppStore.formatRupiah(saldoEkspektasiKas)}</span>
             </div>
 
             {saldoAktual > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 800, marginTop: '6px', color: selisih === 0 ? '#34d399' : selisih > 0 ? '#38bdf8' : '#f87171' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 800, marginTop: '6px', color: selisih === 0 ? 'var(--c-green)' : selisih > 0 ? 'var(--c-sky)' : 'var(--c-red)' }}>
                 <span>Selisih Kas Fisik:</span>
                 <span>{selisih === 0 ? 'PAS (Rp 0)' : AppStore.formatRupiah(selisih)}</span>
               </div>
@@ -542,15 +542,15 @@ export default function ShiftKasirPage() {
             <Lock size={20} /> Tutup Shift &amp; Serahkan Kas Ke Owner
           </button>
         ) : (
-          <div style={{ textAlign: 'center', padding: '16px', background: 'rgba(16, 185, 129, 0.2)', borderRadius: '12px', color: '#34d399', fontWeight: 700 }}>
+          <div style={{ textAlign: 'center', padding: '16px', background: 'rgba(16, 185, 129, 0.2)', borderRadius: '12px', color: 'var(--c-green)', fontWeight: 700 }}>
             <CheckCircle size={24} style={{ marginBottom: '6px' }} /><br />
             {shiftAktif ? (
               <span>Shift Kasir Berhasil Ditutup! Uang Kas Sebesar <strong>{AppStore.formatRupiah(saldoKasirDisetorOwner)}</strong> Siap Diserahkan Ke Owner.</span>
             ) : (
               <div>
-                <p style={{ margin: '0 0 10px 0', color: '#cbd5e1' }}>Tidak ada shift kasir yang sedang aktif saat ini.</p>
+                <p style={{ margin: '0 0 10px 0', color: 'var(--text-2)' }}>Tidak ada shift kasir yang sedang aktif saat ini.</p>
                 <button onClick={() => setShowBukaModal(true)} className="btn btn-primary" style={{ fontWeight: 700 }}>
-                  🔓 Entri Buka Shift Kasir Baru
+                  Entri Buka Shift Kasir Baru
                 </button>
               </div>
             )}

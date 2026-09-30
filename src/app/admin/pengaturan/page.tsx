@@ -126,7 +126,7 @@ export default function AdminPengaturanPage() {
   const handleOpenStokOpnameModal = () => {
     const curUser = AppStore.getCurrentUser();
     if (curUser?.role !== 'owner') {
-      alert('🔒 Koreksi Stok Opname hanya dapat dilakukan oleh akun Owner!');
+      alert('Koreksi Stok Opname hanya dapat dilakukan oleh akun Owner!');
       return;
     }
     setStokAirBakuInput(pengaturan.stok_air_baku_saat_ini ?? 0);
@@ -385,7 +385,7 @@ export default function AdminPengaturanPage() {
       const allKontak = AppStore.getKontak();
       const updatedKontak = allKontak.map(k => ({ ...k, galon_dipinjam: 0 }));
       AppStore.saveKontak(updatedKontak);
-      alert('🧹 Seluruh data peminjam galon berhasil dikosongkan!');
+      alert('Seluruh data peminjam galon berhasil dikosongkan!');
     }
   };
 
@@ -397,7 +397,7 @@ export default function AdminPengaturanPage() {
     e.preventDefault();
     const curUser = AppStore.getCurrentUser();
     if (curUser?.role !== 'owner') {
-      alert('🔒 Akses ditolak! Hanya Owner yang diperbolehkan menyimpan koreksi Stok Opname.');
+      alert('Akses ditolak! Hanya Owner yang diperbolehkan menyimpan koreksi Stok Opname.');
       return;
     }
 
@@ -429,7 +429,7 @@ export default function AdminPengaturanPage() {
     AppStore.saveKontak(updatedKontak);
 
     setShowStokOpnameModal(false);
-    alert('🎯 Koreksi Stok Opname (Galon Milik Depo, Pinjaman Pelanggan, Meteran Air Awal, & Stok Komponen Mesin) Berhasil Disimpan oleh Owner!');
+    alert('Koreksi Stok Opname (Galon Milik Depo, Pinjaman Pelanggan, Meteran Air Awal, & Stok Komponen Mesin) Berhasil Disimpan oleh Owner!');
   };
 
   return (
@@ -439,10 +439,10 @@ export default function AdminPengaturanPage() {
       <div className="glass-card animate-fade-in" style={{ padding: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Settings size={26} color="#0284c7" /> Pengaturan Depo, Karyawan & Notifikasi Servis
-            </h2>
-            <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '4px' }}>
+            </h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>
               Kelola data karyawan & gaji, identitas toko, batas notifikasi air baku, dan komponen pemeliharaan mesin.
             </p>
           </div>
@@ -455,13 +455,13 @@ export default function AdminPengaturanPage() {
       </div>
 
       {/* SECTION 1: Manajemen Karyawan & Komponen Gaji (NEW USER REQUEST) */}
-      <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid #10b981' }}>
+      <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-green-strong)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Users size={22} color="#10b981" /> Data Karyawan & Ketentuan Komponen Gaji
             </h3>
-            <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '2px' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2px' }}>
               Kelola identitas karyawan, gaji basic bulanan, dan uang makan harian.
             </p>
           </div>
@@ -473,14 +473,14 @@ export default function AdminPengaturanPage() {
         {/* Grid List Karyawan */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: '16px' }}>
           {pengaturan.karyawan_list?.length === 0 ? (
-            <p style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '0.85rem' }}>Belum ada data karyawan. Klik tombol di atas untuk menambah.</p>
+            <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Belum ada data karyawan. Klik tombol di atas untuk menambah.</p>
           ) : (
             pengaturan.karyawan_list?.map(kary => (
               <div key={kary.id} className="glass-card" style={{ padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                     <div>
-                      <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>{kary.nama}</h4>
+                      <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>{kary.nama}</h4>
                       <span className="badge badge-primary" style={{ marginTop: '2px' }}>{kary.jabatan}</span>
                     </div>
                     <span className={`badge ${kary.aktif ? 'badge-success' : 'badge-danger'}`}>
@@ -488,25 +488,25 @@ export default function AdminPengaturanPage() {
                     </span>
                   </div>
 
-                  <div style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '10px' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '10px' }}>
                     <div><Phone size={13} style={{ display: 'inline', marginRight: '4px' }} /> {kary.no_hp || '-'}</div>
                     <div><Calendar size={13} style={{ display: 'inline', marginRight: '4px' }} /> Masuk: {kary.tanggal_masuk || '-'}</div>
-                    <div><KeyRound size={13} style={{ display: 'inline', marginRight: '4px', color: '#f59e0b' }} /> Password: <strong style={{ color: '#f59e0b' }}>{kary.password || '123456'}</strong></div>
+                    <div><KeyRound size={13} style={{ display: 'inline', marginRight: '4px', color: 'var(--c-amber-strong)' }} /> Password: <strong style={{ color: 'var(--c-amber-strong)' }}>{kary.password || '123456'}</strong></div>
                   </div>
 
                   {/* Salary Breakdown Box */}
-                  <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '12px', borderRadius: '10px', marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ background: 'var(--inset-70)', padding: '12px', borderRadius: '10px', marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                      <span style={{ color: '#94a3b8' }}>Gaji Basic:</span>
-                      <strong style={{ color: '#34d399' }}>{AppStore.formatRupiah(kary.gaji_basic)}</strong>
+                      <span style={{ color: 'var(--text-muted)' }}>Gaji Basic:</span>
+                      <strong style={{ color: 'var(--c-green)' }}>{AppStore.formatRupiah(kary.gaji_basic)}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                      <span style={{ color: '#94a3b8' }}>Uang Makan:</span>
-                      <strong style={{ color: '#38bdf8' }}>{AppStore.formatRupiah(kary.uang_makan_per_hari)}/hari</strong>
+                      <span style={{ color: 'var(--text-muted)' }}>Uang Makan:</span>
+                      <strong style={{ color: 'var(--c-sky)' }}>{AppStore.formatRupiah(kary.uang_makan_per_hari)}/hari</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                      <span style={{ color: '#94a3b8' }}>Jatuh Tempo Gaji:</span>
-                      <strong style={{ color: '#fbbf24' }}>Tgl {kary.tanggal_jatuh_tempo_gaji || 25} / bulan</strong>
+                      <span style={{ color: 'var(--text-muted)' }}>Jatuh Tempo Gaji:</span>
+                      <strong style={{ color: 'var(--c-amber)' }}>Tgl {kary.tanggal_jatuh_tempo_gaji || 25} / bulan</strong>
                     </div>
                   </div>
                 </div>
@@ -535,13 +535,13 @@ export default function AdminPengaturanPage() {
       </div>
 
       {/* SECTION STOK OPNAME DEPO & ASSET CONTROL (Khusus Owner) */}
-      <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid #38bdf8' }}>
+      <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-sky)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Package size={22} color="#38bdf8" /> Stok Opname Depo & Koreksi Stok Aset
             </h3>
-            <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '2px' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2px' }}>
               Ringkasan stok galon fisik milik depo, galon dipinjamkan ke pelanggan, meteran air awal, dan stok komponen mesin.
             </p>
           </div>
@@ -552,13 +552,13 @@ export default function AdminPengaturanPage() {
                 type="button" 
                 onClick={handleOpenStokOpnameModal} 
                 className="btn btn-primary"
-                style={{ background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)', display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ background: 'linear-gradient(135deg, var(--c-primary) 0%, var(--c-sky) 100%)', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                ✏️ Koreksi Stok Opname (Owner Only)
+                Koreksi Stok Opname (Owner Only)
               </button>
             ) : (
               <span className="badge badge-warning" style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                🔒 Hanya Owner yang dapat mengkoreksi Stok Opname
+                Hanya Owner yang dapat mengkoreksi Stok Opname
               </span>
             )}
           </div>
@@ -567,36 +567,36 @@ export default function AdminPengaturanPage() {
         {/* Grid 4 Key Opname Highlights */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '20px' }}>
           
-          <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>TOTAL GALON MILIK DEPO</span>
-            <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>
+          <div style={{ background: 'var(--inset-70)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>TOTAL GALON MILIK DEPO</span>
+            <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--c-sky)', marginTop: '4px' }}>
               {pengaturan.stok_galon_milik_depo ?? 500} Galon
             </h4>
-            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Aset fisik galon total</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Aset fisik galon total</span>
           </div>
 
-          <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>GALON DI LOKASI DEPO</span>
-            <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#34d399', marginTop: '4px' }}>
+          <div style={{ background: 'var(--inset-70)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>GALON DI LOKASI DEPO</span>
+            <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--c-green)', marginTop: '4px' }}>
               {pengaturan.stok_galon_di_depo ?? 360} Galon
             </h4>
-            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Stok ready / siap isi & antar</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Stok ready / siap isi & antar</span>
           </div>
 
-          <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>DIPINJAM PELANGGAN</span>
-            <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fbbf24', marginTop: '4px' }}>
+          <div style={{ background: 'var(--inset-70)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>DIPINJAM PELANGGAN</span>
+            <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--c-amber)', marginTop: '4px' }}>
               {(pengaturan.galon_pinjaman_pelanggan || []).reduce((acc, p) => acc + p.jumlah_galon, 0)} Galon
             </h4>
-            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Dari {(pengaturan.galon_pinjaman_pelanggan || []).length} pelanggan / reseller</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Dari {(pengaturan.galon_pinjaman_pelanggan || []).length} pelanggan / reseller</span>
           </div>
 
-          <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>GALON RUSAK / AFKIR</span>
-            <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f87171', marginTop: '4px' }}>
+          <div style={{ background: 'var(--inset-70)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>GALON RUSAK / AFKIR</span>
+            <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--c-red)', marginTop: '4px' }}>
               {pengaturan.stok_galon_rusak ?? 15} Galon
             </h4>
-            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Pecah / tidak terpakai</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Pecah / tidak terpakai</span>
           </div>
 
         </div>
@@ -605,9 +605,9 @@ export default function AdminPengaturanPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '16px' }}>
           
           {/* Card: Rekap Galon Dipinjam Pelanggan */}
-          <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '18px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+          <div style={{ background: 'var(--inset-60)', padding: '18px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Users size={18} color="#fbbf24" /> Daftar Dipinjam Pelanggan Siapa Aja
               </h4>
               {(pengaturan.galon_pinjaman_pelanggan || []).length > 0 && (
@@ -624,14 +624,14 @@ export default function AdminPengaturanPage() {
             </div>
             
             {(pengaturan.galon_pinjaman_pelanggan || []).length === 0 ? (
-              <p style={{ color: '#94a3b8', fontSize: '0.8rem', fontStyle: 'italic' }}>Belum ada galon dipinjamkan.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>Belum ada galon dipinjamkan.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {(pengaturan.galon_pinjaman_pelanggan || []).map((item, idx) => (
                   <div key={item.id || idx} style={{ background: 'rgba(2, 132, 199, 0.08)', padding: '10px 14px', borderRadius: '10px', border: '1px solid rgba(56, 189, 248, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <strong style={{ fontSize: '0.88rem', color: '#f8fafc' }}>{item.nama_pelanggan}</strong>
-                      <p style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '2px' }}>{item.catatan || 'Dipinjamkan'}</p>
+                      <strong style={{ fontSize: '0.88rem', color: 'var(--text-main)' }}>{item.nama_pelanggan}</strong>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-2)', marginTop: '2px' }}>{item.catatan || 'Dipinjamkan'}</p>
                     </div>
                     <span className="badge badge-warning" style={{ fontSize: '0.85rem', fontWeight: 800 }}>
                       {item.jumlah_galon} Galon
@@ -646,20 +646,20 @@ export default function AdminPengaturanPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             
             {/* Meteran Air Awal Box */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '18px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
-              <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ background: 'var(--inset-60)', padding: '18px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Gauge size={18} color="#38bdf8" /> Meteran Air Awal (Flowmeter Baseline)
               </h4>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
                 <div>
-                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Angka Awal / Baseline:</span>
-                  <h5 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#38bdf8' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Angka Awal / Baseline:</span>
+                  <h5 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--c-sky)' }}>
                     {(pengaturan.meteran_air_awal_liter ?? 125000).toLocaleString('id-ID')} Liter
                   </h5>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Konversi M³:</span>
-                  <h5 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#34d399' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Konversi M³:</span>
+                  <h5 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--c-green)' }}>
                     {((pengaturan.meteran_air_awal_liter ?? 125000) / 1000).toFixed(1)} M³
                   </h5>
                 </div>
@@ -667,19 +667,19 @@ export default function AdminPengaturanPage() {
             </div>
 
             {/* Stok Komponen Mesin Box */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '18px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
-              <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ background: 'var(--inset-60)', padding: '18px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Wrench size={18} color="#f59e0b" /> Stok Komponen Mesin & Sparepart Cadangan
               </h4>
 
               {(pengaturan.komponen_servis_list || []).length === 0 ? (
-                <p style={{ color: '#94a3b8', fontSize: '0.8rem', fontStyle: 'italic' }}>Belum ada komponen mesin tercatat.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>Belum ada komponen mesin tercatat.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {(pengaturan.komponen_servis_list || []).map((komp) => (
-                    <div key={komp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.83rem', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '6px' }}>
-                      <span style={{ color: '#cbd5e1' }}>{komp.nama_komponen}</span>
-                      <strong style={{ color: (komp.stok_komponen ?? 0) <= 2 ? '#f87171' : '#34d399' }}>
+                    <div key={komp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.83rem', borderBottom: '1px dashed var(--w-10)', paddingBottom: '6px' }}>
+                      <span style={{ color: 'var(--text-2)' }}>{komp.nama_komponen}</span>
+                      <strong style={{ color: (komp.stok_komponen ?? 0) <= 2 ? 'var(--c-red)' : 'var(--c-green)' }}>
                         {komp.stok_komponen ?? 0} Pcs Cadangan
                       </strong>
                     </div>
@@ -698,7 +698,7 @@ export default function AdminPengaturanPage() {
         
         {/* SECTION 2: Logo & Nama Toko */}
         <div className="glass-card animate-fade-in" style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ImageIcon size={22} color="#0284c7" /> Logo & Nama Resmi Depo/Toko
           </h3>
 
@@ -708,14 +708,14 @@ export default function AdminPengaturanPage() {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
               <div style={{
                 width: '140px', height: '140px', borderRadius: '16px',
-                border: '2px dashed var(--accent)', background: 'rgba(15, 23, 42, 0.6)',
+                border: '2px dashed var(--accent)', background: 'var(--inset-60)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
                 position: 'relative'
               }}>
                 {logoPreview ? (
                   <img src={logoPreview} alt="Logo Depo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <div style={{ textAlign: 'center', color: '#94a3b8', padding: '10px' }}>
+                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '10px' }}>
                     <Droplets size={40} color="#0284c7" style={{ opacity: 0.6 }} />
                     <p style={{ fontSize: '0.75rem', marginTop: '4px' }}>Belum ada logo</p>
                   </div>
@@ -734,7 +734,7 @@ export default function AdminPengaturanPage() {
                   </button>
                 )}
               </div>
-              <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>PNG, JPG, WEBP (Max 3MB)</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>PNG, JPG, WEBP (Max 3MB)</span>
             </div>
 
             {/* Nama & Tagline Form */}
@@ -793,11 +793,11 @@ export default function AdminPengaturanPage() {
         </div>
 
         {/* SECTION Target Penjualan Harian & Periode */}
-        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid #10b981' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-green-strong)' }}>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Target size={22} color="#10b981" /> Target Penjualan Harian & Periode
           </h3>
-          <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '16px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '16px' }}>
             Atur target penjualan omzet (Rp) dan volume penjualan galon untuk harian, mingguan, bulanan, dan tahunan yang tampil di Dashboard Owner.
           </p>
 
@@ -873,27 +873,27 @@ export default function AdminPengaturanPage() {
         </div>
 
         {/* SECTION Notifikasi & Alarm Keterlambatan Pengiriman */}
-        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid #ef4444' }}>
+        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-red-strong)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Bell size={22} color="#ef4444" /> Pengaturan Notifikasi & Alarm Keterlambatan Pengiriman
               </h3>
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '2px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2px' }}>
                 Atur status aktif alarm pengingat, batas menit keterlambatan pengiriman, durasi snooze, dan mode suara alarm.
               </p>
             </div>
             <span className={`badge ${pengaturan.notifikasi_alarm_aktif !== false ? 'badge-danger' : 'badge-secondary'}`}>
-              {pengaturan.notifikasi_alarm_aktif !== false ? '🚨 Alarm Active' : '🔕 Alarm Nonaktif'}
+              {pengaturan.notifikasi_alarm_aktif !== false ? 'Alarm Active' : 'Alarm Nonaktif'}
             </span>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
             
             {/* Status Master Switch */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
-                <label className="form-label" style={{ fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span>Master Alarm Pengiriman</span>
                   <input 
                     type="checkbox" 
@@ -902,37 +902,37 @@ export default function AdminPengaturanPage() {
                     style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                   />
                 </label>
-                <p style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '6px' }}>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-2)', marginTop: '6px' }}>
                   {pengaturan.notifikasi_alarm_aktif !== false 
-                    ? '✅ Alarm pengingat pengiriman aktif dan berbunyi jika ada pesanan terlambat.' 
-                    : '⛔ Alarm suara pengiriman dimatikan sepenuhnya (Silent/Off).'}
+                    ? 'Alarm pengingat pengiriman aktif dan berbunyi jika ada pesanan terlambat.' 
+                    : 'Alarm suara pengiriman dimatikan sepenuhnya (Silent/Off).'}
                 </p>
               </div>
             </div>
 
             {/* Mode Suara Alarm */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
-                <label className="form-label" style={{ fontWeight: 700, color: '#f8fafc' }}>Tipe / Mode Alarm Suara</label>
+                <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)' }}>Tipe / Mode Alarm Suara</label>
                 <select 
                   value={pengaturan.mode_suara_alarm || 'beep_suara'}
                   onChange={(e) => setPengaturan(prev => ({ ...prev, mode_suara_alarm: e.target.value as any }))}
                   className="form-select"
                   style={{ marginTop: '4px' }}
                 >
-                  <option value="beep_suara">🔊 Audio Beep Synthesizer (Aktif Suara Siren)</option>
-                  <option value="silent">🔕 Notifikasi Visual Saja (Silent / Tanpa Suara)</option>
+                  <option value="beep_suara">Audio Beep Synthesizer (Aktif Suara Siren)</option>
+                  <option value="silent">Notifikasi Visual Saja (Silent / Tanpa Suara)</option>
                 </select>
-                <p style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '6px' }}>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-2)', marginTop: '6px' }}>
                   Pilih apakah alarm membunyikan audio sirine atau hanya tanda merah visual.
                 </p>
               </div>
             </div>
 
             {/* Batas Menit Keterlambatan */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
-                <label className="form-label" style={{ fontWeight: 700, color: '#f8fafc' }}>
+                <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)' }}>
                   Batas Keterlambatan (Berapa Menit Alarm Bunyi)
                 </label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
@@ -945,18 +945,18 @@ export default function AdminPengaturanPage() {
                     min={1}
                     required 
                   />
-                  <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>Menit</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Menit</span>
                 </div>
-                <p style={{ fontSize: '0.75rem', color: '#fbbf24', marginTop: '6px' }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--c-amber)', marginTop: '6px' }}>
                   Default: 90 Menit (1.5 Jam). Pesanan pending &gt;= durasi ini akan memicu alarm.
                 </p>
               </div>
             </div>
 
             {/* Durasi Snooze Menit */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
-                <label className="form-label" style={{ fontWeight: 700, color: '#f8fafc' }}>
+                <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)' }}>
                   Durasi Snooze / Tunda Alarm (Menit)
                 </label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
@@ -969,9 +969,9 @@ export default function AdminPengaturanPage() {
                     min={1}
                     required 
                   />
-                  <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>Menit</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Menit</span>
                 </div>
-                <p style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: '6px' }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--c-sky)', marginTop: '6px' }}>
                   Default: 15 Menit. Alarm diam sementara dan berbunyi lagi jika durasi snooze berakhir.
                 </p>
               </div>
@@ -981,27 +981,27 @@ export default function AdminPengaturanPage() {
         </div>
 
         {/* SECTION 3: Notifikasi Stok Air Baku */}
-        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid #0284c7' }}>
+        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-primary)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Droplets size={22} color="#0284c7" /> Batas Notifikasi Stok Air Baku Menipis
               </h3>
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '2px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2px' }}>
                 Atur status aktif notifikasi dan batas minimum air baku di tangki utama. Sistem akan memberi alert merah jika stok di bawah batas ini.
               </p>
             </div>
             <span className={`badge ${pengaturan.notifikasi_air_baku_aktif !== false ? 'badge-primary' : 'badge-secondary'}`}>
-              {pengaturan.notifikasi_air_baku_aktif !== false ? '💧 Notifikasi Air Baku Aktif' : '🔕 Notifikasi Dimatikan'}
+              {pengaturan.notifikasi_air_baku_aktif !== false ? 'Notifikasi Air Baku Aktif' : 'Notifikasi Dimatikan'}
             </span>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
             
             {/* Status Master Switch Air Baku */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
-                <label className="form-label" style={{ fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span>Master Notifikasi Air Baku</span>
                   <input 
                     type="checkbox" 
@@ -1010,17 +1010,17 @@ export default function AdminPengaturanPage() {
                     style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                   />
                 </label>
-                <p style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '6px' }}>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-2)', marginTop: '6px' }}>
                   {pengaturan.notifikasi_air_baku_aktif !== false 
-                    ? '✅ Notifikasi & alarm peringatan stok air baku menipis aktif.' 
-                    : '⛔ Notifikasi & alarm stok air baku menipis dimatikan (Off).'}
+                    ? 'Notifikasi & alarm peringatan stok air baku menipis aktif.' 
+                    : 'Notifikasi & alarm stok air baku menipis dimatikan (Off).'}
                 </p>
               </div>
             </div>
 
-            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
-                <label className="form-label" style={{ fontWeight: 700, color: '#f8fafc' }}>Batas Minimum Notifikasi (Liter)</label>
+                <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)' }}>Batas Minimum Notifikasi (Liter)</label>
                 <input 
                   type="number" 
                   className="form-input" 
@@ -1030,13 +1030,13 @@ export default function AdminPengaturanPage() {
                   style={{ marginTop: '4px' }}
                   required 
                 />
-                <span style={{ fontSize: '0.75rem', color: '#fbbf24', marginTop: '6px', display: 'block' }}>Default: ≤ 2.000 Liter</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--c-amber)', marginTop: '6px', display: 'block' }}>Default: ≤ 2.000 Liter</span>
               </div>
             </div>
 
-            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
-                <label className="form-label" style={{ fontWeight: 700, color: '#f8fafc' }}>Stok Air Baku Tangki Saat Ini (Liter)</label>
+                <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)' }}>Stok Air Baku Tangki Saat Ini (Liter)</label>
                 <input 
                   type="number" 
                   className="form-input" 
@@ -1046,7 +1046,7 @@ export default function AdminPengaturanPage() {
                   style={{ marginTop: '4px' }}
                   required 
                 />
-                <span style={{ fontSize: '0.75rem', color: '#34d399', marginTop: '6px', display: 'block' }}>Kapasitas tangki aktif</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--c-green)', marginTop: '6px', display: 'block' }}>Kapasitas tangki aktif</span>
               </div>
             </div>
 
@@ -1054,13 +1054,13 @@ export default function AdminPengaturanPage() {
         </div>
 
         {/* SECTION 4: Komponen Mesin & Jadwal Servis (Satuan Liter) */}
-        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid #f59e0b' }}>
+        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-amber-strong)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Wrench size={22} color="#f59e0b" /> Komponen Mesin & Jadwal Servis (Satuan Liter)
               </h3>
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '2px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2px' }}>
                 Notifikasi otomatis berdasarkan akumulasi liter air yang diproduksi & terjual.
               </p>
             </div>
@@ -1071,17 +1071,17 @@ export default function AdminPengaturanPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {pengaturan.komponen_servis_list?.length === 0 ? (
-              <p style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '0.85rem' }}>Belum ada komponen servis. Klik tombol di atas untuk menambah.</p>
+              <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Belum ada komponen servis. Klik tombol di atas untuk menambah.</p>
             ) : (
               pengaturan.komponen_servis_list?.map((komp, idx) => (
                 <div key={komp.id} style={{
-                  background: 'rgba(15, 23, 42, 0.6)', border: '1px solid var(--glass-border)',
+                  background: 'var(--inset-60)', border: '1px solid var(--glass-border)',
                   borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="badge badge-warning" style={{ fontSize: '0.75rem' }}>Komponen #{idx + 1}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                         <input 
                           type="checkbox" 
                           checked={komp.aktif} 
@@ -1089,7 +1089,7 @@ export default function AdminPengaturanPage() {
                           style={{ width: '16px', height: '16px' }}
                         /> Notifikasi Aktif
                       </label>
-                      <button type="button" onClick={() => handleDeleteKomponen(komp.id)} className="btn btn-danger btn-sm" style={{ padding: '4px 8px' }}>
+                      <button type="button" onClick={() => handleDeleteKomponen(komp.id)} className="btn btn-danger btn-sm" aria-label="Hapus komponen" style={{ padding: '4px 8px' }}>
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -1163,7 +1163,7 @@ export default function AdminPengaturanPage() {
 
         {/* SECTION 5: Kontak & Alamat Depo */}
         <div className="glass-card animate-fade-in" style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc', marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '16px' }}>
             Informasi Alamat & Struk
           </h3>
 
@@ -1229,13 +1229,13 @@ export default function AdminPengaturanPage() {
         </div>
 
         {/* SECTION 6: DANGER ZONE - Reset Database (Pilihan Data) */}
-        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid #ef4444' }}>
+        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-red-strong)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fca5a5', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--c-red-soft)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <AlertTriangle size={22} color="#ef4444" /> Reset Database (Pilihan Data Kategori)
               </h3>
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '2px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2px' }}>
                 Pilih kategori data yang ingin direset atau dihapus secara aman dari penyimpanan lokal.
               </p>
             </div>
@@ -1251,109 +1251,109 @@ export default function AdminPengaturanPage() {
             
             {/* Option 1: Pesanan & Omzet */}
             <label style={{
-              background: resetOptions.pesanan ? 'rgba(239, 68, 68, 0.2)' : 'rgba(15, 23, 42, 0.6)',
-              border: resetOptions.pesanan ? '1px solid #ef4444' : '1px solid var(--glass-border)',
+              background: resetOptions.pesanan ? 'rgba(239, 68, 68, 0.2)' : 'var(--inset-60)',
+              border: resetOptions.pesanan ? '1px solid var(--c-red-strong)' : '1px solid var(--glass-border)',
               borderRadius: '12px', padding: '14px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '10px', transition: 'all 0.2s'
             }}>
               <input 
                 type="checkbox" 
                 checked={resetOptions.pesanan} 
                 onChange={() => handleToggleResetOption('pesanan')}
-                style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: '#ef4444' }}
+                style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: 'var(--c-red-strong)' }}
               />
               <div>
-                <strong style={{ color: '#f8fafc', fontSize: '0.9rem', display: 'block' }}>📜 Riwayat Transaksi & Laporan</strong>
-                <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Hapus semua nota penjualan, riwayat POS & reset laporan omzet Laba Rugi</span>
+                <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem', display: 'block' }}>Riwayat Transaksi & Laporan</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Hapus semua nota penjualan, riwayat POS & reset laporan omzet Laba Rugi</span>
               </div>
             </label>
 
             {/* Option 2: Kontak & Hutang */}
             <label style={{
-              background: resetOptions.kontak ? 'rgba(239, 68, 68, 0.2)' : 'rgba(15, 23, 42, 0.6)',
-              border: resetOptions.kontak ? '1px solid #ef4444' : '1px solid var(--glass-border)',
+              background: resetOptions.kontak ? 'rgba(239, 68, 68, 0.2)' : 'var(--inset-60)',
+              border: resetOptions.kontak ? '1px solid var(--c-red-strong)' : '1px solid var(--glass-border)',
               borderRadius: '12px', padding: '14px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '10px', transition: 'all 0.2s'
             }}>
               <input 
                 type="checkbox" 
                 checked={resetOptions.kontak} 
                 onChange={() => handleToggleResetOption('kontak')}
-                style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: '#ef4444' }}
+                style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: 'var(--c-red-strong)' }}
               />
               <div>
-                <strong style={{ color: '#f8fafc', fontSize: '0.9rem', display: 'block' }}>👥 Data Pelanggan & Reseller</strong>
-                <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Kembalikan daftar pelanggan & nol-kan seluruh catatan piutang/hutang</span>
+                <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem', display: 'block' }}>Data Pelanggan & Reseller</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Kembalikan daftar pelanggan & nol-kan seluruh catatan piutang/hutang</span>
               </div>
             </label>
 
             {/* Option 3: Produk & Harga */}
             <label style={{
-              background: resetOptions.produk ? 'rgba(239, 68, 68, 0.2)' : 'rgba(15, 23, 42, 0.6)',
-              border: resetOptions.produk ? '1px solid #ef4444' : '1px solid var(--glass-border)',
+              background: resetOptions.produk ? 'rgba(239, 68, 68, 0.2)' : 'var(--inset-60)',
+              border: resetOptions.produk ? '1px solid var(--c-red-strong)' : '1px solid var(--glass-border)',
               borderRadius: '12px', padding: '14px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '10px', transition: 'all 0.2s'
             }}>
               <input 
                 type="checkbox" 
                 checked={resetOptions.produk} 
                 onChange={() => handleToggleResetOption('produk')}
-                style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: '#ef4444' }}
+                style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: 'var(--c-red-strong)' }}
               />
               <div>
-                <strong style={{ color: '#f8fafc', fontSize: '0.9rem', display: 'block' }}>📦 Data Produk & Wadah</strong>
-                <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Reset daftar produk & harga ke pengaturan standar awal</span>
+                <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem', display: 'block' }}>Data Produk & Wadah</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Reset daftar produk & harga ke pengaturan standar awal</span>
               </div>
             </label>
 
             {/* Option 4: Zona Ongkir */}
             <label style={{
-              background: resetOptions.zona ? 'rgba(239, 68, 68, 0.2)' : 'rgba(15, 23, 42, 0.6)',
-              border: resetOptions.zona ? '1px solid #ef4444' : '1px solid var(--glass-border)',
+              background: resetOptions.zona ? 'rgba(239, 68, 68, 0.2)' : 'var(--inset-60)',
+              border: resetOptions.zona ? '1px solid var(--c-red-strong)' : '1px solid var(--glass-border)',
               borderRadius: '12px', padding: '14px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '10px', transition: 'all 0.2s'
             }}>
               <input 
                 type="checkbox" 
                 checked={resetOptions.zona} 
                 onChange={() => handleToggleResetOption('zona')}
-                style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: '#ef4444' }}
+                style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: 'var(--c-red-strong)' }}
               />
               <div>
-                <strong style={{ color: '#f8fafc', fontSize: '0.9rem', display: 'block' }}>🚚 Data Zona Ongkir</strong>
-                <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Reset daftar zona pengiriman & tarif per unit ke default</span>
+                <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem', display: 'block' }}>Data Zona Ongkir</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Reset daftar zona pengiriman & tarif per unit ke default</span>
               </div>
             </label>
 
             {/* Option 5: Notifikasi & Servis Mesin */}
             <label style={{
-              background: resetOptions.servis ? 'rgba(239, 68, 68, 0.2)' : 'rgba(15, 23, 42, 0.6)',
-              border: resetOptions.servis ? '1px solid #ef4444' : '1px solid var(--glass-border)',
+              background: resetOptions.servis ? 'rgba(239, 68, 68, 0.2)' : 'var(--inset-60)',
+              border: resetOptions.servis ? '1px solid var(--c-red-strong)' : '1px solid var(--glass-border)',
               borderRadius: '12px', padding: '14px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '10px', transition: 'all 0.2s'
             }}>
               <input 
                 type="checkbox" 
                 checked={resetOptions.servis} 
                 onChange={() => handleToggleResetOption('servis')}
-                style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: '#ef4444' }}
+                style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: 'var(--c-red-strong)' }}
               />
               <div>
-                <strong style={{ color: '#f8fafc', fontSize: '0.9rem', display: 'block' }}>🛠️ Counter Servis & Air Baku</strong>
-                <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Reset akumulasi liter produksi komponen mesin & stok air baku</span>
+                <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem', display: 'block' }}>Counter Servis & Air Baku</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Reset akumulasi liter produksi komponen mesin & stok air baku</span>
               </div>
             </label>
 
             {/* Option 6: Karyawan */}
             <label style={{
-              background: resetOptions.karyawan ? 'rgba(239, 68, 68, 0.2)' : 'rgba(15, 23, 42, 0.6)',
-              border: resetOptions.karyawan ? '1px solid #ef4444' : '1px solid var(--glass-border)',
+              background: resetOptions.karyawan ? 'rgba(239, 68, 68, 0.2)' : 'var(--inset-60)',
+              border: resetOptions.karyawan ? '1px solid var(--c-red-strong)' : '1px solid var(--glass-border)',
               borderRadius: '12px', padding: '14px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '10px', transition: 'all 0.2s'
             }}>
               <input 
                 type="checkbox" 
                 checked={resetOptions.karyawan} 
                 onChange={() => handleToggleResetOption('karyawan')}
-                style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: '#ef4444' }}
+                style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: 'var(--c-red-strong)' }}
               />
               <div>
-                <strong style={{ color: '#f8fafc', fontSize: '0.9rem', display: 'block' }}>👷 Data Karyawan & Gaji</strong>
-                <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Mengosongkan seluruh daftar karyawan & komponen gaji</span>
+                <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem', display: 'block' }}>Data Karyawan & Gaji</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Mengosongkan seluruh daftar karyawan & komponen gaji</span>
               </div>
             </label>
 
@@ -1363,7 +1363,7 @@ export default function AdminPengaturanPage() {
           <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--glass-border)' }}>
             <label style={{
               background: resetOptions.factoryAll ? 'rgba(239, 68, 68, 0.35)' : 'rgba(239, 68, 68, 0.1)',
-              border: '2px dashed #ef4444',
+              border: '2px dashed var(--c-red-strong)',
               borderRadius: '12px', padding: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1371,11 +1371,11 @@ export default function AdminPengaturanPage() {
                   type="checkbox" 
                   checked={resetOptions.factoryAll} 
                   onChange={() => handleToggleResetOption('factoryAll')}
-                  style={{ width: '20px', height: '20px', accentColor: '#ef4444' }}
+                  style={{ width: '20px', height: '20px', accentColor: 'var(--c-red-strong)' }}
                 />
                 <div>
-                  <strong style={{ color: '#ef4444', fontSize: '1rem', display: 'block' }}>⚠️ FACTORY RESET TOTAL (PILIH SEMUA)</strong>
-                  <span style={{ color: '#fca5a5', fontSize: '0.8rem' }}>Bersihkan seluruh sistem & kembalikan ke kondisi awal instalasi baru</span>
+                  <strong style={{ color: 'var(--c-red-strong)', fontSize: '1rem', display: 'block' }}>FACTORY RESET TOTAL (PILIH SEMUA)</strong>
+                  <span style={{ color: 'var(--c-red-soft)', fontSize: '0.8rem' }}>Bersihkan seluruh sistem & kembalikan ke kondisi awal instalasi baru</span>
                 </div>
               </div>
               <button 
@@ -1405,15 +1405,15 @@ export default function AdminPengaturanPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px'
         }}>
           <div className="glass-card animate-fade-in" style={{
-            width: '100%', maxWidth: '560px', padding: '28px', background: '#0f172a',
+            width: '100%', maxWidth: '560px', padding: '28px', background: 'var(--surface-solid)',
             maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--glass-border)',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
                 {editingKaryawanId ? 'Edit Data Karyawan & Gaji' : 'Tambah Karyawan Baru'}
               </h3>
-              <button type="button" onClick={() => setShowKaryawanModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+              <button aria-label="Tutup" type="button" onClick={() => setShowKaryawanModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
@@ -1421,8 +1421,8 @@ export default function AdminPengaturanPage() {
             <form onSubmit={handleSaveKaryawan} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               
               {/* Identitas Karyawan */}
-              <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px' }}>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#38bdf8', marginBottom: '12px' }}>Identitas Karyawan</h4>
+              <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--c-sky)', marginBottom: '12px' }}>Identitas Karyawan</h4>
                 
                 <div className="form-group">
                   <label className="form-label">Nama Lengkap Karyawan</label>
@@ -1491,8 +1491,8 @@ export default function AdminPengaturanPage() {
               </div>
 
               {/* Struktur Gaji */}
-              <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px' }}>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#34d399', marginBottom: '12px' }}>Ketentuan & Komponen Gaji</h4>
+              <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--c-green)', marginBottom: '12px' }}>Ketentuan & Komponen Gaji</h4>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div className="form-group">
@@ -1532,7 +1532,7 @@ export default function AdminPengaturanPage() {
                     placeholder="25" 
                     required 
                   />
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px', display: 'block' }}>Default: Tanggal 25 setiap bulannya</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>Default: Tanggal 25 setiap bulannya</span>
                 </div>
 
                 <div className="form-group" style={{ marginTop: '12px' }}>
@@ -1572,8 +1572,8 @@ export default function AdminPengaturanPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '16px'
         }}>
           <div className="glass-card animate-fade-in" style={{
-            width: '100%', maxWidth: '480px', padding: '28px', background: '#0f172a',
-            border: '2px solid #ef4444', boxShadow: '0 0 35px rgba(239, 68, 68, 0.4)'
+            width: '100%', maxWidth: '480px', padding: '28px', background: 'var(--surface-solid)',
+            border: '2px solid var(--c-red-strong)', boxShadow: '0 0 35px rgba(239, 68, 68, 0.4)'
           }}>
             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
               <div style={{
@@ -1582,20 +1582,20 @@ export default function AdminPengaturanPage() {
               }}>
                 <AlertTriangle size={32} color="#ef4444" />
               </div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
                 Konfirmasi Reset Data Depo
               </h3>
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '4px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>
                 Tindakan ini akan menghapus data kategori yang Anda pilih secara permanen!
               </p>
             </div>
 
             <form onSubmit={handleExecuteReset} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Kategori yang akan di-reset:</span>
-                <ul style={{ paddingLeft: '20px', color: '#fca5a5', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Kategori yang akan di-reset:</span>
+                <ul style={{ paddingLeft: '20px', color: 'var(--c-red-soft)', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {resetOptions.factoryAll ? (
-                    <li style={{ color: '#ef4444', fontWeight: 800 }}>FACTORY RESET TOTAL (Seluruh Database)</li>
+                    <li style={{ color: 'var(--c-red-strong)', fontWeight: 800 }}>FACTORY RESET TOTAL (Seluruh Database)</li>
                   ) : (
                     <>
                       {resetOptions.pesanan && <li>Riwayat Transaksi & Laporan Penjualan</li>}
@@ -1610,7 +1610,7 @@ export default function AdminPengaturanPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ color: '#fca5a5' }}>
+                <label className="form-label" style={{ color: 'var(--c-red-soft)' }}>
                   Ketik kata <strong>"RESET"</strong> di bawah untuk mengonfirmasi:
                 </label>
                 <input 
@@ -1620,7 +1620,7 @@ export default function AdminPengaturanPage() {
                   onChange={(e) => setResetConfirmInput(e.target.value)}
                   placeholder="Ketik RESET..." 
                   required
-                  style={{ borderColor: '#ef4444' }}
+                  style={{ borderColor: 'var(--c-red-strong)' }}
                 />
               </div>
 
@@ -1655,13 +1655,13 @@ export default function AdminPengaturanPage() {
         }}>
           <div className="glass-card animate-fade-in" style={{
             width: '100%', maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto',
-            padding: '28px', background: '#0f172a', border: '2px solid #38bdf8'
+            padding: '28px', background: 'var(--surface-solid)', border: '2px solid var(--c-sky)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Package size={22} color="#38bdf8" /> Koreksi Stok Opname Aset Depo (Khusus Owner)
               </h3>
-              <button onClick={() => setShowStokOpnameModal(false)} className="btn btn-secondary btn-sm" style={{ padding: '4px 8px' }}>
+              <button aria-label="Tutup" onClick={() => setShowStokOpnameModal(false)} className="btn btn-secondary btn-sm" style={{ padding: '4px 8px' }}>
                 <X size={18} />
               </button>
             </div>
@@ -1669,8 +1669,8 @@ export default function AdminPengaturanPage() {
             <form onSubmit={handleSaveStokOpnameCorrection} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               
               {/* 1. Galon Physical Assets */}
-              <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#38bdf8', marginBottom: '12px' }}>
+              <div style={{ background: 'var(--inset-70)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--c-sky)', marginBottom: '12px' }}>
                   1. Stok Galon Milik Depo & Status Fisik
                 </h4>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
@@ -1711,8 +1711,8 @@ export default function AdminPengaturanPage() {
               </div>
 
               {/* 2. Meteran Air Awal & Stok Air Baku Tangki */}
-              <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#38bdf8', marginBottom: '12px' }}>
+              <div style={{ background: 'var(--inset-70)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--c-sky)', marginBottom: '12px' }}>
                   2. Stok Air Baku Tangki &amp; Meteran Air Awal
                 </h4>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
@@ -1727,7 +1727,7 @@ export default function AdminPengaturanPage() {
                       min={0}
                       required 
                     />
-                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
                       Air fisik yang tersisa di dalam tangki depo.
                     </span>
                   </div>
@@ -1742,7 +1742,7 @@ export default function AdminPengaturanPage() {
                       min={0}
                       required 
                     />
-                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
                       Setara {((Number(meteranAirAwalInput) || 0) / 1000).toFixed(1)} M³ awal pada meteran.
                     </span>
                   </div>
@@ -1750,9 +1750,9 @@ export default function AdminPengaturanPage() {
               </div>
 
               {/* 3. Galon Dipinjam Pelanggan */}
-              <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              <div style={{ background: 'var(--inset-70)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#fbbf24', margin: 0 }}>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--c-amber)', margin: 0 }}>
                     3. Galon Dipinjam Pelanggan Siapa Aja
                   </h4>
                   {pinjamanListState.length > 0 && (
@@ -1770,7 +1770,7 @@ export default function AdminPengaturanPage() {
 
                 {/* Form Tambah Item Pinjaman */}
                 <div style={{ background: 'rgba(2, 132, 199, 0.1)', padding: '12px', borderRadius: '10px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#38bdf8' }}>+ Tambah Data Pinjaman Pelanggan</span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--c-sky)' }}>+ Tambah Data Pinjaman Pelanggan</span>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: '8px' }}>
                     <select 
                       value={newPinjamKontakId} 
@@ -1827,17 +1827,17 @@ export default function AdminPengaturanPage() {
                 {/* Table Daftar Pinjaman */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
                   {pinjamanListState.length === 0 ? (
-                    <p style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>Belum ada data pinjaman.</p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Belum ada data pinjaman.</p>
                   ) : (
                     pinjamanListState.map((p, idx) => (
-                      <div key={p.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(15, 23, 42, 0.6)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                      <div key={p.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--inset-60)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
                         <div>
-                          <strong style={{ fontSize: '0.85rem', color: '#f8fafc' }}>{p.nama_pelanggan}</strong>
-                          <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block' }}>{p.catatan || 'Dipinjam'}</span>
+                          <strong style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{p.nama_pelanggan}</strong>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>{p.catatan || 'Dipinjam'}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span className="badge badge-warning">{p.jumlah_galon} Galon</span>
-                          <button type="button" onClick={() => handleDeletePinjamanItem(p.id)} className="btn btn-danger btn-sm" style={{ padding: '2px 6px' }}>
+                          <button type="button" onClick={() => handleDeletePinjamanItem(p.id)} className="btn btn-danger btn-sm" aria-label="Hapus data peminjam galon" style={{ padding: '2px 6px' }}>
                             <Trash2 size={12} />
                           </button>
                         </div>
@@ -1849,15 +1849,15 @@ export default function AdminPengaturanPage() {
               </div>
 
               {/* 4. Stok Komponen Mesin */}
-              <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#f59e0b', marginBottom: '12px' }}>
+              <div style={{ background: 'var(--inset-70)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--c-amber-strong)', marginBottom: '12px' }}>
                   4. Stok Komponen Mesin & Sparepart (Pcs Cadangan)
                 </h4>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {komponenStokState.map((k) => (
                     <div key={k.id} style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '12px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>{k.nama_komponen}</span>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>{k.nama_komponen}</span>
                       <input 
                         type="number" 
                         className="form-input" 
@@ -1876,7 +1876,7 @@ export default function AdminPengaturanPage() {
                 <button type="button" onClick={() => setShowStokOpnameModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>
                   Batal
                 </button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1, background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)', fontWeight: 700 }}>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1, background: 'linear-gradient(135deg, var(--c-primary) 0%, var(--c-sky) 100%)', fontWeight: 700 }}>
                   <Save size={16} /> Simpan Koreksi Stok Opname
                 </button>
               </div>

@@ -4,8 +4,10 @@ import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AppStore } from '@/lib/store';
 import { initSync } from '@/lib/sync';
+import { watchFormLabels } from '@/lib/a11y';
 import { UserRole } from '@/lib/types';
 import Navbar from '@/components/Navbar';
+import ToastHost from '@/components/ToastHost';
 
 // Halaman yang boleh dibuka tiap peran (prefix path)
 const ROLE_ACCESS: Record<UserRole, string[]> = {
@@ -33,6 +35,8 @@ export default function ClientShell({ children }: { children: React.ReactNode })
     initSync().finally(() => setSynced(true));
   }, []);
 
+  useEffect(() => watchFormLabels(), []);
+
   useEffect(() => {
     if (!synced) return;
     setAllowed(false);
@@ -58,22 +62,30 @@ export default function ClientShell({ children }: { children: React.ReactNode })
     setAllowed(true);
   }, [pathname, synced]);
 
+  let content: React.ReactNode = null;
+
   if (!synced) {
-    return (
-      <div style={{ display: 'flex', minHeight: '80vh', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+    content = (
+      <div role="status" style={{ display: 'flex', minHeight: '80vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
         Menyinkronkan data...
       </div>
     );
+  } else if (allowed) {
+    content = (
+      <>
+        <a href="#konten-utama" className="skip-link">Lewati ke konten utama</a>
+        <Navbar />
+        <main id="konten-utama" tabIndex={-1} style={{ padding: '0 16px 40px 16px', maxWidth: '1280px', margin: '0 auto', outline: 'none' }}>
+          {children}
+        </main>
+      </>
+    );
   }
-
-  if (!allowed) return null;
 
   return (
     <>
-      <Navbar />
-      <main style={{ padding: '0 16px 40px 16px', maxWidth: '1280px', margin: '0 auto' }}>
-        {children}
-      </main>
+      <ToastHost />
+      {content}
     </>
   );
 }

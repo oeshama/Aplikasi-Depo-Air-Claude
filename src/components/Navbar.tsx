@@ -7,8 +7,9 @@ import { AppStore } from '@/lib/store';
 import { UserApp, UserRole } from '@/lib/types';
 import { 
   Droplets, ShoppingCart, Users, Package, MapPin, 
-  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings
+  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon
 } from 'lucide-react';
+import { getTheme, setTheme, Theme } from '@/lib/theme';
 
 import TutupShiftModal from '@/components/TutupShiftModal';
 import { getSyncStatus, SyncStatus } from '@/lib/sync';
@@ -61,6 +62,20 @@ export default function Navbar() {
   };
 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ mode: 'local', pending: 0 });
+  const [menuOpen, setMenuOpen] = useState<boolean>(false);
+  const [theme, setThemeState] = useState<Theme>('light');
+
+  useEffect(() => {
+    setThemeState(getTheme());
+    const onTheme = () => setThemeState(getTheme());
+    window.addEventListener('depo_theme_updated', onTheme);
+    return () => window.removeEventListener('depo_theme_updated', onTheme);
+  }, []);
+
+  // Menu HP menutup sendiri setelah pindah halaman
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     setSyncStatus(getSyncStatus());
@@ -154,132 +169,160 @@ export default function Navbar() {
 
   if (pathname === '/login') return null;
 
+  const role = currentUser?.role;
+  const linkClass = (active: boolean) => `btn btn-sm ${active ? 'btn-primary' : 'btn-secondary'}`;
+  const syncOk = syncStatus.mode === 'online' && syncStatus.pending === 0;
+  const syncText = syncStatus.mode === 'online'
+    ? (syncStatus.pending > 0 ? `Mengirim ${syncStatus.pending}` : 'Tersinkron')
+    : `Offline${syncStatus.pending > 0 ? ` (${syncStatus.pending} antre)` : ''}`;
+
   return (
-    <nav className="glass-card no-print" style={{ margin: '12px 16px', padding: '12px 20px', borderRadius: '16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-        {/* Brand with Custom Logo Support */}
-        <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>
+    <nav className="glass-card app-nav no-print" aria-label="Menu utama">
+      <div className="nav-top">
+        <Link href="/" className="nav-brand">
           <div style={{
-            width: '42px', height: '42px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)',
+            width: '38px', height: '38px', borderRadius: '12px', flexShrink: 0,
+            background: 'linear-gradient(135deg, #0369a1 0%, var(--c-sky) 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)',
             overflow: 'hidden', padding: depoLogo ? '4px' : '0'
           }}>
             {depoLogo ? (
-              <img src={depoLogo} alt={depoName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              <img src={depoLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             ) : (
-              <Droplets size={24} color="#ffffff" />
+              <Droplets size={22} color="#ffffff" aria-hidden="true" />
             )}
           </div>
-          <div>
-            <h1 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc', lineHeight: '1.2' }}>{depoName}</h1>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Management PWA</span>
+          <div style={{ minWidth: 0 }}>
+            <div className="nav-brand-name">{depoName}</div>
+            <span className="nav-brand-sub" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Management PWA</span>
           </div>
         </Link>
 
-        {/* Navigation Links */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {currentUser?.role === 'kasir' && (
-            <>
-              <Link href="/kasir" className={`btn btn-sm ${pathname === '/kasir' ? 'btn-primary' : 'btn-secondary'}`}>
-                <ShoppingCart size={16} /> POS Kasir
-              </Link>
-              <Link href="/kasir/shift" className={`btn btn-sm ${pathname === '/kasir/shift' ? 'btn-primary' : 'btn-secondary'}`}>
-                <Receipt size={16} /> Rekap Shift
-              </Link>
-            </>
-          )}
-
-          {/* Admin Role: Access to Dashboard & Target Harian, Pelanggan & Reseller */}
-          {currentUser?.role === 'admin' && (
-            <>
-              <Link href="/owner/dashboard" className={`btn btn-sm ${pathname.startsWith('/owner') ? 'btn-primary' : 'btn-secondary'}`}>
-                <LayoutDashboard size={16} /> Dashboard & Target Harian
-              </Link>
-              <Link href="/admin/kontak" className={`btn btn-sm ${pathname === '/admin/kontak' ? 'btn-primary' : 'btn-secondary'}`}>
-                <Users size={16} /> Pelanggan & Reseller
-              </Link>
-            </>
-          )}
-
-          {/* Owner Role: Full Access to Dashboard, Pelanggan, Produk, Zona, and Pengaturan */}
-          {currentUser?.role === 'owner' && (
-            <>
-              <Link href="/owner/dashboard" className={`btn btn-sm ${pathname.startsWith('/owner') ? 'btn-primary' : 'btn-secondary'}`}>
-                <LayoutDashboard size={16} /> Dashboard Owner
-              </Link>
-              <Link href="/admin/kontak" className={`btn btn-sm ${pathname === '/admin/kontak' ? 'btn-primary' : 'btn-secondary'}`}>
-                <Users size={16} /> Pelanggan & Reseller
-              </Link>
-              <Link href="/admin/produk" className={`btn btn-sm ${pathname === '/admin/produk' ? 'btn-primary' : 'btn-secondary'}`}>
-                <Package size={16} /> Produk & Harga
-              </Link>
-              <Link href="/admin/zona" className={`btn btn-sm ${pathname === '/admin/zona' ? 'btn-primary' : 'btn-secondary'}`}>
-                <MapPin size={16} /> Zona Ongkir
-              </Link>
-              <Link href="/admin/pengaturan" className={`btn btn-sm ${pathname === '/admin/pengaturan' ? 'btn-primary' : 'btn-secondary'}`}>
-                <Settings size={16} /> Pengaturan Toko
-              </Link>
-            </>
-          )}
-
-          {currentUser?.role === 'pengantar' && (
-            <Link href="/pengantar" className={`btn btn-sm ${pathname === '/pengantar' ? 'btn-primary' : 'btn-secondary'}`}>
-              <Truck size={16} /> Antaran Lapangan
-            </Link>
-          )}
-        </div>
-
-        {/* User Info & Quick Switch */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#94a3b8' }}>
-            <UserCheck size={16} color="#38bdf8" />
-            <span style={{ fontWeight: 600, color: '#f8fafc' }}>{currentUser?.nama}</span>
-            <span className="badge badge-primary">{currentUser?.role}</span>
-          </div>
-
+        <div className="nav-actions">
           {syncStatus.mode !== 'local' && (
             <span
+              role="status"
+              aria-label={`Status sinkronisasi: ${syncText}`}
               title={syncStatus.mode === 'online'
                 ? 'Data tersinkron dengan perangkat lain'
                 : 'Tidak terhubung ke server. Data disimpan di perangkat ini dan dikirim otomatis saat online.'}
               style={{
-                fontSize: '0.75rem', fontWeight: 700, padding: '4px 8px', borderRadius: '8px',
-                color: syncStatus.mode === 'online' && syncStatus.pending === 0 ? '#34d399' : '#fbbf24',
-                background: syncStatus.mode === 'online' && syncStatus.pending === 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                fontSize: '0.75rem', fontWeight: 700, padding: '6px 8px', borderRadius: '8px',
+                color: syncOk ? 'var(--c-green)' : 'var(--c-amber)',
+                background: syncOk ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
               }}
             >
-              {syncStatus.mode === 'online'
-                ? (syncStatus.pending > 0 ? `● Mengirim ${syncStatus.pending}` : '● Tersinkron')
-                : `● Offline${syncStatus.pending > 0 ? ` (${syncStatus.pending} antre)` : ''}`}
+              <span aria-hidden="true" style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'currentColor' }} />
+              <span className="hide-mobile">{syncText}</span>
             </span>
           )}
 
-          {currentUser?.role === 'kasir' && (
-            <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #34d399', borderRadius: '8px', padding: '4px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ color: '#94a3b8' }}>Kas di Tangan:</span>
-              <strong style={{ color: '#34d399', fontWeight: 800 }}>{AppStore.formatRupiah(kasDiTanganNav)}</strong>
+          {role === 'kasir' && (
+            <div
+              style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid var(--c-green)', borderRadius: '8px', padding: '5px 10px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+              aria-label={`Kas di tangan ${AppStore.formatRupiah(kasDiTanganNav)}`}
+            >
+              <span className="hide-mobile" style={{ color: 'var(--text-muted)' }}>Kas di Tangan: </span>
+              <span className="show-mobile" style={{ color: 'var(--text-muted)' }}>Kas </span>
+              <strong style={{ color: 'var(--c-green)', fontWeight: 800 }}>{AppStore.formatRupiah(kasDiTanganNav)}</strong>
             </div>
           )}
 
+          <button
+            type="button"
+            className="icon-btn nav-menu-btn"
+            aria-label={menuOpen ? 'Tutup menu' : 'Buka menu'}
+            aria-expanded={menuOpen}
+            aria-controls="nav-panel"
+            onClick={() => setMenuOpen(open => !open)}
+          >
+            {menuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
+          </button>
+        </div>
+      </div>
+
+      <div id="nav-panel" className={`nav-panel ${menuOpen ? 'open' : ''}`}>
+        <div className="nav-links">
+          {role === 'kasir' && (
+            <>
+              <Link href="/kasir" aria-current={pathname === '/kasir' ? 'page' : undefined} className={linkClass(pathname === '/kasir')}>
+                <ShoppingCart size={16} aria-hidden="true" /> POS Kasir
+              </Link>
+              <Link href="/kasir/shift" aria-current={pathname === '/kasir/shift' ? 'page' : undefined} className={linkClass(pathname === '/kasir/shift')}>
+                <Receipt size={16} aria-hidden="true" /> Rekap Shift
+              </Link>
+            </>
+          )}
+
+          {(role === 'admin' || role === 'owner') && (
+            <Link href="/owner/dashboard" aria-current={pathname.startsWith('/owner') ? 'page' : undefined} className={linkClass(pathname.startsWith('/owner'))}>
+              <LayoutDashboard size={16} aria-hidden="true" /> {role === 'owner' ? 'Dashboard Owner' : 'Dashboard & Target Harian'}
+            </Link>
+          )}
+          {(role === 'admin' || role === 'owner') && (
+            <Link href="/admin/kontak" aria-current={pathname === '/admin/kontak' ? 'page' : undefined} className={linkClass(pathname === '/admin/kontak')}>
+              <Users size={16} aria-hidden="true" /> Pelanggan & Reseller
+            </Link>
+          )}
+
+          {role === 'owner' && (
+            <>
+              <Link href="/admin/produk" aria-current={pathname === '/admin/produk' ? 'page' : undefined} className={linkClass(pathname === '/admin/produk')}>
+                <Package size={16} aria-hidden="true" /> Produk & Harga
+              </Link>
+              <Link href="/admin/zona" aria-current={pathname === '/admin/zona' ? 'page' : undefined} className={linkClass(pathname === '/admin/zona')}>
+                <MapPin size={16} aria-hidden="true" /> Zona Ongkir
+              </Link>
+              <Link href="/admin/pengaturan" aria-current={pathname === '/admin/pengaturan' ? 'page' : undefined} className={linkClass(pathname === '/admin/pengaturan')}>
+                <Settings size={16} aria-hidden="true" /> Pengaturan Toko
+              </Link>
+            </>
+          )}
+
+          {role === 'pengantar' && (
+            <Link href="/pengantar" aria-current={pathname === '/pengantar' ? 'page' : undefined} className={linkClass(pathname === '/pengantar')}>
+              <Truck size={16} aria-hidden="true" /> Antaran Lapangan
+            </Link>
+          )}
+        </div>
+
+        <div className="nav-user">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            <UserCheck size={16} color="#38bdf8" aria-hidden="true" />
+            <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{currentUser?.nama}</span>
+            <span className="badge badge-primary">{role}</span>
+          </div>
+
           {/* Pindah peran tanpa password hanya boleh untuk Owner */}
-          {currentUser?.role === 'owner' && (
+          {role === 'owner' && (
             <select
-              value={currentUser.role}
+              aria-label="Pindah tampilan peran"
+              value={role}
               onChange={(e) => handleRoleSwitch(e.target.value as UserRole)}
               className="form-select"
               style={{ width: 'auto', padding: '6px 10px', fontSize: '0.8rem' }}
             >
-              <option value="kasir">Switch to: Kasir</option>
-              <option value="owner">Switch to: Owner</option>
-              <option value="admin">Switch to: Admin</option>
-              <option value="pengantar">Switch to: Pengantar</option>
+              <option value="kasir">Tampilan: Kasir</option>
+              <option value="owner">Tampilan: Owner</option>
+              <option value="admin">Tampilan: Admin</option>
+              <option value="pengantar">Tampilan: Pengantar</option>
             </select>
           )}
 
-          <button onClick={handleLogoutClick} className="btn btn-secondary btn-sm" title="Logout">
-            <LogOut size={16} />
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            aria-label={theme === 'light' ? 'Ganti ke mode gelap' : 'Ganti ke mode terang'}
+          >
+            {theme === 'light' ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />}
+            {theme === 'light' ? 'Mode gelap' : 'Mode terang'}
+          </button>
+
+          <button onClick={handleLogoutClick} className="btn btn-secondary btn-sm" type="button">
+            <LogOut size={16} aria-hidden="true" /> Keluar
           </button>
         </div>
       </div>

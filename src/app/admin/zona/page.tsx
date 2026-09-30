@@ -112,10 +112,10 @@ export default function AdminZonaPage() {
       {/* Top Header */}
       <div className="glass-card animate-fade-in" style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <MapPin size={24} color="#0284c7" /> Pengaturan Zona & Tarif Ongkir Unit
-          </h2>
-          <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '2px' }}>
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2px' }}>
             Ongkir dihitung per unit galon/jerigen 30L saat delivery. Tambah, edit, atau sesuaikan tarif zona kapan saja.
           </p>
         </div>
@@ -132,14 +132,14 @@ export default function AdminZonaPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px'
         }}>
           <div className="glass-card animate-fade-in" style={{
-            width: '100%', maxWidth: '480px', padding: '28px', background: '#0f172a',
+            width: '100%', maxWidth: '480px', padding: '28px', background: 'var(--surface-solid)',
             border: '1px solid var(--glass-border)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
                 {editingId ? 'Edit Zona Ongkir' : 'Tambah Zona Ongkir Baru'}
               </h3>
-              <button type="button" onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+              <button aria-label="Tutup" type="button" onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
@@ -213,12 +213,12 @@ export default function AdminZonaPage() {
           <div key={zona.id} className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc' }}>{zona.nama_zona}</h3>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>{zona.nama_zona}</h3>
                 <span className={`badge ${zona.aktif ? 'badge-warning' : 'badge-danger'}`}>
                   Urutan {zona.urutan}
                 </span>
               </div>
-              <p style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '16px', minHeight: '36px' }}>{zona.keterangan || '-'}</p>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px', minHeight: '36px' }}>{zona.keterangan || '-'}</p>
 
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Tarif Ongkir per Unit (Rp)</label>

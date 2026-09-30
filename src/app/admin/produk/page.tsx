@@ -153,10 +153,10 @@ export default function AdminProdukPage() {
       {/* Top Header */}
       <div className="glass-card animate-fade-in" style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Package size={24} color="#0284c7" /> Master Produk & Aturan Harga
-          </h2>
-          <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '2px' }}>
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2px' }}>
             Daftar jenis wadah, gambar produk, volume liter, harga tempat, status ongkir per unit, dan poin loyalitas.
           </p>
         </div>
@@ -173,14 +173,14 @@ export default function AdminProdukPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px'
         }}>
           <div className="glass-card animate-fade-in" style={{
-            width: '100%', maxWidth: '600px', padding: '28px', background: '#0f172a',
+            width: '100%', maxWidth: '600px', padding: '28px', background: 'var(--surface-solid)',
             maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--glass-border)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
                 {editingId ? 'Edit Produk' : 'Tambah Produk Baru'}
               </h3>
-              <button type="button" onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+              <button aria-label="Tutup" type="button" onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
@@ -188,11 +188,11 @@ export default function AdminProdukPage() {
             <form onSubmit={handleSaveProduk} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               
               {/* Product Image Upload Section */}
-              <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
+              <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
                 <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>Gambar Produk</label>
                 <div style={{
                   width: '90px', height: '90px', borderRadius: '16px', margin: '0 auto 10px auto',
-                  background: 'rgba(2, 132, 199, 0.15)', border: '2px dashed #0284c7',
+                  background: 'rgba(2, 132, 199, 0.15)', border: '2px dashed var(--c-primary)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
                 }}>
                   {gambarUrl ? (
@@ -270,18 +270,18 @@ export default function AdminProdukPage() {
 
 
               {/* Toggles */}
-              <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', color: '#f8fafc' }}>
+              <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)' }}>
                   <input type="checkbox" checked={kenaOngkir} onChange={(e) => setKenaOngkir(e.target.checked)} style={{ width: '16px', height: '16px' }} />
                   Kena Tarif Ongkir Unit Saat Delivery?
                 </label>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', color: '#f8fafc' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)' }}>
                   <input type="checkbox" checked={dihitungPoin} onChange={(e) => setDihitungPoin(e.target.checked)} style={{ width: '16px', height: '16px' }} />
                   Dihitung Poin Loyalitas (Beli 10 Gratis 1)?
                 </label>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', color: '#f8fafc' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)' }}>
                   <input type="checkbox" checked={adaTukarGalon} onChange={(e) => setAdaTukarGalon(e.target.checked)} style={{ width: '16px', height: '16px' }} />
                   Bisa Tukar Galon/Wadah Depo?
                 </label>
@@ -322,32 +322,32 @@ export default function AdminProdukPage() {
 
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc' }}>{prod.nama_produk}</h3>
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)' }}>{prod.nama_produk}</h3>
                     <span className="badge badge-primary">{prod.jenis_wadah}</span>
                   </div>
-                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Volume: {prod.volume_liter} Liter</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Volume: {prod.volume_liter} Liter</span>
                 </div>
               </div>
 
               {/* Price Details */}
-              <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '10px 14px', borderRadius: '10px', marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Harga Produk:</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#34d399' }}>{AppStore.formatRupiah(prod.harga_tempat)}</span>
+              <div style={{ background: 'var(--inset-60)', padding: '10px 14px', borderRadius: '10px', marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Harga Produk:</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--c-green)' }}>{AppStore.formatRupiah(prod.harga_tempat)}</span>
               </div>
 
               {/* Status Tags */}
               <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.8rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: prod.kena_ongkir ? '#fbbf24' : '#64748b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: prod.kena_ongkir ? 'var(--c-amber)' : 'var(--text-muted)' }}>
                   <span>Kena Tarif Ongkir Unit?</span>
                   <span style={{ fontWeight: 700 }}>{prod.kena_ongkir ? 'YA (Diisi Delivery)' : 'TIDAK (Ringan)'}</span>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: prod.dihitung_poin_loyalitas ? '#38bdf8' : '#64748b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: prod.dihitung_poin_loyalitas ? 'var(--c-sky)' : 'var(--text-muted)' }}>
                   <span>Dihitung Poin Loyalitas?</span>
                   <span style={{ fontWeight: 700 }}>{prod.dihitung_poin_loyalitas ? 'YA (Beli 10 Gratis 1)' : 'TIDAK'}</span>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: prod.ada_tukar_galon ? '#34d399' : '#64748b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: prod.ada_tukar_galon ? 'var(--c-green)' : 'var(--text-muted)' }}>
                   <span>Bisa Tukar Galon Depo?</span>
                   <span style={{ fontWeight: 700 }}>{prod.ada_tukar_galon ? 'YA' : 'TIDAK'}</span>
                 </div>
@@ -356,7 +356,7 @@ export default function AdminProdukPage() {
 
             {/* Bottom Actions: Edit, Delete, Toggle Active */}
             <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 Status Produk
               </span>
 

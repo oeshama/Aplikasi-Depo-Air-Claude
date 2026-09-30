@@ -76,7 +76,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
 
     const expectedPassword = targetUser.password || '123456';
     if (password.trim() !== expectedPassword.trim()) {
-      alert(`❌ Password / PIN untuk "${targetUser.nama}" salah! Silakan periksa kembali.`);
+      alert(`Password / PIN untuk "${targetUser.nama}" salah! Silakan periksa kembali.`);
       return;
     }
 
@@ -154,7 +154,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: '16px'
     }}>
       <div className="glass-card animate-fade-in" style={{
-        width: '100%', maxWidth: '460px', backgroundColor: '#0f172a', border: '2px solid #0284c7',
+        width: '100%', maxWidth: '460px', backgroundColor: 'var(--surface-solid)', border: '2px solid var(--c-primary)',
         borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column'
       }}>
         {/* Header Banner */}
@@ -163,16 +163,16 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
           borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: '14px'
         }}>
           <div style={{
-            width: '46px', height: '46px', borderRadius: '14px', background: openedShiftResult ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #0284c7, #38bdf8)',
+            width: '46px', height: '46px', borderRadius: '14px', background: openedShiftResult ? 'linear-gradient(135deg, var(--c-green-strong), var(--c-green-deep))' : 'linear-gradient(135deg, var(--c-primary), var(--c-sky))',
             display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)'
           }}>
             {openedShiftResult ? <CheckCircle2 size={26} color="#ffffff" /> : <ShieldCheck size={26} color="#ffffff" />}
           </div>
           <div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
               {openedShiftResult ? 'SHIFT KASIR BERHASIL DIBUKA!' : 'ENTRI BUKA SHIFT KASIR'}
             </h3>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '2px 0 0 0' }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
               {openedShiftResult ? 'Struk Bukti Pembukaan Shift Transaksi' : 'Pilih User / Karyawan, Password, Kas Awal & Meteran Awal'}
             </p>
           </div>
@@ -184,7 +184,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
             {/* Info Alert */}
             <div style={{
               padding: '12px 16px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)',
-              borderRadius: '12px', color: '#38bdf8', fontSize: '0.82rem', marginBottom: '18px', display: 'flex', gap: '8px'
+              borderRadius: '12px', color: 'var(--c-sky)', fontSize: '0.82rem', marginBottom: '18px', display: 'flex', gap: '8px'
             }}>
               <Lock size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
               <div>
@@ -195,18 +195,18 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
             {/* 1. Nama User / Karyawan Dropdown */}
             <div className="form-group" style={{ marginBottom: '16px' }}>
               <label className="form-label" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <User size={16} color="#38bdf8" /> Nama User / Karyawan (Kasir Bertugas) <span style={{ color: '#f87171' }}>*</span>
+                <User size={16} color="#38bdf8" /> Nama User / Karyawan (Kasir Bertugas) <span style={{ color: 'var(--c-red)' }}>*</span>
               </label>
               <select
                 className="form-input"
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
                 required
-                style={{ fontSize: '1rem', fontWeight: 700, padding: '12px 14px', backgroundColor: '#1e293b', color: '#f8fafc' }}
+                style={{ fontSize: '1rem', fontWeight: 700, padding: '12px 14px', backgroundColor: 'var(--surface-input)', color: 'var(--text-main)' }}
               >
                 {userList.map(u => (
                   <option key={u.id} value={u.id}>
-                    👤 {u.nama} ({u.role.toUpperCase()})
+                    {u.nama} ({u.role.toUpperCase()})
                   </option>
                 ))}
               </select>
@@ -215,7 +215,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
             {/* 2. Password / PIN Kasir */}
             <div className="form-group" style={{ marginBottom: '16px' }}>
               <label className="form-label" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <KeyRound size={16} color="#fbbf24" /> Password / PIN Kasir <span style={{ color: '#f87171' }}>*</span>
+                <KeyRound size={16} color="#fbbf24" /> Password / PIN Kasir <span style={{ color: 'var(--c-red)' }}>*</span>
               </label>
               <input 
                 type="password" 
@@ -231,7 +231,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
             {/* 3. Modal Kas Awal */}
             <div className="form-group" style={{ marginBottom: '16px' }}>
               <label className="form-label" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Banknote size={16} color="#34d399" /> Modal Kas Awal Di Laci (Rp) <span style={{ color: '#f87171' }}>*</span>
+                <Banknote size={16} color="#34d399" /> Modal Kas Awal Di Laci (Rp) <span style={{ color: 'var(--c-red)' }}>*</span>
               </label>
               <input 
                 type="number" 
@@ -248,7 +248,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
             {/* 4. Meteran Air Awal */}
             <div className="form-group" style={{ marginBottom: '22px' }}>
               <label className="form-label" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Droplets size={16} color="#38bdf8" /> Meteran Air Awal Depo (Liter) <span style={{ color: '#f87171' }}>*</span>
+                <Droplets size={16} color="#38bdf8" /> Meteran Air Awal Depo (Liter) <span style={{ color: 'var(--c-red)' }}>*</span>
               </label>
               <input 
                 type="number" 
@@ -267,7 +267,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
               className="btn btn-primary btn-lg" 
               style={{ width: '100%', padding: '14px', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              🔓 BUKA SHIFT KASIR &amp; CEK STRUK
+              BUKA SHIFT KASIR &amp; CEK STRUK
             </button>
           </form>
         ) : (
@@ -337,7 +337,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
             {/* Action Bar */}
             <div className="no-print" style={{
               padding: '16px 20px', borderTop: '1px solid var(--glass-border)',
-              display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(15, 23, 42, 0.95)'
+              display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--inset-90)'
             }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <button onClick={handlePrint} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: 700 }}>
@@ -348,7 +348,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
                 </button>
               </div>
               <button onClick={handleStartTransaction} className="btn btn-primary btn-lg" style={{ width: '100%', fontWeight: 800 }}>
-                🚀 Buka Shift &amp; Mulai Transaksi
+                Buka Shift &amp; Mulai Transaksi
               </button>
             </div>
           </div>

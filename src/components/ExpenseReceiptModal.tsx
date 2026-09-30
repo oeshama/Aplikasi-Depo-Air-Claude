@@ -70,7 +70,7 @@ export default function ExpenseReceiptModal({ pengeluaran, onClose }: ExpenseRec
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px'
     }}>
       <div className="glass-card animate-fade-in" style={{
-        width: '100%', maxWidth: '440px', backgroundColor: '#0f172a', border: '1px solid var(--glass-border)',
+        width: '100%', maxWidth: '440px', backgroundColor: 'var(--surface-solid)', border: '1px solid var(--glass-border)',
         borderRadius: '20px', overflow: 'hidden', display: 'flex', flexDirection: 'column'
       }}>
         {/* Header Action Bar */}
@@ -79,10 +79,10 @@ export default function ExpenseReceiptModal({ pengeluaran, onClose }: ExpenseRec
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
           background: isMasuk ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isMasuk ? '#4ade80' : '#f87171', fontWeight: 600 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isMasuk ? 'var(--c-green)' : 'var(--c-red)', fontWeight: 600 }}>
             <CheckCircle2 size={20} /> Bukti Kas Transaksi Ready
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+          <button aria-label="Tutup" onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
             <X size={20} />
           </button>
         </div>
@@ -117,7 +117,7 @@ export default function ExpenseReceiptModal({ pengeluaran, onClose }: ExpenseRec
 
           <div style={{ marginBottom: '12px' }}>
             <div style={{ fontWeight: 'bold' }}>Peruntukan / Keterangan:</div>
-            <div style={{ paddingLeft: '8px', fontStyle: 'italic', background: '#f8fafc', padding: '4px 8px', borderRadius: '4px', borderLeft: '3px solid #0284c7', margin: '4px 0' }}>
+            <div style={{ paddingLeft: '8px', fontStyle: 'italic', background: '#f8fafc', padding: '4px 8px', borderRadius: '4px', borderLeft: '3px solid var(--c-primary)', margin: '4px 0' }}>
               {pengeluaran.peruntukan}
             </div>
 
@@ -135,7 +135,7 @@ export default function ExpenseReceiptModal({ pengeluaran, onClose }: ExpenseRec
             )}
 
             {pengeluaran.catatan && (
-              <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: '4px' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
                 Catatan Tambahan: {pengeluaran.catatan}
               </div>
             )}
@@ -177,7 +177,7 @@ export default function ExpenseReceiptModal({ pengeluaran, onClose }: ExpenseRec
         {/* Footer Actions */}
         <div className="no-print" style={{
           padding: '16px 20px', borderTop: '1px solid var(--glass-border)',
-          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(15, 23, 42, 0.9)'
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'var(--inset-90)'
         }}>
           <button onClick={handlePrint} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
             <Printer size={16} /> Cetak Bukti Kas

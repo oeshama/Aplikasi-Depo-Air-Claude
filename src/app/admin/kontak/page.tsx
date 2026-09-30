@@ -135,10 +135,10 @@ export default function AdminKontakPage() {
       {/* Header Bar */}
       <div className="glass-card animate-fade-in" style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Users size={24} color="#0284c7" /> Manajemen Pelanggan & Reseller
-          </h2>
-          <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '2px' }}>
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2px' }}>
             Kelola data kontak, nomor WhatsApp, alamat pengiriman, dan catatan limit hutang.
           </p>
         </div>
@@ -148,74 +148,74 @@ export default function AdminKontakPage() {
       </div>
 
       {/* Target Penjualan & Capaian (HARIAN) Widget */}
-      <div className="glass-card animate-fade-in" style={{ padding: '20px', borderLeft: '4px solid #10b981' }}>
+      <div className="glass-card animate-fade-in" style={{ padding: '20px', borderLeft: '4px solid var(--c-green-strong)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Target size={20} color="#10b981" /> Target Penjualan & Capaian (HARIAN)
           </h3>
-          <a href="/owner/dashboard" className="btn btn-secondary btn-sm" style={{ fontSize: '0.78rem', color: '#34d399', borderColor: 'rgba(16, 185, 129, 0.4)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            ✏️ Edit Target & Lihat Dashboard Detail
+          <a href="/owner/dashboard" className="btn btn-secondary btn-sm" style={{ fontSize: '0.78rem', color: 'var(--c-green)', borderColor: 'rgba(16, 185, 129, 0.4)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            Edit Target & Lihat Dashboard Detail
           </a>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
           
           {/* Target Omzet */}
-          <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+          <div style={{ background: 'var(--inset-70)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>Target Pendapatan / Omzet</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Target Pendapatan / Omzet</span>
               <span className={`badge ${persenOmzet >= 100 ? 'badge-success' : 'badge-warning'}`}>
                 {persenOmzet >= 100 ? 'TERCAPAI' : 'DALAM PROSES'}
               </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
-              <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#34d399' }}>
+              <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--c-green)' }}>
                 {AppStore.formatRupiah(totalOmzetHarian)}
               </h4>
-              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 Target: {AppStore.formatRupiah(targetOmzetHarian)}
               </span>
             </div>
 
-            <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ width: '100%', height: '8px', background: 'var(--w-10)', borderRadius: '4px', overflow: 'hidden' }}>
               <div style={{
                 width: `${persenOmzet}%`, height: '100%',
-                background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
+                background: 'linear-gradient(90deg, var(--c-green-strong) 0%, var(--c-green) 100%)',
                 transition: 'width 0.4s ease'
               }} />
             </div>
-            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginTop: '4px' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
               Capaian: {persenOmzet}% dari target harian
             </span>
           </div>
 
           {/* Target Galon */}
-          <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+          <div style={{ background: 'var(--inset-70)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>Target Volume Penjualan Galon</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Target Volume Penjualan Galon</span>
               <span className={`badge ${persenGalon >= 100 ? 'badge-success' : 'badge-primary'}`}>
                 {persenGalon >= 100 ? 'TERCAPAI' : 'BERJALAN'}
               </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
-              <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#38bdf8' }}>
+              <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--c-sky)' }}>
                 {totalGalonHarian} Galon
               </h4>
-              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 Target: {targetGalonHarian} Galon
               </span>
             </div>
 
-            <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ width: '100%', height: '8px', background: 'var(--w-10)', borderRadius: '4px', overflow: 'hidden' }}>
               <div style={{
                 width: `${persenGalon}%`, height: '100%',
-                background: 'linear-gradient(90deg, #0284c7 0%, #38bdf8 100%)',
+                background: 'linear-gradient(90deg, var(--c-primary) 0%, var(--c-sky) 100%)',
                 transition: 'width 0.4s ease'
               }} />
             </div>
-            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginTop: '4px' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
               Capaian: {persenGalon}% dari target harian ({totalGalonHarian * 19} Liter)
             </span>
           </div>
@@ -246,14 +246,14 @@ export default function AdminKontakPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px'
         }}>
           <div className="glass-card animate-fade-in" style={{
-            width: '100%', maxWidth: '500px', padding: '28px', background: '#0f172a',
+            width: '100%', maxWidth: '500px', padding: '28px', background: 'var(--surface-solid)',
             border: '1px solid var(--glass-border)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)' }}>
                 {editingId ? 'Edit Data Kontak Pelanggan' : 'Tambah Kontak Pelanggan / Reseller'}
               </h3>
-              <button type="button" onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+              <button aria-label="Tutup" type="button" onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
@@ -303,7 +303,7 @@ export default function AdminKontakPage() {
       {/* Tabel Baris List Pelanggan & Reseller */}
       <div className="glass-card animate-fade-in" style={{ padding: '20px' }}>
         {filtered.length === 0 ? (
-          <p style={{ color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>
+          <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>
             Tidak ada data pelanggan yang cocok dengan pencarian.
           </p>
         ) : (
@@ -314,9 +314,9 @@ export default function AdminKontakPage() {
               overflowY: isExpanded ? 'auto' : 'hidden',
               borderRadius: '8px'
             }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', color: '#f8fafc' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', color: 'var(--text-main)' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left', color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', position: 'sticky', top: 0, background: '#0f172a', zIndex: 1 }}>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', position: 'sticky', top: 0, background: 'var(--surface-solid)', zIndex: 1 }}>
                     <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Tipe</th>
                     <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Nama Pelanggan / Toko</th>
                     <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Nomor Kontak / WA</th>
@@ -333,8 +333,8 @@ export default function AdminKontakPage() {
                       <tr 
                         key={kontak.id} 
                         style={{ 
-                          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                          background: idx % 2 === 0 ? 'rgba(15, 23, 42, 0.3)' : 'transparent',
+                          borderBottom: '1px solid var(--w-5)',
+                          background: idx % 2 === 0 ? 'var(--zebra)' : 'transparent',
                           transition: 'background 0.2s',
                           whiteSpace: 'nowrap'
                         }}
@@ -347,12 +347,12 @@ export default function AdminKontakPage() {
                         </td>
 
                         {/* Nama */}
-                        <td style={{ padding: '8px 12px', fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '8px 12px', fontWeight: 700, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
                           {kontak.nama}
                         </td>
 
                         {/* No HP */}
-                        <td style={{ padding: '8px 12px', color: '#38bdf8', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '8px 12px', color: 'var(--c-sky)', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                             <Phone size={13} color="#38bdf8" />
                             <span>{kontak.no_hp || '-'}</span>
@@ -360,7 +360,7 @@ export default function AdminKontakPage() {
                         </td>
 
                         {/* Alamat */}
-                        <td style={{ padding: '8px 12px', color: '#94a3b8', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <td style={{ padding: '8px 12px', color: 'var(--text-muted)', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                             <MapPin size={13} color="#34d399" style={{ flexShrink: 0 }} />
                             <span>{kontak.alamat || '-'}</span>
@@ -368,12 +368,12 @@ export default function AdminKontakPage() {
                         </td>
 
                         {/* Hutang Aktif */}
-                        <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 800, color: isDebt ? '#ef4444' : '#34d399', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 800, color: isDebt ? 'var(--c-red-strong)' : 'var(--c-green)', whiteSpace: 'nowrap' }}>
                           {AppStore.formatRupiah(kontak.hutang_saat_ini || 0)}
                         </td>
 
                         {/* Limit Hutang */}
-                        <td style={{ padding: '8px 12px', textAlign: 'right', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                           {AppStore.formatRupiah(kontak.limit_hutang || 0)}
                         </td>
 
@@ -420,9 +420,9 @@ export default function AdminKontakPage() {
                   gap: '8px',
                   padding: '10px', 
                   fontWeight: 700,
-                  background: isExpanded ? 'rgba(2, 132, 199, 0.2)' : 'rgba(15, 23, 42, 0.8)',
+                  background: isExpanded ? 'rgba(2, 132, 199, 0.2)' : 'var(--inset-80)',
                   border: '1px solid var(--glass-border)',
-                  color: '#38bdf8'
+                  color: 'var(--c-sky)'
                 }}
               >
                 {isExpanded ? (

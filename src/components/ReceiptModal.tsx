@@ -48,7 +48,7 @@ export default function ReceiptModal({ pesanan, onClose }: ReceiptModalProps) {
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px'
     }}>
       <div className="glass-card animate-fade-in" style={{
-        width: '100%', maxWidth: '420px', backgroundColor: '#0f172a', border: '1px solid var(--glass-border)',
+        width: '100%', maxWidth: '420px', backgroundColor: 'var(--surface-solid)', border: '1px solid var(--glass-border)',
         borderRadius: '20px', overflow: 'hidden', display: 'flex', flexDirection: 'column'
       }}>
         {/* Header Action Bar */}
@@ -56,10 +56,10 @@ export default function ReceiptModal({ pesanan, onClose }: ReceiptModalProps) {
           padding: '16px 20px', borderBottom: '1px solid var(--glass-border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(2, 132, 199, 0.1)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38bdf8', fontWeight: 600 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--c-sky)', fontWeight: 600 }}>
             <CheckCircle2 size={20} /> Struk Transaksi Ready
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+          <button aria-label="Tutup" onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
             <X size={20} />
           </button>
         </div>
@@ -134,7 +134,7 @@ export default function ReceiptModal({ pesanan, onClose }: ReceiptModalProps) {
         {/* Footer Actions */}
         <div className="no-print" style={{
           padding: '16px 20px', borderTop: '1px solid var(--glass-border)',
-          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(15, 23, 42, 0.9)'
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'var(--inset-90)'
         }}>
           <button onClick={handlePrint} className="btn btn-secondary">
             <Printer size={16} /> Cetak Thermal

@@ -37,7 +37,7 @@ export default function LoginPage() {
     if (foundUser) {
       const expectedPassword = foundUser.password || '123456';
       if (password.trim() !== expectedPassword.trim()) {
-        alert(`❌ Password / PIN untuk user "${foundUser.nama}" salah! Silakan periksa kembali.`);
+        alert(`Password / PIN untuk user "${foundUser.nama}" salah! Silakan periksa kembali.`);
         return;
       }
 
@@ -52,7 +52,7 @@ export default function LoginPage() {
       AppStore.setCurrentUser(fullUser);
       redirectUser(fullUser.role);
     } else {
-      alert(`❌ User "${targetUsername}" tidak terdaftar. Tambahkan karyawan lewat Pengaturan Toko terlebih dahulu.`);
+      alert(`User "${targetUsername}" tidak terdaftar. Tambahkan karyawan lewat Pengaturan Toko terlebih dahulu.`);
     }
   };
 
@@ -75,7 +75,7 @@ export default function LoginPage() {
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <div style={{
             width: '72px', height: '72px', borderRadius: '20px',
-            background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)',
+            background: 'linear-gradient(135deg, var(--c-primary) 0%, var(--c-sky) 100%)',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             marginBottom: '16px', boxShadow: '0 8px 24px rgba(2, 132, 199, 0.4)',
             overflow: 'hidden', padding: pengaturan.logo_url ? '6px' : '0'
@@ -86,8 +86,8 @@ export default function LoginPage() {
               <Droplets size={40} color="#ffffff" />
             )}
           </div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f8fafc' }}>{pengaturan.nama_depo}</h2>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '4px' }}>{pengaturan.tagline}</p>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>{pengaturan.nama_depo}</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>{pengaturan.tagline}</p>
         </div>
 
         <form onSubmit={handleLogin}>
@@ -100,7 +100,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setIsCustomMode(!isCustomMode)}
-                style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
+                style={{ background: 'none', border: 'none', color: 'var(--c-sky)', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
               >
                 {isCustomMode ? 'Pilih dari Daftar' : 'Ketik Manual'}
               </button>
@@ -111,11 +111,11 @@ export default function LoginPage() {
                 className="form-input"
                 value={selectedUsername}
                 onChange={(e) => setSelectedUsername(e.target.value)}
-                style={{ fontSize: '0.95rem', fontWeight: 600, backgroundColor: '#1e293b', color: '#f8fafc' }}
+                style={{ fontSize: '0.95rem', fontWeight: 600, backgroundColor: 'var(--surface-input)', color: 'var(--text-main)' }}
               >
                 {availableUsers.map(u => (
                   <option key={u.id} value={u.username}>
-                    👤 {u.nama} ({u.role.toUpperCase()})
+                    {u.nama} ({u.role.toUpperCase()})
                   </option>
                 ))}
               </select>

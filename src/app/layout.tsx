@@ -15,9 +15,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: '#0284c7',
+  themeColor: '#0369a1',
 };
 
 export default function RootLayout({
@@ -26,7 +24,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id">
+    // data-theme diatur oleh skrip di <head> sebelum halaman tampil (mencegah layar berkedip)
+    <html lang="id" data-theme="light" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "try{document.documentElement.setAttribute('data-theme',localStorage.getItem('depo_theme')==='dark'?'dark':'light')}catch(e){}"
+          }}
+        />
+      </head>
       <body>
         <ClientShell>{children}</ClientShell>
       </body>

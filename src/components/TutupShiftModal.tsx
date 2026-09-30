@@ -162,7 +162,7 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: '16px'
     }}>
       <div className="glass-card animate-fade-in" style={{
-        width: '100%', maxWidth: closedShiftResult ? '480px' : '480px', backgroundColor: '#0f172a', border: '2px solid #ef4444',
+        width: '100%', maxWidth: closedShiftResult ? '480px' : '480px', backgroundColor: 'var(--surface-solid)', border: '2px solid var(--c-red-strong)',
         borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column'
       }}>
         {/* Header */}
@@ -172,21 +172,21 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
-              width: '44px', height: '44px', borderRadius: '12px', background: closedShiftResult ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #ef4444, #f87171)',
+              width: '44px', height: '44px', borderRadius: '12px', background: closedShiftResult ? 'linear-gradient(135deg, var(--c-green-strong), var(--c-green-deep))' : 'linear-gradient(135deg, var(--c-red-strong), var(--c-red))',
               display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
             }}>
               {closedShiftResult ? <CheckCircle2 size={24} color="#ffffff" /> : <Lock size={24} color="#ffffff" />}
             </div>
             <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
                 {closedShiftResult ? 'SHIFT BERHASIL DITUTUP!' : 'ENTRI TUTUP SHIFT KASIR'}
               </h3>
-              <p style={{ fontSize: '0.8rem', color: '#cbd5e1', margin: '2px 0 0 0' }}>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-2)', margin: '2px 0 0 0' }}>
                 {closedShiftResult ? 'Ringkasan Setoran Kas & Meteran Air Baku' : 'Wajib Isi Hasil Kas di Tangan & Meteran Akhir'}
               </p>
             </div>
           </div>
-          <button onClick={closedShiftResult ? handleFinishAndLogout : onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+          <button aria-label="Tutup" onClick={closedShiftResult ? handleFinishAndLogout : onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
             <X size={20} />
           </button>
         </div>
@@ -197,30 +197,30 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
           <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
             {/* Quick Summary Shift Awal */}
             <div style={{
-              background: 'rgba(15, 23, 42, 0.7)', borderRadius: '12px', padding: '14px', border: '1px solid var(--glass-border)',
+              background: 'var(--inset-70)', borderRadius: '12px', padding: '14px', border: '1px solid var(--glass-border)',
               marginBottom: '18px', fontSize: '0.83rem'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <span style={{ color: '#94a3b8' }}>Kasir Bertugas:</span>
-                <span style={{ fontWeight: 700, color: '#38bdf8' }}>{shiftAktif.kasir_nama || AppStore.getCurrentUser().nama}</span>
+                <span style={{ color: 'var(--text-muted)' }}>Kasir Bertugas:</span>
+                <span style={{ fontWeight: 700, color: 'var(--c-sky)' }}>{shiftAktif.kasir_nama || AppStore.getCurrentUser().nama}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <span style={{ color: '#94a3b8' }}>Modal Kas Awal:</span>
-                <span style={{ fontWeight: 700, color: '#f8fafc' }}>{AppStore.formatRupiah(shiftAktif.saldo_awal)}</span>
+                <span style={{ color: 'var(--text-muted)' }}>Modal Kas Awal:</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{AppStore.formatRupiah(shiftAktif.saldo_awal)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <span style={{ color: '#94a3b8' }}>Meteran Air Awal:</span>
-                <span style={{ fontWeight: 700, color: '#f8fafc' }}>{(shiftAktif.meter_awal || 0).toLocaleString('id-ID')} Liter</span>
+                <span style={{ color: 'var(--text-muted)' }}>Meteran Air Awal:</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{(shiftAktif.meter_awal || 0).toLocaleString('id-ID')} Liter</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px dashed #334155' }}>
-                <span style={{ color: '#93c5fd', fontWeight: 600 }}>Ekspektasi Kas Laci:</span>
-                <span style={{ fontWeight: 800, color: '#34d399' }}>{AppStore.formatRupiah(saldoEkspektasiKas)}</span>
+                <span style={{ color: 'var(--c-blue-soft)', fontWeight: 600 }}>Ekspektasi Kas Laci:</span>
+                <span style={{ fontWeight: 800, color: 'var(--c-green)' }}>{AppStore.formatRupiah(saldoEkspektasiKas)}</span>
               </div>
             </div>
 
             <div className="form-group" style={{ marginBottom: '16px' }}>
               <label className="form-label" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Banknote size={16} color="#34d399" /> Hasil Hitung Kas Akhir Di Tangan (Rp) <span style={{ color: '#f87171' }}>*</span>
+                <Banknote size={16} color="#34d399" /> Hasil Hitung Kas Akhir Di Tangan (Rp) <span style={{ color: 'var(--c-red)' }}>*</span>
               </label>
               <input 
                 type="number" 
@@ -236,7 +236,7 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
 
             <div className="form-group" style={{ marginBottom: '18px' }}>
               <label className="form-label" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Droplets size={16} color="#38bdf8" /> Meteran Air Akhir Depo (Liter) <span style={{ color: '#f87171' }}>*</span>
+                <Droplets size={16} color="#38bdf8" /> Meteran Air Akhir Depo (Liter) <span style={{ color: 'var(--c-red)' }}>*</span>
               </label>
               <input 
                 type="number" 
@@ -253,16 +253,16 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
             {/* Live Math Calculation Preview */}
             {kasAkhir !== '' && (
               <div style={{
-                background: 'rgba(30, 41, 59, 0.8)', padding: '12px 16px', borderRadius: '12px',
+                background: 'var(--inset-80)', padding: '12px 16px', borderRadius: '12px',
                 border: '1px solid var(--glass-border)', marginBottom: '20px', fontSize: '0.85rem'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <span>Total Air Baku Terpakai:</span>
-                  <strong style={{ color: '#38bdf8' }}>{pemakaianAir.toLocaleString('id-ID')} Liter</strong>
+                  <strong style={{ color: 'var(--c-sky)' }}>{pemakaianAir.toLocaleString('id-ID')} Liter</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
                   <span>Selisih Kas Fisik:</span>
-                  <strong style={{ color: selisihKas === 0 ? '#34d399' : selisihKas > 0 ? '#38bdf8' : '#f87171' }}>
+                  <strong style={{ color: selisihKas === 0 ? 'var(--c-green)' : selisihKas > 0 ? 'var(--c-sky)' : 'var(--c-red)' }}>
                     {selisihKas === 0 ? 'PAS (Rp 0)' : AppStore.formatRupiah(selisihKas)}
                   </strong>
                 </div>
@@ -274,7 +274,7 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
               className="btn btn-danger btn-lg" 
               style={{ width: '100%', padding: '14px', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              🔒 TUTUP SHIFT, SETOR KAS &amp; CEK STRUK
+              TUTUP SHIFT, SETOR KAS &amp; CEK STRUK
             </button>
           </form>
         ) : (
@@ -391,7 +391,7 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
             {/* Action Bar */}
             <div className="no-print" style={{
               padding: '16px 20px', borderTop: '1px solid var(--glass-border)',
-              display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(15, 23, 42, 0.95)'
+              display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--inset-90)'
             }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <button onClick={handlePrint} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: 700 }}>
@@ -402,7 +402,7 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
                 </button>
               </div>
               <button onClick={handleFinishAndLogout} className="btn btn-primary btn-lg" style={{ width: '100%', fontWeight: 800 }}>
-                ✅ Selesai &amp; Logout Kasir
+                Selesai &amp; Logout Kasir
               </button>
             </div>
           </div>

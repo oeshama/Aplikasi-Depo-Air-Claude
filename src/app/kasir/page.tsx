@@ -10,11 +10,28 @@ import { calculateOrderDuration, alarmSound, formatThresholdText } from '@/lib/a
 import ReceiptModal from '@/components/ReceiptModal';
 import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
 import BukaShiftModal from '@/components/BukaShiftModal';
-import { 
-  ShoppingCart, Plus, Minus, User, Truck, Receipt, 
+import {
+  ShoppingCart, Plus, Minus, User, Truck, Receipt,
   CreditCard, DollarSign, QrCode, Building, Clock, AlertTriangle, Check,
-  BellOff, Volume2, Package, UserPlus, X, TrendingDown, FileText, Banknote, UserCheck, BookOpen
+  BellOff, Volume2, Package, UserPlus, X, TrendingDown, FileText, Banknote, UserCheck, BookOpen,
+  Bell, MoreHorizontal, ChevronDown, ChevronUp, type LucideIcon
 } from 'lucide-react';
+
+const TIPE_LABEL: Record<TipeTransaksi, string> = {
+  tukar_galon: 'Tukar Galon',
+  isi_langsung: 'Isi Langsung',
+  titip_galon: 'Titip Galon',
+  pinjam_galon: 'Pinjam Galon',
+  pelunasan_hutang: 'Pelunasan Hutang'
+};
+
+const METODE_OPTIONS: { value: MetodePembayaran; label: string; Icon: LucideIcon }[] = [
+  { value: 'tunai', label: 'Tunai', Icon: Banknote },
+  { value: 'qris', label: 'QRIS', Icon: QrCode },
+  { value: 'transfer', label: 'Transfer', Icon: Building },
+  { value: 'edc', label: 'EDC Debit', Icon: CreditCard },
+  { value: 'hutang', label: 'Hutang', Icon: BookOpen }
+];
 
 export default function KasirPage() {
   const [produkList, setProdukList] = useState<Produk[]>([]);
@@ -23,6 +40,13 @@ export default function KasirPage() {
   const [pesananList, setPesananList] = useState<Pesanan[]>([]);
   const [karyawanList, setKaryawanList] = useState<Karyawan[]>([]);
   const [pengaturan, setPengaturan] = useState<PengaturanDepo>(AppStore.getPengaturan());
+
+  // Tampilan ringkas: lembar/menu hanya muncul saat dibutuhkan
+  const [showCheckout, setShowCheckout] = useState<boolean>(false);
+  const [showOpsi, setShowOpsi] = useState<boolean>(false);
+  const [showAlertPanel, setShowAlertPanel] = useState<boolean>(false);
+  const [showMenuLainnya, setShowMenuLainnya] = useState<boolean>(false);
+  const [showKasDetail, setShowKasDetail] = useState<boolean>(false);
 
   // Alarm & Snooze State
   const [mutedIds, setMutedIds] = useState<string[]>([]);
@@ -264,7 +288,7 @@ export default function KasirPage() {
       const dueDay = kary.tanggal_jatuh_tempo_gaji || 25;
       const todayDate = new Date().getDate();
       if (todayDate < dueDay) {
-        alert(`🔒 Pembayaran gaji untuk "${kary.nama}" belum dapat diproses karena belum melewati tanggal jatuh tempo (Jatuh Tempo: Tanggal ${dueDay}).`);
+        alert(`Pembayaran gaji untuk "${kary.nama}" belum dapat diproses karena belum melewati tanggal jatuh tempo (Jatuh Tempo: Tanggal ${dueDay}).`);
         return;
       }
     }
@@ -544,7 +568,7 @@ export default function KasirPage() {
   const handleSelectCustomer = (id: string) => {
     setSelectedKontakId(id);
     if (isDelivery && (id === 'kt-1' || id === 'walk-in')) {
-      alert('🚚 Transaksi Layanan Kirim Antar (Delivery) Memerlukan Nama & Alamat Pelanggan!\n\nWalk-in Pelanggan Biasa tidak memiliki alamat pengantaran. Silakan daftarkan atau pilih Pelanggan Baru terlebih dahulu.');
+      alert('Transaksi Layanan Kirim Antar (Delivery) Memerlukan Nama & Alamat Pelanggan!\n\nWalk-in Pelanggan Biasa tidak memiliki alamat pengantaran. Silakan daftarkan atau pilih Pelanggan Baru terlebih dahulu.');
       setShowAddKontakModal(true);
     }
     const target = kontakList.find(k => k.id === id);
@@ -679,7 +703,7 @@ export default function KasirPage() {
 
     if (isDelivery) {
       if (!selectedKontak || selectedKontak.id === 'kt-1' || selectedKontakId === 'kt-1') {
-        alert('🚚 Transaksi Layanan Kirim Antar (Delivery) Memerlukan Nama & Alamat Pelanggan!\n\nWalk-in Pelanggan Biasa tidak memiliki alamat pengantaran. Harap mendaftarkan atau memilih Pelanggan Baru terlebih dahulu agar driver tahu lokasi pengiriman!');
+        alert('Transaksi Layanan Kirim Antar (Delivery) Memerlukan Nama & Alamat Pelanggan!\n\nWalk-in Pelanggan Biasa tidak memiliki alamat pengantaran. Harap mendaftarkan atau memilih Pelanggan Baru terlebih dahulu agar driver tahu lokasi pengiriman!');
         setShowAddKontakModal(true);
         return;
       }
@@ -687,7 +711,7 @@ export default function KasirPage() {
 
     if (tipeTransaksi === 'pinjam_galon') {
       if (!selectedKontak || selectedKontak.id === 'kt-1' || selectedKontakId === 'kt-1') {
-        alert('⚠️ Transaksi Pinjam Galon Memerlukan Data Pelanggan Terdaftar!\n\nWalk-in Pelanggan Biasa tidak dapat meminjam galon depo. Harap mendaftarkan atau memilih Pelanggan Baru terlebih dahulu agar jelas siapa yang meminjam galon!');
+        alert('Transaksi Pinjam Galon Memerlukan Data Pelanggan Terdaftar!\n\nWalk-in Pelanggan Biasa tidak dapat meminjam galon depo. Harap mendaftarkan atau memilih Pelanggan Baru terlebih dahulu agar jelas siapa yang meminjam galon!');
         setShowAddKontakModal(true);
         return;
       }
@@ -819,6 +843,8 @@ export default function KasirPage() {
 
     setActiveReceipt(newPesanan);
     clearCart();
+    setShowCheckout(false);
+    setShowOpsi(false);
   };
 
   // Active shift cash calculations for Kasir POS Header
@@ -849,206 +875,529 @@ export default function KasirPage() {
 
   const saldoKasDiTangan = Math.max(0, (modalAwalKasir + totalTunaiShift + totalPengembalianKasbonShift) - totalPengeluaranShiftKeluar);
 
+  const alertCount = (isWaterStockCriticalCalc ? 1 : 0) + pendingDelivery.length;
+  const alertUrgent = isWaterStockCriticalCalc || delayedPending.length > 0;
+
+  // Buka menu lain dari "Lainnya": tutup lembar menu dulu
+  const openFromMenu = (fn: () => void) => () => {
+    setShowMenuLainnya(false);
+    fn();
+  };
+
+  // Esc menutup lembar yang sedang terbuka
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowCheckout(false);
+        setShowAlertPanel(false);
+        setShowMenuLainnya(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Keranjang kosong: lembar pembayaran menutup sendiri
+  useEffect(() => {
+    if (showCheckout && cartItems.length === 0) setShowCheckout(false);
+  }, [showCheckout, cartItems.length]);
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+    <div className={`page-stack${cartItems.length > 0 ? ' has-sticky' : ''}`}>
       {/* Modals */}
       <ReceiptModal pesanan={activeReceipt} onClose={() => setActiveReceipt(null)} />
       <ExpenseReceiptModal pengeluaran={activeExpenseReceipt} onClose={() => setActiveExpenseReceipt(null)} />
       <BukaShiftModal isOpen={showBukaShiftModal} onShiftOpened={() => setShowBukaShiftModal(false)} />
 
-      {/* BANNER RINGKASAN SALDO KAS DI TANGAN KASIR (LACI KASIR) */}
-      <div className="glass-card animate-fade-in" style={{
-        padding: '16px 20px',
-        background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(16, 185, 129, 0.2) 100%)',
-        border: '2px solid #38bdf8',
-        borderRadius: '16px'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{
-              width: '46px', height: '46px', borderRadius: '14px',
-              background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 14px rgba(2, 132, 199, 0.5)'
-            }}>
-              <Banknote size={26} color="#ffffff" />
-            </div>
-            <div>
-              <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: 700, letterSpacing: '0.5px' }}>
-                💵 SALDO KAS DI TANGAN (KAS LACI KASIR SAAT INI)
-              </span>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#34d399', marginTop: '2px' }}>
-                {AppStore.formatRupiah(saldoKasDiTangan)}
-              </h3>
-            </div>
-          </div>
+      {/* RINGKAS: kas laci, antaran/peringatan, dan menu tugas jarang */}
+      <div className="glass-card" style={{ padding: '12px 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setShowKasDetail(v => !v)}
+            aria-expanded={showKasDetail}
+            className="strip-main"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px', textAlign: 'left',
+              background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(52, 211, 153, 0.4)',
+              borderRadius: '12px', padding: '6px 10px', color: 'inherit', cursor: 'pointer'
+            }}
+          >
+            <Banknote size={22} color="#34d399" aria-hidden="true" />
+            <span style={{ flex: 1 }}>
+              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Kas laci saat ini</span>
+              <strong style={{ fontSize: '1.15rem', color: 'var(--c-green)' }}>{AppStore.formatRupiah(saldoKasDiTangan)}</strong>
+            </span>
+            {showKasDetail ? <ChevronUp size={18} color="#94a3b8" aria-hidden="true" /> : <ChevronDown size={18} color="#94a3b8" aria-hidden="true" />}
+          </button>
 
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.82rem' }}>
-            <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '8px 14px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
-              <span style={{ color: '#94a3b8' }}>Modal Kas Awal: </span>
-              <strong style={{ color: '#f8fafc', fontWeight: 800 }}>{AppStore.formatRupiah(modalAwalKasir)}</strong>
+          <button
+            type="button"
+            onClick={() => setShowAlertPanel(true)}
+            className="btn btn-secondary strip-btn"
+            aria-label={`Antaran dan peringatan, ${alertCount} item${alertUrgent ? ', ada yang mendesak' : ''}`}
+            style={{ position: 'relative', padding: '10px 12px', borderColor: alertUrgent ? 'var(--c-red)' : undefined, color: alertUrgent ? 'var(--c-red-soft)' : undefined }}
+          >
+            <Bell size={18} aria-hidden="true" className={hasActiveAlarm || hasWaterStockAlarmAudio ? 'animate-pulse' : undefined} />
+            Antaran
+            {alertCount > 0 && (
+              <span aria-hidden="true" style={{
+                minWidth: '22px', height: '22px', padding: '0 6px', borderRadius: '11px', fontSize: '0.75rem', fontWeight: 800,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                background: alertUrgent ? '#dc2626' : '#b45309', color: '#ffffff'
+              }}>
+                {alertCount}
+              </span>
+            )}
+          </button>
+
+          <button type="button" onClick={() => setShowMenuLainnya(true)} className="btn btn-secondary strip-btn" aria-haspopup="dialog" style={{ padding: '10px 12px' }}>
+            <MoreHorizontal size={18} aria-hidden="true" /> Lainnya
+          </button>
+        </div>
+
+        {showKasDetail && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', marginTop: '10px', fontSize: '0.85rem' }}>
+            <div style={{ background: 'var(--inset-70)', padding: '8px 12px', borderRadius: '10px' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Modal awal: </span>
+              <strong>{AppStore.formatRupiah(modalAwalKasir)}</strong>
             </div>
-            <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '8px 14px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
-              <span style={{ color: '#94a3b8' }}>Tunai Masuk: </span>
-              <strong style={{ color: '#38bdf8', fontWeight: 800 }}>+{AppStore.formatRupiah(totalTunaiShift + totalPengembalianKasbonShift)}</strong>
+            <div style={{ background: 'var(--inset-70)', padding: '8px 12px', borderRadius: '10px' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Tunai masuk: </span>
+              <strong style={{ color: 'var(--c-sky)' }}>+{AppStore.formatRupiah(totalTunaiShift + totalPengembalianKasbonShift)}</strong>
             </div>
-            <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '8px 14px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
-              <span style={{ color: '#94a3b8' }}>Pengeluaran: </span>
-              <strong style={{ color: '#f87171', fontWeight: 800 }}>-{AppStore.formatRupiah(totalPengeluaranShiftKeluar)}</strong>
+            <div style={{ background: 'var(--inset-70)', padding: '8px 12px', borderRadius: '10px' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Pengeluaran: </span>
+              <strong style={{ color: 'var(--c-red)' }}>-{AppStore.formatRupiah(totalPengeluaranShiftKeluar)}</strong>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* BANNER NOTIFIKASI ALARM CRITICAL STOK AIR BAKU */}
-      {isWaterStockCriticalCalc && (
-        <div className="glass-card animate-fade-in" style={{
-          padding: '16px 20px',
-          background: hasWaterStockAlarmAudio 
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.35) 0%, rgba(185, 28, 28, 0.4) 100%)' 
-            : 'rgba(239, 68, 68, 0.15)',
-          border: '2px solid #ef4444'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {hasWaterStockAlarmAudio ? (
-                <Volume2 size={28} color="#ef4444" className="animate-pulse" />
-              ) : (
-                <AlertTriangle size={28} color="#f87171" />
+      {/* PILIH PRODUK */}
+      <section aria-labelledby="judul-produk">
+        <h1 id="judul-produk" className="page-title" style={{ margin: '4px 0 10px' }}>Pilih Produk</h1>
+
+        {produkList.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)' }}>Belum ada produk aktif. Tambahkan produk lewat menu Produk dan Harga (Owner).</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px' }}>
+            {produkList.map(prod => {
+              const qty = cart[prod.id] || 0;
+              return (
+                <div key={prod.id} className="glass-card" style={{
+                  padding: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '10px',
+                  background: qty > 0 ? 'var(--selected-bg)' : 'var(--bg-card)',
+                  borderColor: qty > 0 ? 'var(--c-sky)' : 'var(--glass-border)'
+                }}>
+                  <div>
+                    {prod.gambar_url && (
+                      <div style={{ width: '100%', height: '70px', borderRadius: '10px', overflow: 'hidden', marginBottom: '8px', background: 'var(--inset-50)' }}>
+                        <img src={prod.gambar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                    )}
+                    <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>{prod.nama_produk}</h2>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>{prod.volume_liter} Liter</p>
+                    <div style={{ marginTop: '6px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--c-green)' }}>
+                      {AppStore.formatRupiah(prod.harga_tempat)}
+                    </div>
+                    {prod.kena_ongkir && (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--c-amber)', display: 'block', marginTop: '2px' }}>+ ongkir per unit</span>
+                    )}
+                  </div>
+
+                  <div className="stepper" role="group" aria-label={`Jumlah ${prod.nama_produk}`}>
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(prod.id, -1)}
+                      aria-label={`Kurangi ${prod.nama_produk}`}
+                      disabled={qty === 0}
+                      style={{ opacity: qty === 0 ? 0.4 : 1 }}
+                    >
+                      <Minus size={18} aria-hidden="true" />
+                    </button>
+                    <span className="qty" aria-live="polite">{qty}</span>
+                    <button type="button" className="plus" onClick={() => updateQuantity(prod.id, 1)} aria-label={`Tambah ${prod.nama_produk}`}>
+                      <Plus size={18} aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* BILAH TOTAL TETAP DI BAWAH LAYAR */}
+      {cartItems.length > 0 && !showCheckout && (
+        <div className="sticky-checkout no-print">
+          <div className="sticky-checkout-inner">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                {cartItems.reduce((acc, item) => acc + item.jumlah, 0)} item{isDelivery ? ' - diantar' : ''}
+              </div>
+              <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--c-green)' }}>{AppStore.formatRupiah(totalAkhir)}</div>
+            </div>
+            <button type="button" className="btn btn-success btn-lg" onClick={() => setShowCheckout(true)} style={{ minWidth: '150px' }}>
+              <ShoppingCart size={20} aria-hidden="true" /> Bayar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* LEMBAR PEMBAYARAN */}
+      {showCheckout && (
+        <div className="sheet-overlay" onClick={() => setShowCheckout(false)}>
+          <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="judul-bayar" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-header">
+              <h2 id="judul-bayar" className="sheet-title">Pembayaran</h2>
+              <button type="button" className="icon-btn" aria-label="Tutup pembayaran" onClick={() => setShowCheckout(false)}>
+                <X size={20} aria-hidden="true" />
+              </button>
+            </div>
+
+            {/* Daftar pesanan dengan pengubah jumlah */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {cartItems.map(item => (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 600 }}>{item.nama_produk}</div>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                      {AppStore.formatRupiah(item.harga_satuan)} x {item.jumlah} = <strong style={{ color: 'var(--c-sky)' }}>{AppStore.formatRupiah(item.subtotal)}</strong>
+                    </div>
+                  </div>
+                  <div className="stepper" role="group" aria-label={`Jumlah ${item.nama_produk}`} style={{ flexShrink: 0 }}>
+                    <button type="button" onClick={() => updateQuantity(item.produk_id, -1)} aria-label={`Kurangi ${item.nama_produk}`}>
+                      <Minus size={18} aria-hidden="true" />
+                    </button>
+                    <span className="qty">{item.jumlah}</span>
+                    <button type="button" className="plus" onClick={() => updateQuantity(item.produk_id, 1)} aria-label={`Tambah ${item.nama_produk}`}>
+                      <Plus size={18} aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pelanggan dan jenis transaksi: ringkas dulu, dibuka hanya jika perlu diubah */}
+            <div style={{ marginTop: '14px', background: 'var(--inset-60)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}>
+              <button
+                type="button"
+                onClick={() => setShowOpsi(v => !v)}
+                aria-expanded={showOpsi}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+                  padding: '12px 14px', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', textAlign: 'left'
+                }}
+              >
+                <span>
+                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Pelanggan dan jenis transaksi</span>
+                  <span style={{ fontWeight: 600 }}>
+                    {selectedKontak?.nama || 'Walk-in'} - {TIPE_LABEL[tipeTransaksi]} - {isDelivery ? 'Diantar' : 'Ambil di depo'}
+                  </span>
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--c-sky)', fontWeight: 700, fontSize: '0.85rem', flexShrink: 0 }}>
+                  Ubah {showOpsi ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+                </span>
+              </button>
+
+              {showOpsi && (
+                <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" htmlFor="pilih-pelanggan">Pelanggan / Reseller</label>
+                    <select
+                      id="pilih-pelanggan"
+                      value={selectedKontakId}
+                      onChange={(e) => handleSelectCustomer(e.target.value)}
+                      className="form-select"
+                    >
+                      {kontakList.map(k => (
+                        <option key={k.id} value={k.id}>
+                          {k.nama} ({k.tipe.toUpperCase()}) {k.hutang_saat_ini ? `- Hutang: ${AppStore.formatRupiah(k.hutang_saat_ini)}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={() => setShowAddKontakModal(true)} className="btn btn-secondary btn-sm" style={{ alignSelf: 'flex-start', marginTop: '6px' }}>
+                      <UserPlus size={16} aria-hidden="true" /> Pelanggan baru
+                    </button>
+
+                    {(selectedKontak?.hutang_saat_ini || 0) > 0 && (
+                      <div style={{
+                        marginTop: '8px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)',
+                        borderRadius: '10px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px'
+                      }}>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--c-red-soft)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <AlertTriangle size={16} aria-hidden="true" />
+                          Utang: <strong style={{ color: 'var(--text-strong)' }}>{AppStore.formatRupiah(selectedKontak.hutang_saat_ini || 0)}</strong>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { setShowCheckout(false); openBayarHutangModal(selectedKontak.id); }}
+                          className="btn btn-sm btn-warning"
+                        >
+                          Bayar utang
+                        </button>
+                      </div>
+                    )}
+
+                    {(isDelivery || tipeTransaksi === 'pinjam_galon') && selectedKontak?.id === 'kt-1' && (
+                      <p role="alert" style={{ marginTop: '8px', fontSize: '0.85rem', color: 'var(--c-amber)' }}>
+                        Transaksi ini butuh pelanggan terdaftar. Pilih pelanggan atau tambah pelanggan baru.
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="form-label" id="label-jenis" style={{ marginBottom: '6px' }}>Jenis transaksi</div>
+                    <div className="seg-grid" role="radiogroup" aria-labelledby="label-jenis">
+                      {(['tukar_galon', 'isi_langsung', 'titip_galon', 'pinjam_galon'] as TipeTransaksi[]).map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          role="radio"
+                          aria-checked={tipeTransaksi === t}
+                          className="seg-btn"
+                          onClick={() => {
+                            setTipeTransaksi(t);
+                            if (t === 'pinjam_galon' && (selectedKontakId === 'kt-1' || selectedKontak?.id === 'kt-1')) {
+                              alert('Pinjam Galon butuh identitas pelanggan terdaftar. Walk-in tidak bisa meminjam galon. Pilih pelanggan atau buat pelanggan baru.');
+                              setShowAddKontakModal(true);
+                            }
+                          }}
+                        >
+                          {TIPE_LABEL[t]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 600, minHeight: '44px' }}>
+                      <input
+                        type="checkbox"
+                        checked={isDelivery}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setIsDelivery(checked);
+                          if (checked && (selectedKontakId === 'kt-1' || selectedKontak?.id === 'kt-1')) {
+                            alert('Kirim antar butuh nama dan alamat pelanggan. Walk-in tidak punya alamat. Pilih atau daftarkan pelanggan dulu.');
+                            setShowAddKontakModal(true);
+                          }
+                        }}
+                        style={{ width: '22px', height: '22px', accentColor: '#0369a1' }}
+                      />
+                      <Truck size={18} color="#38bdf8" aria-hidden="true" /> Kirim antar ke rumah
+                    </label>
+
+                    {isDelivery && (
+                      <div className="form-group" style={{ marginTop: '8px', marginBottom: 0 }}>
+                        <label className="form-label" htmlFor="pilih-zona">Zona ongkir tujuan</label>
+                        <select id="pilih-zona" value={selectedZonaId} onChange={(e) => setSelectedZonaId(e.target.value)} className="form-select">
+                          {zonaList.map(z => (
+                            <option key={z.id} value={z.id}>
+                              {z.nama_zona} - {AppStore.formatRupiah(z.tarif_per_galon)}/unit
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
-              <div>
-                <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  🚛 PERINGATAN: STOK AIR BAKU DEPO MENIPIS! ({currentStokAirBakuCalc.toLocaleString('id-ID')} Liter)
-                </h4>
-                <p style={{ fontSize: '0.82rem', color: '#fca5a5', marginTop: '2px' }}>
-                  Stok saat ini ({currentStokAirBakuCalc.toLocaleString('id-ID')} L) telah mencapai / di bawah batas minimum pengingat (Min: {minStokAirBakuCalc.toLocaleString('id-ID')} L). Segera lakukan pemesanan / pasokan tangki air baku!
-                  {isWaterAlarmMuted && ' [🔕 Audio Muted]'}
-                  {isWaterAlarmSnoozed && ` [⏰ Audio Snoozed: ${Math.max(1, Math.ceil((waterAlarmSnoozedUntil - nowTick) / (1000 * 60)))} menit]`}
-                </p>
+            </div>
+
+            {/* Total */}
+            <div style={{ marginTop: '14px', background: 'var(--inset-80)', padding: '14px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                <span>Subtotal produk</span>
+                <span>{AppStore.formatRupiah(subtotalProduk)}</span>
+              </div>
+              {isDelivery && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--c-amber)', marginTop: '4px' }}>
+                  <span>Ongkir ({totalUnitOngkir} unit x {AppStore.formatRupiah(tarifOngkirPerUnit)})</span>
+                  <span>+{AppStore.formatRupiah(totalOngkir)}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.3rem', fontWeight: 800, color: 'var(--c-green)', marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed var(--glass-border)' }}>
+                <span>TOTAL</span>
+                <span>{AppStore.formatRupiah(totalAkhir)}</span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => {
-                  setKategoriPengeluaran('pembelian_air_baku');
-                  setShowAddPengeluaranModal(true);
-                }}
-                className="btn btn-primary btn-sm"
-                style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', fontWeight: 700, padding: '8px 14px', border: 'none' }}
-              >
-                🚛 Input Pembelian Air Baku
-              </button>
+            {/* Metode pembayaran: satu ketukan, tanpa dropdown */}
+            <div style={{ marginTop: '14px' }}>
+              <div className="form-label" id="label-metode" style={{ marginBottom: '6px' }}>Metode pembayaran</div>
+              <div className="seg-grid" role="radiogroup" aria-labelledby="label-metode">
+                {METODE_OPTIONS.map(({ value, label, Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={metodePembayaran === value}
+                    className="seg-btn"
+                    onClick={() => setMetodePembayaran(value)}
+                  >
+                    <Icon size={18} aria-hidden="true" /> {label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-              <button
-                onClick={() => {
-                  setWaterAlarmSnoozedUntil(Date.now() + (pengaturan.durasi_snooze_menit || 15) * 60 * 1000);
-                  setIsWaterAlarmMuted(false);
-                }}
-                className="btn btn-warning btn-sm"
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, background: '#f59e0b', color: '#0f172a', border: 'none', padding: '8px 14px' }}
-              >
-                <Clock size={16} /> ⏰ Snooze (15m)
-              </button>
+            {metodePembayaran === 'tunai' && (
+              <div className="form-group" style={{ marginTop: '14px', marginBottom: 0 }}>
+                <label className="form-label" htmlFor="uang-diterima">Uang diterima</label>
+                <input
+                  id="uang-diterima"
+                  type="number"
+                  inputMode="numeric"
+                  className="form-input"
+                  value={jumlahBayarTunai || ''}
+                  onChange={(e) => setJumlahBayarTunai(Number(e.target.value))}
+                  placeholder="0"
+                />
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setJumlahBayarTunai(totalAkhir)}>Uang pas</button>
+                  {[5000, 10000, 20000, 50000, 100000].map(n => (
+                    <button key={n} type="button" className="btn btn-secondary btn-sm" onClick={() => setJumlahBayarTunai(n)}>
+                      {n / 1000}rb
+                    </button>
+                  ))}
+                </div>
+                {jumlahBayarTunai > 0 && (
+                  <div role="status" style={{ fontSize: '1rem', fontWeight: 700, marginTop: '8px', color: jumlahBayarTunai >= totalAkhir ? 'var(--c-green)' : 'var(--c-red)' }}>
+                    {jumlahBayarTunai >= totalAkhir
+                      ? `Kembalian: ${AppStore.formatRupiah(kembalian)}`
+                      : `Kurang: ${AppStore.formatRupiah(totalAkhir - jumlahBayarTunai)}`}
+                  </div>
+                )}
+              </div>
+            )}
 
-              <button
-                onClick={() => setIsWaterAlarmMuted(!isWaterAlarmMuted)}
-                className="btn btn-secondary btn-sm"
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, background: 'rgba(239, 68, 68, 0.25)', border: '1px solid #ef4444', color: '#fca5a5', padding: '8px 14px' }}
-              >
-                <BellOff size={16} /> {isWaterAlarmMuted ? '🔊 Unmute Suara' : '🔕 Mute Suara'}
+            <button type="button" onClick={handleProcessOrder} className="btn btn-success btn-lg" style={{ width: '100%', marginTop: '16px' }}>
+              <Check size={20} aria-hidden="true" /> Proses dan cetak struk
+            </button>
+            <button
+              type="button"
+              onClick={() => { clearCart(); setShowCheckout(false); setShowOpsi(false); }}
+              className="btn btn-secondary"
+              style={{ width: '100%', marginTop: '8px' }}
+            >
+              Kosongkan keranjang
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MENU LAINNYA: tugas yang jarang dipakai */}
+      {showMenuLainnya && (
+        <div className="sheet-overlay" onClick={() => setShowMenuLainnya(false)}>
+          <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="judul-lainnya" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-header">
+              <h2 id="judul-lainnya" className="sheet-title">Menu Lainnya</h2>
+              <button type="button" className="icon-btn" aria-label="Tutup menu lainnya" onClick={() => setShowMenuLainnya(false)}>
+                <X size={20} aria-hidden="true" />
               </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {[
+                { Icon: CreditCard, title: 'Bayar utang pelanggan', desc: 'Catat pelunasan utang pelanggan', action: () => openBayarHutangModal() },
+                { Icon: TrendingDown, title: 'Catat pengeluaran kas', desc: 'Bensin, gaji, beli air baku, dan lainnya', action: () => setShowAddPengeluaranModal(true) },
+                { Icon: FileText, title: 'Catat hutang toko', desc: 'Utang toko ke karyawan atau pihak ketiga', action: () => setShowAddHutangTokoModal(true) },
+                { Icon: UserPlus, title: 'Tambah pelanggan baru', desc: 'Daftarkan pelanggan atau reseller', action: () => setShowAddKontakModal(true) },
+              ].map(({ Icon, title, desc, action }) => (
+                <button
+                  key={title}
+                  type="button"
+                  onClick={openFromMenu(action)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', minHeight: '60px',
+                    padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--glass-border)',
+                    background: 'var(--w-5)', color: 'inherit', cursor: 'pointer'
+                  }}
+                >
+                  <Icon size={22} color="#38bdf8" aria-hidden="true" />
+                  <span>
+                    <span style={{ display: 'block', fontWeight: 700 }}>{title}</span>
+                    <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{desc}</span>
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* DETAIL PENGIRIMAN PENDING (BELUM TERKIRIM) SECTION */}
-      <div className="glass-card animate-fade-in" style={{ padding: '24px', borderTop: '4px solid #fbbf24' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Truck size={24} color="#fbbf24" /> Detail Pengiriman Pending (Belum Terkirim)
-          </h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {delayedPending.length > 0 && (
-              <span className="badge badge-danger animate-pulse">
-                🚨 {delayedPending.length} Terlambat (&gt; {formatThresholdText(thresholdMins)})
-              </span>
-            )}
-            <span className="badge badge-warning">{pendingDelivery.length} Antaran Menunggu</span>
-          </div>
-        </div>
+      {/* ANTARAN DAN PERINGATAN: satu tempat untuk semua notifikasi */}
+      {showAlertPanel && (
+        <div className="sheet-overlay" onClick={() => setShowAlertPanel(false)}>
+          <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="judul-antaran" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-header">
+              <h2 id="judul-antaran" className="sheet-title">Antaran dan Peringatan</h2>
+              <button type="button" className="icon-btn" aria-label="Tutup antaran dan peringatan" onClick={() => setShowAlertPanel(false)}>
+                <X size={20} aria-hidden="true" />
+              </button>
+            </div>
 
-        {/* Alarm Warning Banner */}
-        {delayedPending.length > 0 && (
-          <div className="glass-card animate-fade-in" style={{
-            padding: '14px 18px',
-            marginBottom: '16px',
-            background: hasActiveAlarm 
-              ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(185, 28, 28, 0.35) 100%)' 
-              : 'rgba(239, 68, 68, 0.12)',
-            border: '2px solid #ef4444'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {hasActiveAlarm ? (
-                  <Volume2 size={24} color="#ef4444" className="animate-pulse" />
-                ) : (
-                  <BellOff size={22} color="#94a3b8" />
-                )}
-                <div>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#f8fafc' }}>
-                    🚨 Notifikasi Pesanan Belum Terkirim (&gt; {formatThresholdText(thresholdMins)})
-                  </h4>
-                  <p style={{ fontSize: '0.8rem', color: '#fca5a5', marginTop: '2px' }}>
-                    {hasActiveAlarm 
-                      ? '🔔 Alarm pengingat berbunyi! Pilih aksi di bawah:' 
-                      : delayedPending.every(p => isOrderMuted(p.id))
-                        ? '🔕 Alarm telah dimatikan (tidak akan bunyi lagi).'
-                        : `🔕 Suara alarm di-Snooze (${snoozeMins} Menit).`}
-                  </p>
+            {isWaterStockCriticalCalc && (
+              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--c-red-strong)', borderRadius: '12px', padding: '12px 14px', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, color: 'var(--text-strong)' }}>
+                  <AlertTriangle size={20} color="#f87171" aria-hidden="true" /> Stok air baku menipis
+                </div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--c-red-soft)', margin: '4px 0 10px' }}>
+                  Sisa {currentStokAirBakuCalc.toLocaleString('id-ID')} L (batas minimum {minStokAirBakuCalc.toLocaleString('id-ID')} L). Segera pesan tangki air baku.
+                  {isWaterAlarmMuted && ' Suara dimatikan.'}
+                  {isWaterAlarmSnoozed && ` Suara ditunda ${Math.max(1, Math.ceil((waterAlarmSnoozedUntil - nowTick) / (1000 * 60)))} menit.`}
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn-success btn-sm"
+                    onClick={() => { setKategoriPengeluaran('pembelian_air_baku'); setShowAlertPanel(false); setShowAddPengeluaranModal(true); }}
+                  >
+                    <Truck size={16} aria-hidden="true" /> Catat pembelian air baku
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => { setWaterAlarmSnoozedUntil(Date.now() + (pengaturan.durasi_snooze_menit || 15) * 60 * 1000); setIsWaterAlarmMuted(false); }}
+                  >
+                    <Clock size={16} aria-hidden="true" /> Tunda suara
+                  </button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setIsWaterAlarmMuted(!isWaterAlarmMuted)}>
+                    {isWaterAlarmMuted ? <Volume2 size={16} aria-hidden="true" /> : <BellOff size={16} aria-hidden="true" />}
+                    {isWaterAlarmMuted ? 'Nyalakan suara' : 'Matikan suara'}
+                  </button>
                 </div>
               </div>
+            )}
 
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <button 
-                  onClick={handleMuteAll}
-                  className="btn btn-secondary btn-sm"
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, background: 'rgba(239, 68, 68, 0.25)', border: '1px solid #ef4444', color: '#fca5a5', padding: '6px 12px' }}
-                >
-                  <BellOff size={14} /> 🔕 Matikan Alarm (Permanen)
-                </button>
-                <button 
-                  onClick={handleSnoozeAll}
-                  className="btn btn-warning btn-sm"
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, background: '#f59e0b', color: '#0f172a', border: 'none', padding: '6px 12px' }}
-                >
-                  <Clock size={14} /> ⏰ Snooze Tunda ({snoozeMins}m)
-                </button>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Truck size={18} color="#fbbf24" aria-hidden="true" /> Antaran belum terkirim ({pendingDelivery.length})
+            </h3>
+
+            {delayedPending.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <p style={{ fontSize: '0.85rem', color: 'var(--c-red-soft)', marginBottom: '8px' }}>
+                  {delayedPending.length} pesanan terlambat (lebih dari {formatThresholdText(thresholdMins)}).
+                  {hasActiveAlarm ? ' Alarm sedang berbunyi.' : ' Alarm sedang diam.'}
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={handleSnoozeAll}>
+                    <Clock size={16} aria-hidden="true" /> Tunda semua ({snoozeMins} menit)
+                  </button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={handleMuteAll}>
+                    <BellOff size={16} aria-hidden="true" /> Matikan semua alarm
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {pendingDelivery.length === 0 ? (
-          <div style={{ padding: '24px', textAlign: 'center', background: 'rgba(15, 23, 42, 0.5)', borderRadius: '12px', color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            <Check size={20} /> Tidak ada pengiriman pending saat ini. Semua pesanan antar sudah terkirim lunas!
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--glass-border)', color: '#94a3b8', background: 'rgba(15, 23, 42, 0.6)' }}>
-                  <th style={{ padding: '12px' }}>Jam Order</th>
-                  <th style={{ padding: '12px' }}>Jam Terkirim</th>
-                  <th style={{ padding: '12px' }}>Durasi Menunggu</th>
-                  <th style={{ padding: '12px' }}>No Nota &amp; Pelanggan</th>
-                  <th style={{ padding: '12px' }}>Produk &amp; Tagihan</th>
-                  <th style={{ padding: '12px' }}>Status Kirim</th>
-                  <th style={{ padding: '12px' }}>Aksi / Alarm</th>
-                </tr>
-              </thead>
-              <tbody>
+            {pendingDelivery.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', background: 'var(--inset-50)', borderRadius: '12px', color: 'var(--c-green)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <Check size={20} aria-hidden="true" /> Semua antaran sudah terkirim
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {pendingDelivery.map(psn => {
                   const durInfo = calculateOrderDuration(psn.created_at, psn.terkirim_at, psn.status_pesanan, thresholdMins);
                   const isMuted = isOrderMuted(psn.id);
@@ -1056,471 +1405,51 @@ export default function KasirPage() {
                   const remainingSnoozeMins = getSnoozeRemainingMinutes(psn.id);
 
                   return (
-                    <tr 
-                      key={psn.id} 
-                      style={{ 
-                        borderBottom: '1px solid rgba(255,255,255,0.06)',
-                        background: durInfo.isTerlambat ? 'rgba(239, 68, 68, 0.08)' : undefined
-                      }}
-                    >
-                      <td style={{ padding: '12px', fontWeight: 600, color: '#fbbf24', whiteSpace: 'nowrap' }}>
-                        <Clock size={14} style={{ display: 'inline', marginRight: '4px' }} />
-                        {durInfo.jamOrder}
-                      </td>
-                      <td style={{ padding: '12px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
-                        {durInfo.jamTerkirim}
-                      </td>
-                      <td style={{ padding: '12px', fontWeight: 800, whiteSpace: 'nowrap' }}>
-                        <span style={{ color: durInfo.isTerlambat ? '#f87171' : '#38bdf8' }}>
-                          {durInfo.formattedDurasi}
+                    <div key={psn.id} style={{
+                      padding: '12px 14px', borderRadius: '12px', border: '1px solid var(--glass-border)',
+                      borderLeft: durInfo.isTerlambat ? '4px solid var(--c-red-strong)' : '4px solid var(--c-amber)',
+                      background: durInfo.isTerlambat ? 'rgba(239, 68, 68, 0.08)' : 'var(--inset-50)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                        <strong>{psn.nama_pelanggan}</strong>
+                        <span className="badge badge-warning">{psn.status_pesanan.replace('_', ' ')}</span>
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>{psn.no_nota} - order {durInfo.jamOrder}</div>
+                      <div style={{ fontSize: '0.9rem', marginTop: '6px', color: 'var(--text-2)' }}>{formatProdukRingkas(psn.items)}</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
+                        <strong style={{ color: 'var(--c-green)' }}>{AppStore.formatRupiah(psn.total_akhir)}</strong>
+                        <span style={{ fontWeight: 700, color: durInfo.isTerlambat ? 'var(--c-red)' : 'var(--c-sky)' }}>
+                          <Clock size={14} style={{ display: 'inline', marginRight: '4px' }} aria-hidden="true" />
+                          Menunggu {durInfo.formattedDurasi}{durInfo.isTerlambat ? ' - TERLAMBAT' : ''}
                         </span>
-                        {durInfo.isTerlambat && (
-                          <span className="badge badge-danger" style={{ display: 'block', fontSize: '0.65rem', marginTop: '3px' }}>
-                            🚨 &gt; {formatThresholdText(thresholdMins)}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <div style={{ fontWeight: 700, color: '#38bdf8' }}>{psn.no_nota}</div>
-                        <div style={{ fontWeight: 600, color: '#f8fafc', marginTop: '2px' }}>{psn.nama_pelanggan}</div>
-                      </td>
-                      <td style={{ padding: '12px', color: '#cbd5e1' }}>
-                        <div style={{ fontWeight: 600 }}>{formatProdukRingkas(psn.items)}</div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#34d399', marginTop: '2px' }}>
-                          {AppStore.formatRupiah(psn.total_akhir)}
-                        </div>
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <span className="badge badge-warning">
-                          {psn.status_pesanan.toUpperCase().replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                          {durInfo.isTerlambat && (
-                            <>
-                              {isMuted ? (
-                                <span className="badge badge-secondary" style={{ fontSize: '0.7rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <BellOff size={12} /> Dimatikan
-                                </span>
-                              ) : (
-                                <button 
-                                  onClick={() => handleMuteJob(psn.id)}
-                                  className="btn btn-secondary btn-sm"
-                                  style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#fca5a5', fontSize: '0.75rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                  title="Mematikan alarm agar tidak bunyi lagi"
-                                >
-                                  <BellOff size={13} /> Matikan
-                                </button>
-                              )}
-
-                              {isSnoozed ? (
-                                <span className="badge badge-warning" style={{ fontSize: '0.7rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <Clock size={12} /> Snooze ({remainingSnoozeMins}m)
-                                </span>
-                              ) : (
-                                <button 
-                                  onClick={() => handleSnoozeJob(psn.id)}
-                                  className="btn btn-warning btn-sm"
-                                  style={{ background: '#f59e0b', color: '#0f172a', border: 'none', fontWeight: 700, fontSize: '0.75rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                  title="Menunda alarm sementara"
-                                >
-                                  <Clock size={13} /> Snooze ({snoozeMins}m)
-                                </button>
-                              )}
-                            </>
-                          )}
-                          <button 
-                            onClick={() => handleKonfirmasiTerkirim(psn.id)} 
-                            className="btn btn-success btn-sm"
-                            style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-                          >
-                            <Check size={13} /> Terkirim
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                        <button type="button" className="btn btn-success btn-sm" style={{ flex: '1 1 130px' }} onClick={() => handleKonfirmasiTerkirim(psn.id)}>
+                          <Check size={16} aria-hidden="true" /> Sudah terkirim
+                        </button>
+                        {durInfo.isTerlambat && (isSnoozed ? (
+                          <span className="badge badge-warning">Ditunda {remainingSnoozeMins} menit</span>
+                        ) : (
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleSnoozeJob(psn.id)}>
+                            <Clock size={16} aria-hidden="true" /> Tunda
                           </button>
-                        </div>
-                      </td>
-                    </tr>
+                        ))}
+                        {durInfo.isTerlambat && (isMuted ? (
+                          <span className="badge badge-secondary">Alarm dimatikan</span>
+                        ) : (
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleMuteJob(psn.id)}>
+                            <BellOff size={16} aria-hidden="true" /> Matikan alarm
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Main Layout Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-        
-        {/* Left Side: Quick Tap Product Selector */}
-        <div className="glass-card animate-fade-in" style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ShoppingCart size={22} color="#0284c7" /> Quick POS Tap produk
-            </h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <button 
-                type="button" 
-                onClick={() => openBayarHutangModal()}
-                className="btn btn-sm btn-warning" 
-                style={{ fontSize: '0.8rem', padding: '6px 12px' }}
-              >
-                💳 Entry Pembayaran Utang
-              </button>
-              <button 
-                type="button" 
-                onClick={() => setShowAddPengeluaranModal(true)}
-                className="btn btn-sm btn-danger" 
-                style={{ fontSize: '0.8rem', padding: '6px 12px', background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' }}
-              >
-                💸 Entry Pengeluaran Kas
-              </button>
-              <button 
-                type="button" 
-                onClick={() => setShowAddHutangTokoModal(true)}
-                className="btn btn-sm btn-secondary" 
-                style={{ fontSize: '0.8rem', padding: '6px 12px', background: 'rgba(251, 191, 36, 0.18)', border: '1px solid #fbbf24', color: '#fbbf24' }}
-              >
-                🧾 Entry Hutang Toko
-              </button>
-              <span className="badge badge-primary">{produkList.length} Wadah</span>
-            </div>
-          </div>
-
-          {/* Product Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
-            {produkList.map(prod => {
-              const qty = cart[prod.id] || 0;
-              return (
-                <div key={prod.id} className="glass-card" style={{
-                  padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-                  background: qty > 0 ? 'rgba(2, 132, 199, 0.25)' : 'rgba(18, 28, 54, 0.7)',
-                  borderColor: qty > 0 ? '#38bdf8' : 'var(--glass-border)',
-                  position: 'relative'
-                }}>
-                  {qty > 0 && (
-                    <div style={{
-                      position: 'absolute', top: '-8px', right: '-8px', background: '#38bdf8', color: '#0f172a',
-                      fontWeight: 800, width: '26px', height: '26px', borderRadius: '50%', display: 'flex',
-                      alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem'
-                    }}>
-                      {qty}
-                    </div>
-                  )}
-
-                  <div>
-                    {prod.gambar_url && (
-                      <div style={{ width: '100%', height: '70px', borderRadius: '10px', overflow: 'hidden', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.5)' }}>
-                        <img src={prod.gambar_url} alt={prod.nama_produk} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
-                    )}
-                    <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc' }}>{prod.nama_produk}</h4>
-                    <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '2px' }}>{prod.volume_liter} Liter</p>
-                    <div style={{ marginTop: '8px', fontSize: '1rem', fontWeight: 800, color: '#34d399' }}>
-                      {AppStore.formatRupiah(prod.harga_tempat)}
-                    </div>
-                    {prod.kena_ongkir && (
-                      <span style={{ fontSize: '0.65rem', color: '#fbbf24', display: 'block', marginTop: '2px' }}>+ Ongkir unit</span>
-                    )}
-                  </div>
-
-                  {/* Quantity Counter Buttons */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '14px' }}>
-                    <button onClick={() => updateQuantity(prod.id, -1)} className="btn btn-secondary btn-sm" style={{ flex: 1, padding: '8px' }}>
-                      <Minus size={14} />
-                    </button>
-                    <button onClick={() => updateQuantity(prod.id, 1)} className="btn btn-primary btn-sm" style={{ flex: 1, padding: '8px' }}>
-                      <Plus size={14} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Right Side: Order Summary & Transaction Panel */}
-        <div className="glass-card animate-fade-in" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          {/* Customer & Transaction Options */}
-          <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '14px', color: '#f8fafc' }}>
-              Detail Pelanggan & Skenario
-            </h3>
-
-            {/* Customer Picker */}
-            <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label className="form-label" style={{ marginBottom: 0 }}>
-                  <User size={14} style={{ display: 'inline', marginRight: '4px' }} /> Pelanggan / Reseller
-                </label>
-                <button 
-                  type="button" 
-                  onClick={() => setShowAddKontakModal(true)}
-                  className="btn btn-sm btn-primary"
-                  style={{ padding: '4px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-                >
-                  <UserPlus size={13} /> + Tambah Kontak Baru
-                </button>
-              </div>
-              <select 
-                value={selectedKontakId} 
-                onChange={(e) => handleSelectCustomer(e.target.value)}
-                className="form-select"
-              >
-                {kontakList.map(k => (
-                  <option key={k.id} value={k.id}>
-                    {k.nama} ({k.tipe.toUpperCase()}) {k.hutang_saat_ini ? `- Hutang: ${AppStore.formatRupiah(k.hutang_saat_ini)}` : ''}
-                  </option>
-                ))}
-              </select>
-
-              {/* Debt Alert Banner */}
-              {(selectedKontak?.hutang_saat_ini || 0) > 0 && (
-                <div style={{
-                  marginTop: '10px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)',
-                  borderRadius: '10px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  flexWrap: 'wrap', gap: '8px'
-                }}>
-                  <div style={{ fontSize: '0.8rem', color: '#fca5a5', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <AlertTriangle size={16} color="#ef4444" />
-                    <span>Catatan Utang: <strong style={{ color: '#ffffff' }}>{AppStore.formatRupiah(selectedKontak.hutang_saat_ini || 0)}</strong></span>
-                  </div>
-                  <button 
-                    type="button" 
-                    onClick={() => openBayarHutangModal(selectedKontak.id)}
-                    className="btn btn-sm btn-warning" 
-                    style={{ fontSize: '0.75rem', padding: '4px 10px' }}
-                  >
-                    💳 Bayar Utang Sekarang
-                  </button>
-                </div>
-              )}
-
-              {/* Pinjam Galon Warning Banner */}
-              {tipeTransaksi === 'pinjam_galon' && (selectedKontakId === 'kt-1' || selectedKontak?.id === 'kt-1') && (
-                <div style={{
-                  marginTop: '10px', background: 'rgba(245, 158, 11, 0.18)', border: '2px solid #fbbf24',
-                  borderRadius: '10px', padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  flexWrap: 'wrap', gap: '8px'
-                }}>
-                  <div style={{ fontSize: '0.82rem', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <AlertTriangle size={20} color="#fbbf24" />
-                    <div>
-                      <strong style={{ color: '#ffffff', fontSize: '0.9rem' }}>Harap Mengisi / Memilih Pelanggan Baru!</strong>
-                      <span style={{ display: 'block', fontSize: '0.78rem', color: '#cbd5e1', marginTop: '2px' }}>
-                        Transaksi Pinjam Galon wajib mencatat identitas peminjam secara jelas. Walk-in Biasa tidak diizinkan.
-                      </span>
-                    </div>
-                  </div>
-                  <button 
-                    type="button" 
-                    onClick={() => setShowAddKontakModal(true)}
-                    className="btn btn-sm btn-primary" 
-                    style={{ fontSize: '0.75rem', padding: '6px 12px', background: '#0284c7', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}
-                  >
-                    <UserPlus size={14} /> + Isi Pelanggan Baru
-                  </button>
-                </div>
-              )}
-
-              {/* Delivery Warning Banner */}
-              {isDelivery && (selectedKontakId === 'kt-1' || selectedKontak?.id === 'kt-1') && (
-                <div style={{
-                  marginTop: '10px', background: 'rgba(2, 132, 199, 0.18)', border: '2px solid #38bdf8',
-                  borderRadius: '10px', padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  flexWrap: 'wrap', gap: '8px'
-                }}>
-                  <div style={{ fontSize: '0.82rem', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Truck size={20} color="#38bdf8" />
-                    <div>
-                      <strong style={{ color: '#ffffff', fontSize: '0.9rem' }}>Layanan Delivery Membutuhkan Data Pelanggan!</strong>
-                      <span style={{ display: 'block', fontSize: '0.78rem', color: '#cbd5e1', marginTop: '2px' }}>
-                        Walk-in Pelanggan Biasa tidak memiliki alamat pengantaran. Silakan daftarkan Pelanggan Baru terlebih dahulu.
-                      </span>
-                    </div>
-                  </div>
-                  <button 
-                    type="button" 
-                    onClick={() => setShowAddKontakModal(true)}
-                    className="btn btn-sm btn-primary" 
-                    style={{ fontSize: '0.75rem', padding: '6px 12px', background: '#0284c7', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}
-                  >
-                    <UserPlus size={14} /> + Isi Pelanggan Baru
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Transaction Type */}
-            <div className="form-group">
-              <label className="form-label">Skenario Transaksi Lapangan</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <button 
-                  type="button" 
-                  onClick={() => setTipeTransaksi('tukar_galon')}
-                  className={`btn btn-sm ${tipeTransaksi === 'tukar_galon' ? 'btn-primary' : 'btn-secondary'}`}
-                >
-                  Tukar Galon
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => setTipeTransaksi('isi_langsung')}
-                  className={`btn btn-sm ${tipeTransaksi === 'isi_langsung' ? 'btn-primary' : 'btn-secondary'}`}
-                >
-                  Isi Langsung
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => setTipeTransaksi('titip_galon')}
-                  className={`btn btn-sm ${tipeTransaksi === 'titip_galon' ? 'btn-primary' : 'btn-secondary'}`}
-                >
-                  Titip Galon
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    setTipeTransaksi('pinjam_galon');
-                    if (selectedKontakId === 'kt-1' || selectedKontak?.id === 'kt-1') {
-                      alert('⚠️ Transaksi Pinjam Galon Memerlukan Identitas Pelanggan Terdaftar!\n\nWalk-in Pelanggan Biasa tidak dapat meminjam galon depo. Silakan pilih pelanggan terdaftar atau buat Kontak Pelanggan Baru!');
-                      setShowAddKontakModal(true);
-                    }
-                  }}
-                  className={`btn btn-sm ${tipeTransaksi === 'pinjam_galon' ? 'btn-primary' : 'btn-secondary'}`}
-                >
-                  Pinjam Galon
-                </button>
-              </div>
-            </div>
-
-            {/* Delivery Toggle & Zone */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '12px', borderRadius: '12px', marginTop: '12px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600 }}>
-                <input 
-                  type="checkbox" 
-                  checked={isDelivery} 
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setIsDelivery(checked);
-                    if (checked && (selectedKontakId === 'kt-1' || selectedKontak?.id === 'kt-1')) {
-                      alert('🚚 Transaksi Layanan Kirim Antar (Delivery) Memerlukan Nama & Alamat Pelanggan!\n\nWalk-in Pelanggan Biasa tidak memiliki alamat pengantaran. Silakan daftarkan atau pilih Pelanggan Baru terlebih dahulu.');
-                      setShowAddKontakModal(true);
-                    }
-                  }}
-                  style={{ width: '18px', height: '18px', accentColor: '#0284c7' }}
-                />
-                <Truck size={18} color="#38bdf8" /> Kirim Antar Ke Rumah (Delivery)
-              </label>
-
-              {isDelivery && (
-                <div className="form-group" style={{ marginTop: '10px', marginBottom: 0 }}>
-                  <label className="form-label">Pilih Zona Ongkir Tujuan</label>
-                  <select 
-                    value={selectedZonaId} 
-                    onChange={(e) => setSelectedZonaId(e.target.value)}
-                    className="form-select"
-                  >
-                    {zonaList.map(z => (
-                      <option key={z.id} value={z.id}>
-                        {z.nama_zona} - {AppStore.formatRupiah(z.tarif_per_galon)}/unit
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Cart Table Summary */}
-          <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '16px' }}>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc', marginBottom: '10px' }}>
-              Ringkasan Pesanan ({cartItems.length} Produk)
-            </h4>
-
-            {cartItems.length === 0 ? (
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem', fontStyle: 'italic' }}>Keranjang masih kosong. Klik tombol + pada produk.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
-                {cartItems.map(item => (
-                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
-                    <div>
-                      <span style={{ fontWeight: 600 }}>{item.nama_produk}</span>
-                      <span style={{ color: '#94a3b8', marginLeft: '6px' }}>x{item.jumlah}</span>
-                    </div>
-                    <span style={{ fontWeight: 700, color: '#38bdf8' }}>{AppStore.formatRupiah(item.subtotal)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Totals & Payment Method */}
-          <div style={{ background: 'rgba(15, 23, 42, 0.8)', padding: '16px', borderRadius: '16px', border: '1px solid var(--glass-border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#94a3b8' }}>
-              <span>Subtotal Produk</span>
-              <span>{AppStore.formatRupiah(subtotalProduk)}</span>
-            </div>
-
-            {isDelivery && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#fbbf24', marginTop: '4px' }}>
-                <span>Ongkir ({totalUnitOngkir} unit x {AppStore.formatRupiah(tarifOngkirPerUnit)})</span>
-                <span>+{AppStore.formatRupiah(totalOngkir)}</span>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem', fontWeight: 800, color: '#34d399', marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed var(--glass-border)' }}>
-              <span>TOTAL AKHIR</span>
-              <span>{AppStore.formatRupiah(totalAkhir)}</span>
-            </div>
-
-            {/* Payment Method Selector */}
-            <div className="form-group" style={{ marginTop: '14px', marginBottom: 0 }}>
-              <label className="form-label">Metode Pembayaran (7 Pilih)</label>
-              <select 
-                value={metodePembayaran} 
-                onChange={(e) => setMetodePembayaran(e.target.value as MetodePembayaran)}
-                className="form-select"
-              >
-                <option value="tunai">💵 Tunai (Hitung Kembalian)</option>
-                <option value="qris">📱 QRIS Depo</option>
-                <option value="transfer">🏦 Transfer Bank</option>
-                <option value="edc">💳 EDC Kartu Debit</option>
-                <option value="hutang">⚠️ Hutang / Kredit Pelanggan</option>
-              </select>
-            </div>
-
-            {/* Cash Input */}
-            {metodePembayaran === 'tunai' && (
-              <div className="form-group" style={{ marginTop: '10px', marginBottom: 0 }}>
-                <label className="form-label">Uang Diterima Tunai</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  value={jumlahBayarTunai || ''} 
-                  onChange={(e) => setJumlahBayarTunai(Number(e.target.value))}
-                  placeholder="0"
-                />
-                {jumlahBayarTunai >= totalAkhir && (
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#34d399', marginTop: '4px' }}>
-                    Kembalian: {AppStore.formatRupiah(kembalian)}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px' }}>
-            <button onClick={clearCart} className="btn btn-secondary">
-              Reset
-            </button>
-            <button onClick={handleProcessOrder} className="btn btn-success btn-lg">
-              <Check size={20} /> Process & Print Struk
-            </button>
-          </div>
-
-        </div>
-
-      </div>
+      )}
 
       {/* Modal Form Entry Pembayaran / Pelunasan Utang */}
       {showBayarHutangModal && (
@@ -1530,14 +1459,14 @@ export default function KasirPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px'
         }}>
           <div className="glass-card animate-fade-in" style={{
-            width: '100%', maxWidth: '520px', padding: '24px', background: '#0f172a',
+            width: '100%', maxWidth: '520px', padding: '24px', background: 'var(--surface-solid)',
             border: '1px solid var(--glass-border)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <CreditCard size={22} color="#f59e0b" /> Entry Pembayaran Utang Pelanggan
               </h3>
-              <button type="button" onClick={() => setShowBayarHutangModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+              <button aria-label="Tutup" type="button" onClick={() => setShowBayarHutangModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 ✕
               </button>
             </div>
@@ -1553,7 +1482,7 @@ export default function KasirPage() {
                 >
                   {kontakList.map(k => (
                     <option key={k.id} value={k.id}>
-                      {k.nama} ({k.tipe.toUpperCase()}) { (k.hutang_saat_ini || 0) > 0 ? `⚠️ Utang: ${AppStore.formatRupiah(k.hutang_saat_ini || 0)}` : '✓ Lunas (0)' }
+                      {k.nama} ({k.tipe.toUpperCase()}) { (k.hutang_saat_ini || 0) > 0 ? `Utang: ${AppStore.formatRupiah(k.hutang_saat_ini || 0)}` : 'Lunas (0)' }
                     </option>
                   ))}
                 </select>
@@ -1564,10 +1493,10 @@ export default function KasirPage() {
                 const k = kontakList.find(item => item.id === selectedHutangKontakId);
                 const hutang = k?.hutang_saat_ini || 0;
                 return (
-                  <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#94a3b8' }}>
+                  <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                       <span>Sisa Utang Saat Ini:</span>
-                      <strong style={{ fontSize: '1.05rem', color: hutang > 0 ? '#ef4444' : '#34d399' }}>{AppStore.formatRupiah(hutang)}</strong>
+                      <strong style={{ fontSize: '1.05rem', color: hutang > 0 ? 'var(--c-red-strong)' : 'var(--c-green)' }}>{AppStore.formatRupiah(hutang)}</strong>
                     </div>
                     {hutang > 0 && (
                       <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
@@ -1616,10 +1545,10 @@ export default function KasirPage() {
                   onChange={(e) => setMetodeBayarHutang(e.target.value as MetodePembayaran)}
                   className="form-select"
                 >
-                  <option value="tunai">💵 Tunai</option>
-                  <option value="qris">📱 QRIS Depo</option>
-                  <option value="transfer">🏦 Transfer Bank</option>
-                  <option value="edc">💳 EDC Kartu Debit</option>
+                  <option value="tunai">Tunai</option>
+                  <option value="qris">QRIS Depo</option>
+                  <option value="transfer">Transfer Bank</option>
+                  <option value="edc">EDC Kartu Debit</option>
                 </select>
               </div>
 
@@ -1636,7 +1565,7 @@ export default function KasirPage() {
                     required 
                   />
                   {uangDiterimaHutang >= nominalBayarHutang && (
-                    <span style={{ fontSize: '0.8rem', color: '#34d399', display: 'block', marginTop: '4px', fontWeight: 700 }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--c-green)', display: 'block', marginTop: '4px', fontWeight: 700 }}>
                       Kembalian: {AppStore.formatRupiah(uangDiterimaHutang - nominalBayarHutang)}
                     </span>
                   )}
@@ -1677,8 +1606,8 @@ export default function KasirPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '16px'
         }}>
           <div className="glass-card animate-fade-in" style={{
-            width: '100%', maxWidth: '480px', padding: '26px', background: '#0f172a',
-            border: '2px solid #ef4444', boxShadow: '0 0 35px rgba(239, 68, 68, 0.4)'
+            width: '100%', maxWidth: '480px', padding: '26px', background: 'var(--surface-solid)',
+            border: '2px solid var(--c-red-strong)', boxShadow: '0 0 35px rgba(239, 68, 68, 0.4)'
           }}>
             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
               <div style={{
@@ -1687,27 +1616,27 @@ export default function KasirPage() {
               }}>
                 <AlertTriangle size={32} color="#ef4444" />
               </div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
                 Peringatan: Ada Tunggakan Utang!
               </h3>
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '4px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>
                 Pelanggan ini masih memiliki sisa hutang dari transaksi sebelumnya.
               </p>
             </div>
 
             {/* Customer & Debt Box */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', marginBottom: '20px' }}>
+            <div style={{ background: 'var(--inset-70)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', marginBottom: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Nama Pelanggan:</span>
-                <strong style={{ color: '#f8fafc', fontSize: '0.9rem' }}>{notifKontak.nama}</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Nama Pelanggan:</span>
+                <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{notifKontak.nama}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Status / Tipe:</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Status / Tipe:</span>
                 <span className="badge badge-primary">{notifKontak.tipe.toUpperCase()}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px dashed var(--glass-border)' }}>
-                <span style={{ color: '#94a3b8', fontSize: '0.9rem', fontWeight: 700 }}>Total Utang Belum Lunas:</span>
-                <strong style={{ color: '#ef4444', fontSize: '1.15rem' }}>{AppStore.formatRupiah(notifKontak.hutang_saat_ini || 0)}</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 700 }}>Total Utang Belum Lunas:</span>
+                <strong style={{ color: 'var(--c-red-strong)', fontSize: '1.15rem' }}>{AppStore.formatRupiah(notifKontak.hutang_saat_ini || 0)}</strong>
               </div>
             </div>
 
@@ -1722,7 +1651,7 @@ export default function KasirPage() {
                 className="btn btn-warning btn-lg" 
                 style={{ width: '100%', fontWeight: 700 }}
               >
-                💳 Bayar / Lunasi Utang Dulu
+                Bayar / Lunasi Utang Dulu
               </button>
               <button 
                 type="button" 
@@ -1730,7 +1659,7 @@ export default function KasirPage() {
                 className="btn btn-secondary" 
                 style={{ width: '100%' }}
               >
-                🛒 Lanjutkan Transaksi Pembelian Baru
+                Lanjutkan Transaksi Pembelian Baru
               </button>
             </div>
           </div>
@@ -1745,14 +1674,14 @@ export default function KasirPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: '16px'
         }}>
           <div className="glass-card animate-fade-in" style={{
-            width: '100%', maxWidth: '500px', padding: '26px', background: '#0f172a',
+            width: '100%', maxWidth: '500px', padding: '26px', background: 'var(--surface-solid)',
             border: '1px solid var(--glass-border)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <UserPlus size={22} color="#0284c7" /> Tambah Kontak Pelanggan / Reseller
               </h3>
-              <button type="button" onClick={() => setShowAddKontakModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+              <button aria-label="Tutup" type="button" onClick={() => setShowAddKontakModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
@@ -1836,14 +1765,14 @@ export default function KasirPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10002, padding: '16px'
         }}>
           <div className="glass-card animate-fade-in" style={{
-            width: '100%', maxWidth: '520px', padding: '26px', background: '#0f172a',
-            border: '2px solid #ef4444', boxShadow: '0 25px 50px -12px rgba(239, 68, 68, 0.3)'
+            width: '100%', maxWidth: '520px', padding: '26px', background: 'var(--surface-solid)',
+            border: '2px solid var(--c-red-strong)', boxShadow: '0 25px 50px -12px rgba(239, 68, 68, 0.3)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <TrendingDown size={22} color="#f87171" /> Entry Pengeluaran Kasir (Lain-Lain)
               </h3>
-              <button type="button" onClick={() => setShowAddPengeluaranModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+              <button aria-label="Tutup" type="button" onClick={() => setShowAddPengeluaranModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
@@ -1854,15 +1783,15 @@ export default function KasirPage() {
                 ? 'rgba(16, 185, 129, 0.15)' 
                 : 'rgba(239, 68, 68, 0.12)', 
               border: kategoriPengeluaran === 'pengembalian_kasbon'
-                ? '1px solid #34d399'
+                ? '1px solid var(--c-green)'
                 : '1px solid rgba(239, 68, 68, 0.3)',
               borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '0.82rem',
-              color: kategoriPengeluaran === 'pengembalian_kasbon' ? '#34d399' : '#fca5a5'
+              color: kategoriPengeluaran === 'pengembalian_kasbon' ? 'var(--c-green)' : 'var(--c-red-soft)'
             }}>
               {kategoriPengeluaran === 'pengembalian_kasbon' ? (
-                <>🟢 <strong>KAS MASUK (+):</strong> Uang pengembalian kasbon diterima dari karyawan dan masuk ke laci kasir (<strong>Menambah Saldo Kas Setoran</strong>).</>
+                <><strong>KAS MASUK (+):</strong> Uang pengembalian kasbon diterima dari karyawan dan masuk ke laci kasir (<strong>Menambah Saldo Kas Setoran</strong>).</>
               ) : (
-                <>ℹ️ <strong>KAS KELUAR (-):</strong> Transaksi ini akan mengurangkan total <strong>Saldo Kas Fisik Kasir</strong> yang wajib disetor ke Owner.</>
+                <>ℹ<strong>KAS KELUAR (-):</strong> Transaksi ini akan mengurangkan total <strong>Saldo Kas Fisik Kasir</strong> yang wajib disetor ke Owner.</>
               )}
             </div>
 
@@ -1874,31 +1803,31 @@ export default function KasirPage() {
                   onChange={(e) => handleKategoriChange(e.target.value)} 
                   className="form-select"
                 >
-                  <option value="operasional">🛠️ Operasional Depo / Toko</option>
-                  <option value="pembelian_air_baku">💧 Pembelian Air Baku (Truk Tangki)</option>
-                  <option value="ongkir">🚚 Ongkir / Transportasi Delivery</option>
-                  <option value="gaji">💼 Pembayaran Gaji Karyawan</option>
-                  <option value="kasbon">💸 Pemberian Kasbon Karyawan</option>
-                  <option value="pengembalian_kasbon">💵 Pengembalian / Pelunasan Kasbon Karyawan</option>
-                  <option value="bensin">⛽ Bensin &amp; BBM Operasional</option>
-                  <option value="konsumsi">☕ Konsumsi / Uang Makan</option>
-                  <option value="lain_lain">📦 Pengeluaran Lain-Lain</option>
+                  <option value="operasional">Operasional Depo / Toko</option>
+                  <option value="pembelian_air_baku">Pembelian Air Baku (Truk Tangki)</option>
+                  <option value="ongkir">Ongkir / Transportasi Delivery</option>
+                  <option value="gaji">Pembayaran Gaji Karyawan</option>
+                  <option value="kasbon">Pemberian Kasbon Karyawan</option>
+                  <option value="pengembalian_kasbon">Pengembalian / Pelunasan Kasbon Karyawan</option>
+                  <option value="bensin">Bensin &amp; BBM Operasional</option>
+                  <option value="konsumsi">Konsumsi / Uang Makan</option>
+                  <option value="lain_lain">Pengeluaran Lain-Lain</option>
                 </select>
               </div>
 
               {/* Seksi Khusus Detail Pembelian Air Baku Truk Tangki */}
               {kategoriPengeluaran === 'pembelian_air_baku' && (
                 <div style={{
-                  background: 'rgba(2, 132, 199, 0.15)', border: '1px solid #38bdf8',
+                  background: 'rgba(2, 132, 199, 0.15)', border: '1px solid var(--c-sky)',
                   borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px'
                 }}>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    💧 Rincian Pasokan Air Baku Truk Tangki
+                  <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--c-sky)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Rincian Pasokan Air Baku Truk Tangki
                   </div>
 
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label" style={{ fontSize: '0.8rem' }}>
-                      Nama Vendor / Sopir Pengirim <span style={{ color: '#ef4444' }}>*</span>
+                      Nama Vendor / Sopir Pengirim <span style={{ color: 'var(--c-red-strong)' }}>*</span>
                     </label>
                     <input 
                       type="text" 
@@ -1917,7 +1846,7 @@ export default function KasirPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div className="form-group" style={{ marginBottom: 0 }}>
                       <label className="form-label" style={{ fontSize: '0.8rem' }}>
-                        Volume Air Masuk (Liter) <span style={{ color: '#ef4444' }}>*</span>
+                        Volume Air Masuk (Liter) <span style={{ color: 'var(--c-red-strong)' }}>*</span>
                       </label>
                       <input 
                         type="number" 
@@ -1936,7 +1865,7 @@ export default function KasirPage() {
 
                     <div className="form-group" style={{ marginBottom: 0 }}>
                       <label className="form-label" style={{ fontSize: '0.8rem' }}>
-                        Harga Perolehan Air (Rp) <span style={{ color: '#ef4444' }}>*</span>
+                        Harga Perolehan Air (Rp) <span style={{ color: 'var(--c-red-strong)' }}>*</span>
                       </label>
                       <input 
                         type="number" 
@@ -1975,7 +1904,7 @@ export default function KasirPage() {
 
                     <div className="form-group" style={{ marginBottom: 0 }}>
                       <label className="form-label" style={{ fontSize: '0.8rem' }}>
-                        Meteran Waktu Diisi (Liter) <span style={{ color: '#ef4444' }}>*</span>
+                        Meteran Waktu Diisi (Liter) <span style={{ color: 'var(--c-red-strong)' }}>*</span>
                       </label>
                       <input 
                         type="number" 
@@ -1989,14 +1918,14 @@ export default function KasirPage() {
                     </div>
                   </div>
 
-                  <div style={{ background: 'rgba(15, 23, 42, 0.8)', padding: '10px 14px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Total Nominal Kas Keluar:</span>
-                    <strong style={{ fontSize: '1.1rem', color: '#34d399' }}>
+                  <div style={{ background: 'var(--inset-80)', padding: '10px 14px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--w-10)' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Nominal Kas Keluar:</span>
+                    <strong style={{ fontSize: '1.1rem', color: 'var(--c-green)' }}>
                       {AppStore.formatRupiah(Number(hargaPerolehanAir) + Number(tipsSopirAir))}
                     </strong>
                   </div>
-                  <span style={{ fontSize: '0.72rem', color: '#38bdf8' }}>
-                    ⚡ Stok Air Baku di Tangki Depo akan otomatis bertambah <strong>+{volumeAirBaku} Liter</strong> &amp; Posisi Meteran Air diperbarui ke <strong>{meteranWaktuDiisi.toLocaleString('id-ID')} Liter</strong> setelah disimpan.
+                  <span style={{ fontSize: '0.72rem', color: 'var(--c-sky)' }}>
+                    Stok Air Baku di Tangki Depo akan otomatis bertambah <strong>+{volumeAirBaku} Liter</strong> &amp; Posisi Meteran Air diperbarui ke <strong>{meteranWaktuDiisi.toLocaleString('id-ID')} Liter</strong> setelah disimpan.
                   </span>
                 </div>
               )}
@@ -2005,13 +1934,13 @@ export default function KasirPage() {
               <div className="form-group">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                   <label className="form-label" style={{ marginBottom: 0 }}>
-                    Pilih Nama Karyawan / Staf / Penerima {['gaji', 'kasbon', 'pengembalian_kasbon', 'ongkir'].includes(kategoriPengeluaran) && <span style={{ color: '#ef4444' }}>*</span>}
+                    Pilih Nama Karyawan / Staf / Penerima {['gaji', 'kasbon', 'pengembalian_kasbon', 'ongkir'].includes(kategoriPengeluaran) && <span style={{ color: 'var(--c-red-strong)' }}>*</span>}
                   </label>
                   <button 
                     type="button" 
                     onClick={() => setShowAddPenerimaInput(!showAddPenerimaInput)}
                     className="btn btn-sm btn-secondary"
-                    style={{ fontSize: '0.75rem', padding: '3px 8px', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.4)', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ fontSize: '0.75rem', padding: '3px 8px', color: 'var(--c-sky)', borderColor: 'rgba(56, 189, 248, 0.4)', display: 'flex', alignItems: 'center', gap: '4px' }}
                   >
                     <Plus size={13} /> {showAddPenerimaInput ? 'Tutup Form' : '+ Penerima Baru'}
                   </button>
@@ -2019,8 +1948,8 @@ export default function KasirPage() {
 
                 {/* Form Inline Tambah Penerima Baru */}
                 {showAddPenerimaInput && (
-                  <div style={{ background: 'rgba(2, 132, 199, 0.12)', padding: '12px', borderRadius: '10px', border: '1px solid #0284c7', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#38bdf8' }}>➕ Tambah Nama Penerima Baru / Vendor / Pihak Ketiga</span>
+                  <div style={{ background: 'rgba(2, 132, 199, 0.12)', padding: '12px', borderRadius: '10px', border: '1px solid var(--c-primary)', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--c-sky)' }}>Tambah Nama Penerima Baru / Vendor / Pihak Ketiga</span>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       <input 
                         type="text" 
@@ -2059,7 +1988,7 @@ export default function KasirPage() {
                   <option value="">-- {['gaji', 'kasbon', 'pengembalian_kasbon', 'ongkir'].includes(kategoriPengeluaran) ? 'Wajib Pilih Karyawan / Penerima' : 'Pilih Karyawan / Staf / Penerima (Opsional)'} --</option>
                   {karyawanList.map(k => (
                     <option key={k.id} value={k.id}>
-                      👤 {k.nama} ({k.jabatan})
+                      {k.nama} ({k.jabatan})
                     </option>
                   ))}
                 </select>
@@ -2067,7 +1996,7 @@ export default function KasirPage() {
 
               <div className="form-group">
                 <label className="form-label">
-                  Isian Peruntukan / Keperluan <span style={{ color: '#ef4444' }}>*</span>
+                  Isian Peruntukan / Keperluan <span style={{ color: 'var(--c-red-strong)' }}>*</span>
                 </label>
                 <input 
                   type="text" 
@@ -2081,7 +2010,7 @@ export default function KasirPage() {
 
               <div className="form-group">
                 <label className="form-label">
-                  Nominal Transaksi (Rp) <span style={{ color: '#ef4444' }}>*</span>
+                  Nominal Transaksi (Rp) <span style={{ color: 'var(--c-red-strong)' }}>*</span>
                 </label>
                 <input 
                   type="number" 
@@ -2129,14 +2058,14 @@ export default function KasirPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10003, padding: '16px'
         }}>
           <div className="glass-card animate-fade-in" style={{
-            width: '100%', maxWidth: '530px', padding: '26px', background: '#0f172a',
-            border: '2px solid #fbbf24', boxShadow: '0 25px 50px -12px rgba(251, 191, 36, 0.3)'
+            width: '100%', maxWidth: '530px', padding: '26px', background: 'var(--surface-solid)',
+            border: '2px solid var(--c-amber)', boxShadow: '0 25px 50px -12px rgba(251, 191, 36, 0.3)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <BookOpen size={22} color="#fbbf24" /> Entry Catatan Hutang Toko / Pinjaman
               </h3>
-              <button type="button" onClick={() => setShowAddHutangTokoModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+              <button aria-label="Tutup" type="button" onClick={() => setShowAddHutangTokoModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
@@ -2144,9 +2073,9 @@ export default function KasirPage() {
             {/* Info Banner */}
             <div style={{
               background: 'rgba(251, 191, 36, 0.12)', border: '1px solid rgba(251, 191, 36, 0.3)',
-              borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '0.82rem', color: '#fef08a'
+              borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '0.82rem', color: 'var(--c-yellow-soft)'
             }}>
-              📑 <strong>Catatan Kewajiban Toko:</strong> Pencatatan hutang toko (pinjaman/talangan dari Karyawan atau Orang Ketiga/Vendor) yang wajib dilunasi oleh Depo.
+              <strong>Catatan Kewajiban Toko:</strong> Pencatatan hutang toko (pinjaman/talangan dari Karyawan atau Orang Ketiga/Vendor) yang wajib dilunasi oleh Depo.
             </div>
 
             <form onSubmit={handleSaveHutangToko} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -2164,7 +2093,7 @@ export default function KasirPage() {
                     className={`btn btn-sm ${tipePihakHutang === 'karyawan' ? 'btn-primary' : 'btn-secondary'}`}
                     style={{ padding: '8px', fontSize: '0.85rem' }}
                   >
-                    👤 Karyawan / Staf Depo
+                    Karyawan / Staf Depo
                   </button>
                   <button 
                     type="button" 
@@ -2175,7 +2104,7 @@ export default function KasirPage() {
                     className={`btn btn-sm ${tipePihakHutang === 'orang_ketiga' ? 'btn-primary' : 'btn-secondary'}`}
                     style={{ padding: '8px', fontSize: '0.85rem' }}
                   >
-                    🏢 Orang Ketiga / Vendor
+                    Orang Ketiga / Vendor
                   </button>
                 </div>
               </div>
@@ -2184,7 +2113,7 @@ export default function KasirPage() {
               {tipePihakHutang === 'karyawan' ? (
                 <div className="form-group">
                   <label className="form-label">
-                    Pilih Nama Karyawan Pemberi Pinjaman / Talangan <span style={{ color: '#ef4444' }}>*</span>
+                    Pilih Nama Karyawan Pemberi Pinjaman / Talangan <span style={{ color: 'var(--c-red-strong)' }}>*</span>
                   </label>
                   <select 
                     value={selectedHutangKaryawanId} 
@@ -2195,7 +2124,7 @@ export default function KasirPage() {
                     <option value="">-- Pilih Nama Karyawan --</option>
                     {karyawanList.map(k => (
                       <option key={k.id} value={k.id}>
-                        👤 {k.nama} ({k.jabatan})
+                        {k.nama} ({k.jabatan})
                       </option>
                     ))}
                   </select>
@@ -2203,7 +2132,7 @@ export default function KasirPage() {
               ) : (
                 <div className="form-group">
                   <label className="form-label">
-                    Isikan Nama Orang Ketiga / Perusahaan / Vendor <span style={{ color: '#ef4444' }}>*</span>
+                    Isikan Nama Orang Ketiga / Perusahaan / Vendor <span style={{ color: 'var(--c-red-strong)' }}>*</span>
                   </label>
                   <input 
                     type="text" 
@@ -2218,7 +2147,7 @@ export default function KasirPage() {
 
               <div className="form-group">
                 <label className="form-label">
-                  Isian Peruntukan / Keperluan Hutang Toko <span style={{ color: '#ef4444' }}>*</span>
+                  Isian Peruntukan / Keperluan Hutang Toko <span style={{ color: 'var(--c-red-strong)' }}>*</span>
                 </label>
                 <input 
                   type="text" 
@@ -2232,7 +2161,7 @@ export default function KasirPage() {
 
               <div className="form-group">
                 <label className="form-label">
-                  Nominal Hutang Toko (Rp) <span style={{ color: '#ef4444' }}>*</span>
+                  Nominal Hutang Toko (Rp) <span style={{ color: 'var(--c-red-strong)' }}>*</span>
                 </label>
                 <input 
                   type="number" 

@@ -27,7 +27,7 @@ export default function Home() {
   return (
     <div style={{ display: 'flex', height: '60vh', alignItems: 'center', justifyContent: 'center' }}>
       <div className="glass-card" style={{ padding: '30px', textAlign: 'center' }}>
-        <p style={{ color: '#94a3b8' }}>Mengarahkan ke Halaman Sesuai Peran User...</p>
+        <p style={{ color: 'var(--text-muted)' }}>Mengarahkan ke Halaman Sesuai Peran User...</p>
       </div>
     </div>
   );
