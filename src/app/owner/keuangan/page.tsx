@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { AppStore } from '@/lib/store';
 import { SetoranOwner } from '@/lib/types';
+import LaporanSelisihKasir from '@/components/LaporanSelisihKasir';
 import { Wallet, HandCoins, Check, Truck, Store, Landmark, X, Plus, ArrowLeftRight } from 'lucide-react';
 
 const EVENTS = [
@@ -340,6 +341,11 @@ export default function KeuanganOwnerPage() {
           </section>
         </>
       )}
+
+      <section aria-labelledby="judul-laporan" style={{ marginBottom: '24px' }}>
+        {judulBagian('judul-laporan', 'Laporan selisih kasir')}
+        <LaporanSelisihKasir />
+      </section>
 
       <section aria-labelledby="judul-riwayat">
         {judulBagian('judul-riwayat', 'Riwayat setoran kasir')}

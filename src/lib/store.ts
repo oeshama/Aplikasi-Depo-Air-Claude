@@ -583,6 +583,52 @@ export class AppStore {
     this.tambahMutasi({ akun, arah: selisih > 0 ? 'masuk' : 'keluar', nominal: Math.abs(selisih), jenis: 'koreksi', keterangan: alasan.trim() });
   }
 
+  // Laporan selisih per kasir sejak waktu tertentu: selisih hitung laci saat tutup shift + selisih setoran ke owner
+  static laporanSelisihKasir(sinceMs: number) {
+    type Baris = {
+      kasir_id: string; kasir_nama: string;
+      jumlah_shift: number; selisih_shift: number; shift_bermasalah: number;
+      total_diserahkan: number; selisih_setoran: number; setoran_bermasalah: number;
+    };
+    const peta = new Map<string, Baris>();
+    const ambil = (id: string, nama: string): Baris => {
+      const kunci = (nama || id).trim().toLowerCase();
+      let b = peta.get(kunci);
+      if (!b) {
+        b = { kasir_id: id, kasir_nama: nama || 'Kasir', jumlah_shift: 0, selisih_shift: 0, shift_bermasalah: 0, total_diserahkan: 0, selisih_setoran: 0, setoran_bermasalah: 0 };
+        peta.set(kunci, b);
+      }
+      return b;
+    };
+    const rincian: { waktu: string; kasir_nama: string; jenis: 'shift' | 'setoran'; selisih: number; keterangan: string }[] = [];
+
+    this.getShiftList().filter(s => s.status === 'tutup' && s.waktu_tutup && new Date(s.waktu_tutup).getTime() >= sinceMs).forEach(s => {
+      const b = ambil(s.kasir_id, s.kasir_nama || '');
+      const selisih = s.selisih || 0;
+      b.jumlah_shift += 1;
+      b.selisih_shift += selisih;
+      if (selisih !== 0) {
+        b.shift_bermasalah += 1;
+        rincian.push({ waktu: s.waktu_tutup as string, kasir_nama: b.kasir_nama, jenis: 'shift', selisih, keterangan: 'Hitung uang laci saat tutup shift' });
+      }
+    });
+
+    this.getSetoranOwner().filter(s => s.status === 'diterima' && s.jenis === 'serah_kasir' && s.diterima_at && new Date(s.diterima_at).getTime() >= sinceMs).forEach(s => {
+      const b = ambil(s.kasir_id, s.kasir_nama);
+      const selisih = s.selisih || 0;
+      b.total_diserahkan += s.nominal;
+      b.selisih_setoran += selisih;
+      if (selisih !== 0) {
+        b.setoran_bermasalah += 1;
+        rincian.push({ waktu: s.diterima_at as string, kasir_nama: b.kasir_nama, jenis: 'setoran', selisih, keterangan: `Setoran ${this.formatRupiah(s.nominal)}, diterima ${this.formatRupiah(s.nominal_diterima ?? 0)}` });
+      }
+    });
+
+    const baris = Array.from(peta.values()).sort((a, b) => Math.abs(b.selisih_shift + b.selisih_setoran) - Math.abs(a.selisih_shift + a.selisih_setoran));
+    rincian.sort((a, b) => new Date(b.waktu).getTime() - new Date(a.waktu).getTime());
+    return { baris, rincian };
+  }
+
   // Saldo tunai yang sedang dibawa tiap kurir
   static getSaldoKurirList(): SaldoKurir[] {
     const map = new Map<string, SaldoKurir>();
