@@ -25,7 +25,7 @@ export default function AdminPengaturanPage() {
   const [jabatanKaryawan, setJabatanKaryawan] = useState('Pengantar / Driver');
   const [noHpKaryawan, setNoHpKaryawan] = useState('');
   const [alamatKaryawan, setAlamatKaryawan] = useState('');
-  const [tanggalMasukKaryawan, setTanggalMasukKaryawan] = useState(new Date().toISOString().slice(0, 10));
+  const [tanggalMasukKaryawan, setTanggalMasukKaryawan] = useState(AppStore.tanggalHariIni());
   const [gajiBasic, setGajiBasic] = useState<number>(2200000);
   const [uangMakanPerHari, setUangMakanPerHari] = useState<number>(25000);
   const [tanggalJatuhTempoGaji, setTanggalJatuhTempoGaji] = useState<number>(25);
@@ -230,7 +230,7 @@ export default function AdminPengaturanPage() {
     setJabatanKaryawan('Pengantar / Driver');
     setNoHpKaryawan('');
     setAlamatKaryawan('');
-    setTanggalMasukKaryawan(new Date().toISOString().slice(0, 10));
+    setTanggalMasukKaryawan(AppStore.tanggalHariIni());
     setGajiBasic(2200000);
     setUangMakanPerHari(25000);
     setTanggalJatuhTempoGaji(25);
@@ -244,7 +244,7 @@ export default function AdminPengaturanPage() {
     setJabatanKaryawan(kary.jabatan);
     setNoHpKaryawan(kary.no_hp);
     setAlamatKaryawan(kary.alamat || '');
-    setTanggalMasukKaryawan(kary.tanggal_masuk || new Date().toISOString().slice(0, 10));
+    setTanggalMasukKaryawan(kary.tanggal_masuk || AppStore.tanggalHariIni());
     setGajiBasic(kary.gaji_basic);
     setUangMakanPerHari(kary.uang_makan_per_hari);
     setTanggalJatuhTempoGaji(kary.tanggal_jatuh_tempo_gaji || 25);
@@ -347,7 +347,7 @@ export default function AdminPengaturanPage() {
       nama_pelanggan: nama,
       jumlah_galon: newPinjamJumlah,
       catatan: newPinjamCatatan.trim() || 'Pinjaman galon pelanggan',
-      tanggal_pinjam: new Date().toISOString().slice(0, 10)
+      tanggal_pinjam: AppStore.tanggalHariIni()
     };
     setPinjamanListState(prev => [...prev, newItem]);
     setNewPinjamNama('');
@@ -603,7 +603,7 @@ export default function AdminPengaturanPage() {
         </div>
 
         {/* Two Columns: Galon Dipinjam Pelanggan & Meteran Air + Stok Komponen */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(350px, 100%), 1fr))', gap: '16px' }}>
           
           {/* Card: Rekap Galon Dipinjam Pelanggan */}
           <div style={{ background: 'var(--inset-60)', padding: '18px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>

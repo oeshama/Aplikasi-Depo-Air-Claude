@@ -1672,7 +1672,7 @@ export default function OwnerDashboardPage() {
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '16px' }}>
           
           {/* Target Omzet Progress */}
           <div style={{ background: 'var(--inset-70)', padding: '18px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>

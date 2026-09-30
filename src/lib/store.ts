@@ -106,7 +106,7 @@ export class AppStore {
     this.saveKontak(kontakList);
 
     const currentUser = this.getCurrentUser();
-    const newNotaNo = `PAY-HTG-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(100 + Math.random() * 900)}`;
+    const newNotaNo = `PAY-HTG-${this.tanggalHariIni().replace(/-/g,'')}-${Math.floor(100 + Math.random() * 900)}`;
 
     const newPesanan: Pesanan = {
       id: `psn-pay-${Date.now()}`,
@@ -897,6 +897,13 @@ export class AppStore {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('depo_user_updated'));
     }
+  }
+
+  // Tanggal hari ini menurut waktu setempat (YYYY-MM-DD). toISOString() memakai UTC sehingga di WIB
+  // tanggalnya mundur sehari untuk jam 00.00-07.00.
+  static tanggalHariIni(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   static formatRupiah(amount: number): string {

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AppStore } from '@/lib/store';
-import { UserApp, UserRole } from '@/lib/types';
+import { UserApp, UserRole, ShiftKasir } from '@/lib/types';
 import { 
   Droplets, ShoppingCart, Users, Package, MapPin, 
   LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet, Map
@@ -22,6 +22,8 @@ export default function Navbar() {
   const [depoLogo, setDepoLogo] = useState<string>('');
   const [showTutupShiftModal, setShowTutupShiftModal] = useState<boolean>(false);
   const [pendingNextAction, setPendingNextAction] = useState<(() => void) | null>(null);
+  // Shift yang sedang ditutup ditahan di sini: setelah ditutup tidak lagi "aktif", tapi struknya harus tetap tampil
+  const [shiftDitutup, setShiftDitutup] = useState<ShiftKasir | null>(null);
 
   const loadSettings = () => {
     const p = AppStore.getPengaturan();
@@ -132,6 +134,7 @@ export default function Navbar() {
       const shiftAktif = AppStore.getShiftAktif(currentUser.id);
       if (shiftAktif) {
         setPendingNextAction(() => () => performRoleSwitch(targetRole));
+        setShiftDitutup(shiftAktif);
         setShowTutupShiftModal(true);
         return;
       }
@@ -145,6 +148,7 @@ export default function Navbar() {
       const shiftAktif = AppStore.getShiftAktif(currentUser.id);
       if (shiftAktif) {
         setPendingNextAction(() => doLogout);
+        setShiftDitutup(shiftAktif);
         setShowTutupShiftModal(true);
         return;
       }
@@ -351,10 +355,11 @@ export default function Navbar() {
 
       <TutupShiftModal
         isOpen={showTutupShiftModal}
-        shiftAktif={currentUser ? AppStore.getShiftAktif(currentUser.id) : null}
-        onClose={() => setShowTutupShiftModal(false)}
+        shiftAktif={shiftDitutup}
+        onClose={() => { setShowTutupShiftModal(false); setShiftDitutup(null); }}
         onShiftClosed={() => {
           setShowTutupShiftModal(false);
+          setShiftDitutup(null);
           if (pendingNextAction) {
             pendingNextAction();
             setPendingNextAction(null);

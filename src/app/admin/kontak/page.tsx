@@ -260,9 +260,10 @@ export default function AdminKontakPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Search size={18} color="#94a3b8" />
           <input 
-            type="text" 
-            className="form-input" 
-            placeholder="Cari berdasarkan nama, no HP, atau alamat..." 
+            type="text"
+            className="form-input"
+            aria-label="Cari pelanggan"
+            placeholder="Cari berdasarkan nama, no HP, atau alamat..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ marginBottom: 0 }}

@@ -18,6 +18,7 @@ export default function ShiftKasirPage() {
   const [shiftAktif, setShiftAktif] = useState<ShiftKasir | null>(null);
   const [showBukaModal, setShowBukaModal] = useState<boolean>(false);
   const [showTutupModal, setShowTutupModal] = useState<boolean>(false);
+  const [shiftDitutup, setShiftDitutup] = useState<ShiftKasir | null>(null);
   const [saldoAwal, setSaldoAwal] = useState<number>(0);
   const [saldoAktual, setSaldoAktual] = useState<number>(0);
   const [isShiftTutup, setIsShiftTutup] = useState<boolean>(false);
@@ -105,6 +106,7 @@ export default function ShiftKasirPage() {
   };
 
   const handleTutupKasir = () => {
+    setShiftDitutup(shiftAktif); // ditahan supaya struk tutup shift tetap tampil setelah shift tidak lagi aktif
     setShowTutupModal(true);
   };
 
@@ -584,10 +586,11 @@ export default function ShiftKasirPage() {
 
       <TutupShiftModal
         isOpen={showTutupModal}
-        shiftAktif={shiftAktif}
-        onClose={() => setShowTutupModal(false)}
+        shiftAktif={shiftDitutup}
+        onClose={() => { setShowTutupModal(false); setShiftDitutup(null); }}
         onShiftClosed={() => {
           setShowTutupModal(false);
+          setShiftDitutup(null);
           loadData();
         }}
       />

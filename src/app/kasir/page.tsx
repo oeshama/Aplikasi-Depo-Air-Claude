@@ -173,7 +173,7 @@ export default function KasirPage() {
       nama: namaPenerimaInput.trim(),
       jabatan: jabatanPenerimaInput.trim() || 'Penerima / Pihak Ketiga',
       no_hp: '-',
-      tanggal_masuk: new Date().toISOString().slice(0, 10),
+      tanggal_masuk: AppStore.tanggalHariIni(),
       gaji_basic: 0,
       uang_makan_per_hari: 0,
       aktif: true
@@ -800,7 +800,14 @@ export default function KasirPage() {
     }
 
     const currentUser = AppStore.getCurrentUser();
-    const newNotaNo = `INV-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(100 + Math.random() * 900)}`;
+    // Tanggal nota memakai waktu setempat (bukan UTC), dan nomor acaknya dicek supaya tidak kembar
+    const sekarangNota = new Date();
+    const tglNota = `${sekarangNota.getFullYear()}${String(sekarangNota.getMonth() + 1).padStart(2, '0')}${String(sekarangNota.getDate()).padStart(2, '0')}`;
+    const notaSudahAda = new Set(AppStore.getPesanan().map(p => p.no_nota));
+    let newNotaNo = '';
+    do {
+      newNotaNo = `INV-${tglNota}-${Math.floor(100 + Math.random() * 900)}`;
+    } while (notaSudahAda.has(newNotaNo));
 
     const newPesanan: Pesanan = {
       id: `psn-${Date.now()}`,
@@ -852,7 +859,7 @@ export default function KasirPage() {
         if (existingIdx !== -1) {
           updatedPinjaman[existingIdx].jumlah_galon += totalGalonDipinjam;
           if (catatan) updatedPinjaman[existingIdx].catatan = catatan;
-          updatedPinjaman[existingIdx].tanggal_pinjam = new Date().toISOString().slice(0, 10);
+          updatedPinjaman[existingIdx].tanggal_pinjam = AppStore.tanggalHariIni();
         } else {
           updatedPinjaman.unshift({
             id: `pinjam-${Date.now()}`,
@@ -860,7 +867,7 @@ export default function KasirPage() {
             nama_pelanggan: selectedKontak.nama,
             jumlah_galon: totalGalonDipinjam,
             catatan: catatan || `Pinjam galon POS Nota ${newNotaNo}`,
-            tanggal_pinjam: new Date().toISOString().slice(0, 10)
+            tanggal_pinjam: AppStore.tanggalHariIni()
           });
         }
 
