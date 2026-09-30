@@ -102,6 +102,10 @@ export default function KasirPage() {
       alert('Nama pelanggan / toko tidak boleh kosong!');
       return;
     }
+    if (!newZonaId || !zonaList.some(z => z.id === newZonaId)) {
+      alert('Pilih zona ongkir pelanggan dulu.');
+      return;
+    }
 
     const newKontak: Kontak = {
       id: `kt-${Date.now()}`,
@@ -926,6 +930,15 @@ export default function KasirPage() {
   const alertCount = (isWaterStockCriticalCalc ? 1 : 0) + pendingDelivery.length;
   const alertUrgent = isWaterStockCriticalCalc || delayedPending.length > 0;
 
+  // Pelanggan lama belum punya zona: kasir bisa menyimpan zona yang dipilih ke data pelanggan
+  const simpanZonaKePelanggan = () => {
+    if (!selectedKontak) return;
+    const list = AppStore.getKontak().map(k => (k.id === selectedKontak.id ? { ...k, zona_id: selectedZonaId } : k));
+    AppStore.saveKontak(list);
+    setKontakList(list.filter(k => k.aktif));
+    alert(`Zona disimpan ke data pelanggan ${selectedKontak.nama}. Berikutnya ongkirnya terisi otomatis.`);
+  };
+
   // Bayar: shift harus sudah dibuka, kalau belum popup buka shift muncul lagi
   const openCheckout = () => {
     if (needsShift) {
@@ -1299,6 +1312,11 @@ export default function KasirPage() {
                             </option>
                           ))}
                         </select>
+                        {selectedKontak && selectedKontak.id !== 'kt-1' && !selectedKontak.zona_id && (
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={simpanZonaKePelanggan} style={{ alignSelf: 'flex-start', marginTop: '6px' }}>
+                            Simpan zona ini ke data pelanggan
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1557,9 +1575,9 @@ export default function KasirPage() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px', overflowY: 'auto'
         }}>
-          <div className="glass-card animate-fade-in" style={{
+          <div className="glass-card animate-fade-in" style={{ margin: 'auto',
             width: '100%', maxWidth: '520px', padding: '24px', background: 'var(--surface-solid)',
             border: '1px solid var(--glass-border)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)'
           }}>
@@ -1704,9 +1722,9 @@ export default function KasirPage() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '16px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '16px', overflowY: 'auto'
         }}>
-          <div className="glass-card animate-fade-in" style={{
+          <div className="glass-card animate-fade-in" style={{ margin: 'auto',
             width: '100%', maxWidth: '480px', padding: '26px', background: 'var(--surface-solid)',
             border: '2px solid var(--c-red-strong)', boxShadow: '0 0 35px rgba(239, 68, 68, 0.4)'
           }}>
@@ -1772,9 +1790,9 @@ export default function KasirPage() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: '16px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: '16px', overflowY: 'auto'
         }}>
-          <div className="glass-card animate-fade-in" style={{
+          <div className="glass-card animate-fade-in" style={{ margin: 'auto',
             width: '100%', maxWidth: '500px', padding: '26px', background: 'var(--surface-solid)',
             border: '1px solid var(--glass-border)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)'
           }}>
@@ -1834,7 +1852,7 @@ export default function KasirPage() {
                 />
               </div>
 
-              <ZonaSelect value={newZonaId} onChange={setNewZonaId} id="zona-pelanggan-baru" />
+              <ZonaSelect value={newZonaId} onChange={setNewZonaId} id="zona-pelanggan-baru" wajib />
 
               <div className="form-group">
                 <label className="form-label">Limit Maksimum Hutang (Rp)</label>
@@ -1865,9 +1883,9 @@ export default function KasirPage() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10002, padding: '16px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10002, padding: '16px', overflowY: 'auto'
         }}>
-          <div className="glass-card animate-fade-in" style={{
+          <div className="glass-card animate-fade-in" style={{ margin: 'auto',
             width: '100%', maxWidth: '520px', padding: '26px', background: 'var(--surface-solid)',
             border: '2px solid var(--c-red-strong)', boxShadow: '0 25px 50px -12px rgba(239, 68, 68, 0.3)'
           }}>
@@ -2158,9 +2176,9 @@ export default function KasirPage() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10003, padding: '16px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10003, padding: '16px', overflowY: 'auto'
         }}>
-          <div className="glass-card animate-fade-in" style={{
+          <div className="glass-card animate-fade-in" style={{ margin: 'auto',
             width: '100%', maxWidth: '530px', padding: '26px', background: 'var(--surface-solid)',
             border: '2px solid var(--c-amber)', boxShadow: '0 25px 50px -12px rgba(251, 191, 36, 0.3)'
           }}>

@@ -2397,9 +2397,9 @@ export default function OwnerDashboardPage() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10005, padding: '16px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10005, padding: '16px', overflowY: 'auto'
         }}>
-          <div className="glass-card animate-fade-in" style={{
+          <div className="glass-card animate-fade-in" style={{ margin: 'auto',
             width: '100%', maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', background: 'var(--surface-solid)',
             border: '2px solid var(--c-sky)', boxShadow: '0 25px 50px -12px rgba(56, 189, 248, 0.3)'
           }}>
@@ -2627,9 +2627,9 @@ export default function OwnerDashboardPage() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10006, padding: '16px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10006, padding: '16px', overflowY: 'auto'
         }}>
-          <div className="glass-card animate-fade-in" style={{
+          <div className="glass-card animate-fade-in" style={{ margin: 'auto',
             width: '100%', maxWidth: '500px', padding: '24px', background: 'var(--surface-solid)',
             border: '2px solid var(--c-green-strong)', boxShadow: '0 25px 50px -12px rgba(16, 185, 129, 0.3)'
           }}>
@@ -2746,9 +2746,9 @@ export default function OwnerDashboardPage() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'var(--overlay)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px', overflowY: 'auto'
         }}>
-          <div className="glass-card animate-fade-in" style={{ maxWidth: '550px', width: '100%', padding: '24px', borderRadius: '16px', border: '1px solid var(--glass-border)' }}>
+          <div className="glass-card animate-fade-in" style={{ margin: 'auto', maxWidth: '550px', width: '100%', padding: '24px', borderRadius: '16px', border: '1px solid var(--glass-border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Target size={22} color="#10b981" /> Edit Target Penjualan
@@ -2874,9 +2874,9 @@ export default function OwnerDashboardPage() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '16px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '16px', overflowY: 'auto'
         }}>
-          <div className="glass-card animate-fade-in" style={{
+          <div className="glass-card animate-fade-in" style={{ margin: 'auto',
             width: '100%', maxWidth: '480px', padding: '26px', background: 'var(--surface-solid)',
             border: '2px solid var(--c-sky)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.8)'
           }}>

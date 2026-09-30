@@ -46,9 +46,9 @@ export default function ReceiptModal({ pesanan, onClose }: ReceiptModalProps) {
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px'
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px', overflowY: 'auto'
     }}>
-      <div className="glass-card animate-fade-in" style={{
+      <div className="glass-card animate-fade-in" style={{ margin: 'auto',
         width: '100%', maxWidth: '420px', backgroundColor: 'var(--surface-solid)', border: '1px solid var(--glass-border)',
         borderRadius: '20px', overflow: 'hidden', display: 'flex', flexDirection: 'column'
       }}>

@@ -78,6 +78,11 @@ export default function AdminKontakPage() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!zonaId || !zonaList.some(z => z.id === zonaId && z.aktif)) {
+      alert('Pilih zona ongkir pelanggan dulu.');
+      return;
+    }
+
     if (editingId) {
       // Edit Mode
       const updated = kontakList.map(k => {
@@ -253,9 +258,9 @@ export default function AdminKontakPage() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px', overflowY: 'auto'
         }}>
-          <div className="glass-card animate-fade-in" style={{
+          <div className="glass-card animate-fade-in" style={{ margin: 'auto',
             width: '100%', maxWidth: '500px', padding: '28px', background: 'var(--surface-solid)',
             border: '1px solid var(--glass-border)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)'
           }}>
@@ -292,7 +297,7 @@ export default function AdminKontakPage() {
                 <textarea className="form-textarea" rows={3} value={alamat} onChange={(e) => setAlamat(e.target.value)} placeholder="Jl. Merpati No..." required />
               </div>
 
-              <ZonaSelect value={zonaId} onChange={setZonaId} id="zona-kontak" />
+              <ZonaSelect value={zonaId} onChange={setZonaId} id="zona-kontak" wajib />
 
               <div className="form-group">
                 <label className="form-label">Limit Maksimum Hutang (Rp)</label>
@@ -382,7 +387,7 @@ export default function AdminKontakPage() {
 
                         {/* Zona Ongkir */}
                         <td style={{ padding: '8px 12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                          {zonaList.find(z => z.id === kontak.zona_id)?.nama_zona || '-'}
+                          {zonaList.find(z => z.id === kontak.zona_id)?.nama_zona || <span className="badge badge-warning" style={{ padding: '2px 8px', fontSize: '0.7rem' }}>Belum ada zona</span>}
                         </td>
 
                         {/* Hutang Aktif */}

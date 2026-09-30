@@ -1402,9 +1402,9 @@ export default function AdminPengaturanPage() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px', overflowY: 'auto'
         }}>
-          <div className="glass-card animate-fade-in" style={{
+          <div className="glass-card animate-fade-in" style={{ margin: 'auto',
             width: '100%', maxWidth: '560px', padding: '28px', background: 'var(--surface-solid)',
             maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--glass-border)',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)'
@@ -1569,9 +1569,9 @@ export default function AdminPengaturanPage() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '16px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '16px', overflowY: 'auto'
         }}>
-          <div className="glass-card animate-fade-in" style={{
+          <div className="glass-card animate-fade-in" style={{ margin: 'auto',
             width: '100%', maxWidth: '480px', padding: '28px', background: 'var(--surface-solid)',
             border: '2px solid var(--c-red-strong)', boxShadow: '0 0 35px rgba(239, 68, 68, 0.4)'
           }}>
@@ -1651,9 +1651,9 @@ export default function AdminPengaturanPage() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px', overflowY: 'auto'
         }}>
-          <div className="glass-card animate-fade-in" style={{
+          <div className="glass-card animate-fade-in" style={{ margin: 'auto',
             width: '100%', maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto',
             padding: '28px', background: 'var(--surface-solid)', border: '2px solid var(--c-sky)'
           }}>

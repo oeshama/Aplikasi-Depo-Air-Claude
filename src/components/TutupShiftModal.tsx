@@ -169,9 +169,9 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(10px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: '16px'
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: '16px', overflowY: 'auto'
     }}>
-      <div className="glass-card animate-fade-in" style={{
+      <div className="glass-card animate-fade-in" style={{ margin: 'auto',
         width: '100%', maxWidth: closedShiftResult ? '480px' : '480px', backgroundColor: 'var(--surface-solid)', border: '2px solid var(--c-red-strong)',
         borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column'
       }}>
