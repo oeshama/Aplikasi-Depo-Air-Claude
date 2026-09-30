@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { PengaturanDepo, KomponenServis, Karyawan, UserApp, GalonPinjamanPelanggan, Kontak } from '@/lib/types';
 import { AppStore } from '@/lib/store';
-import { 
+import LokasiField from '@/components/LokasiField';
+import {
   Settings, Image as ImageIcon, Upload, Save, Droplets, 
   CheckCircle, Trash2, AlertTriangle, Wrench, Plus, Gauge,
   Users, UserPlus, Phone, MapPin, DollarSign, Calendar, Edit3, X, UserCheck, Target,
@@ -1202,6 +1203,24 @@ export default function AdminPengaturanPage() {
               onChange={(e) => setPengaturan(prev => ({ ...prev, alamat: e.target.value }))}
               placeholder="Alamat lengkap depo..."
               required
+            />
+          </div>
+
+          {/* Lokasi depo: dasar peta sebaran pelanggan dan validasi zona ongkir */}
+          <div style={{ background: 'var(--inset-50)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '16px' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <MapPin size={18} color="#0369a1" aria-hidden="true" /> Lokasi Depo di Peta
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+              Dipakai untuk menghitung jarak pelanggan ke depo (peta sebaran dan validasi zona ongkir).
+              Batas jarak tiap zona diatur di menu <a href="/admin/zona" style={{ color: 'var(--c-sky)', fontWeight: 600 }}>Zona Ongkir</a>.
+              Tekan <strong>Simpan Pengaturan</strong> di bagian bawah setelah memilih lokasi.
+            </p>
+            <LokasiField
+              idDasar="lokasi-depo"
+              lat={pengaturan.lokasi_depo_lat}
+              lng={pengaturan.lokasi_depo_lng}
+              onChange={(la, ln) => setPengaturan(prev => ({ ...prev, lokasi_depo_lat: la, lokasi_depo_lng: ln }))}
             />
           </div>
 

@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Kontak, TipeKontak, Pesanan, PengaturanDepo, ZoneOngkir } from '@/lib/types';
 import ZonaSelect from '@/components/ZonaSelect';
+import LokasiField from '@/components/LokasiField';
+import { koordinatValid, urlGoogleMaps } from '@/lib/geo';
 import { AppStore } from '@/lib/store';
 import { Users, UserPlus, Phone, MapPin, Search, Edit3, Trash2, Shield, X, Check, ChevronDown, ChevronUp, Target } from 'lucide-react';
 
@@ -22,6 +24,9 @@ export default function AdminKontakPage() {
   const [alamat, setAlamat] = useState('');
   const [limitHutang, setLimitHutang] = useState<number>(100000);
   const [zonaId, setZonaId] = useState<string>('');
+  const [lat, setLat] = useState<number | undefined>(undefined);
+  const [lng, setLng] = useState<number | undefined>(undefined);
+  const [alamatMaps, setAlamatMaps] = useState<string>('');
   const [zonaList, setZonaList] = useState<ZoneOngkir[]>([]);
 
   useEffect(() => {
@@ -53,6 +58,9 @@ export default function AdminKontakPage() {
     setAlamat('');
     setLimitHutang(100000);
     setZonaId('');
+    setLat(undefined);
+    setLng(undefined);
+    setAlamatMaps('');
     setShowModal(true);
   };
 
@@ -64,6 +72,9 @@ export default function AdminKontakPage() {
     setAlamat(kontak.alamat || '');
     setLimitHutang(kontak.limit_hutang || 100000);
     setZonaId(kontak.zona_id || '');
+    setLat(kontak.lat);
+    setLng(kontak.lng);
+    setAlamatMaps(kontak.alamat_maps || '');
     setShowModal(true);
   };
 
@@ -94,7 +105,10 @@ export default function AdminKontakPage() {
             no_hp: noHp,
             alamat,
             limit_hutang: limitHutang,
-            zona_id: zonaId || undefined
+            zona_id: zonaId || undefined,
+            lat,
+            lng,
+            alamat_maps: alamatMaps || undefined
           };
         }
         return k;
@@ -111,6 +125,9 @@ export default function AdminKontakPage() {
         alamat,
         limit_hutang: limitHutang,
         zona_id: zonaId || undefined,
+        lat,
+        lng,
+        alamat_maps: alamatMaps || undefined,
         hutang_saat_ini: 0,
         aktif: true
       };
@@ -300,6 +317,19 @@ export default function AdminKontakPage() {
               <ZonaSelect value={zonaId} onChange={setZonaId} id="zona-kontak" wajib />
 
               <div className="form-group">
+                <div className="form-label" id="label-lokasi-kontak">Lokasi di Peta (opsional)</div>
+                <LokasiField
+                  idDasar="lokasi-kontak"
+                  lat={lat}
+                  lng={lng}
+                  depoLat={pengaturan.lokasi_depo_lat}
+                  depoLng={pengaturan.lokasi_depo_lng}
+                  onChange={(la, ln) => { setLat(la); setLng(ln); if (la === undefined) setAlamatMaps(''); }}
+                  onTautan={setAlamatMaps}
+                />
+              </div>
+
+              <div className="form-group">
                 <label className="form-label">Limit Maksimum Hutang (Rp)</label>
                 <input type="number" className="form-input" value={limitHutang} onChange={(e) => setLimitHutang(Number(e.target.value))} placeholder="100000" required />
               </div>
@@ -319,6 +349,9 @@ export default function AdminKontakPage() {
 
       {/* Tabel Baris List Pelanggan & Reseller */}
       <div className="glass-card animate-fade-in" style={{ padding: '20px' }}>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+          Lokasi di peta: <strong style={{ color: 'var(--text-main)' }}>{kontakList.filter(k => koordinatValid(k.lat, k.lng)).length} dari {kontakList.length}</strong> pelanggan sudah punya lokasi.
+        </p>
         {filtered.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>
             Tidak ada data pelanggan yang cocok dengan pencarian.
@@ -339,6 +372,7 @@ export default function AdminKontakPage() {
                     <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Nomor Kontak / WA</th>
                     <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Alamat Lengkap</th>
                     <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Zona Ongkir</th>
+                    <th style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>Lokasi</th>
                     <th style={{ padding: '8px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>Hutang Aktif</th>
                     <th style={{ padding: '8px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>Limit Hutang</th>
                     <th style={{ padding: '8px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>Aksi</th>
@@ -388,6 +422,13 @@ export default function AdminKontakPage() {
                         {/* Zona Ongkir */}
                         <td style={{ padding: '8px 12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                           {zonaList.find(z => z.id === kontak.zona_id)?.nama_zona || <span className="badge badge-warning" style={{ padding: '2px 8px', fontSize: '0.7rem' }}>Belum ada zona</span>}
+                        </td>
+
+                        {/* Lokasi di peta */}
+                        <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                          {koordinatValid(kontak.lat, kontak.lng)
+                            ? <a href={urlGoogleMaps(kontak.lat as number, kontak.lng as number)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--c-sky)', fontWeight: 600 }}>Lihat peta</a>
+                            : <span className="badge badge-warning" style={{ padding: '2px 8px', fontSize: '0.7rem' }}>Belum ada</span>}
                         </td>
 
                         {/* Hutang Aktif */}

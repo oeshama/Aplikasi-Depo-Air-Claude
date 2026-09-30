@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Pesanan, PengaturanDepo, SaldoKurir, UserApp } from '@/lib/types';
+import { Pesanan, PengaturanDepo, SaldoKurir, UserApp, Kontak } from '@/lib/types';
 import { AppStore } from '@/lib/store';
 import KonfirmasiTerkirimSheet from '@/components/KonfirmasiTerkirimSheet';
+import { ambilLokasiSaatIni, koordinatValid, urlNavigasiGoogleMaps } from '@/lib/geo';
 import { calculateOrderDuration, alarmSound, formatThresholdText } from '@/lib/audioAndTimer';
 import { Truck, MapPin, Phone, CheckCircle, Navigation, Clock, BellOff, AlertTriangle, Volume2, Package } from 'lucide-react';
 
@@ -16,12 +17,15 @@ export default function PengantarPage() {
   const [konfirmasiPesanan, setKonfirmasiPesanan] = useState<Pesanan | null>(null);
   const [saldoKurirList, setSaldoKurirList] = useState<SaldoKurir[]>([]);
   const [pengguna, setPengguna] = useState<UserApp | null>(null);
+  const [kontakList, setKontakList] = useState<Kontak[]>([]);
+  const [lokasiJobId, setLokasiJobId] = useState<string | null>(null);
 
   const loadData = () => {
     setPesananList(AppStore.getPesanan());
     setPengaturan(AppStore.getPengaturan());
     setSaldoKurirList(AppStore.getSaldoKurirList());
     setPengguna(AppStore.getCurrentUser());
+    setKontakList(AppStore.getKontak());
   };
 
   useEffect(() => {
@@ -29,6 +33,7 @@ export default function PengantarPage() {
     window.addEventListener('depo_pesanan_updated', loadData);
     window.addEventListener('depo_pengaturan_updated', loadData);
     window.addEventListener('depo_setoran_kurir_updated', loadData);
+    window.addEventListener('depo_kontak_updated', loadData);
 
     // Refresh timer every 10 seconds to update duration
     const interval = setInterval(() => setNowTick(Date.now()), 10000);
@@ -36,6 +41,7 @@ export default function PengantarPage() {
       window.removeEventListener('depo_pesanan_updated', loadData);
       window.removeEventListener('depo_pengaturan_updated', loadData);
       window.removeEventListener('depo_setoran_kurir_updated', loadData);
+      window.removeEventListener('depo_kontak_updated', loadData);
       clearInterval(interval);
     };
   }, []);
@@ -107,6 +113,29 @@ export default function PengantarPage() {
     setSnoozedUntilMap(newMap);
     const allDelayedIds = delayedJobs.map(j => j.id);
     setMutedIds(prev => prev.filter(mId => !allDelayedIds.includes(mId)));
+  };
+
+  // Kurir di depan rumah pelanggan: simpan lokasi GPS-nya ke data pelanggan
+  const simpanLokasiPelanggan = async (job: Pesanan) => {
+    const kontak = AppStore.getKontak().find(k => k.id === job.kontak_id);
+    if (!kontak || kontak.id === 'kt-1') {
+      alert('Pesanan ini tidak terhubung ke pelanggan terdaftar, jadi lokasinya tidak bisa disimpan.');
+      return;
+    }
+    if (koordinatValid(kontak.lat, kontak.lng) && !confirm('Lokasi ' + kontak.nama + ' sudah tersimpan. Ganti dengan lokasimu sekarang?')) return;
+
+    setLokasiJobId(job.id);
+    try {
+      const pos = await ambilLokasiSaatIni();
+      if (pos.akurasiM > 100 && !confirm('Akurasi lokasi kurang baik (sekitar ' + pos.akurasiM + ' meter). Tetap simpan?')) return;
+      const list = AppStore.getKontak().map(k => (k.id === kontak.id ? { ...k, lat: pos.lat, lng: pos.lng } : k));
+      AppStore.saveKontak(list);
+      alert('Lokasi ' + kontak.nama + ' tersimpan (akurasi sekitar ' + pos.akurasiM + ' meter).');
+    } catch (err: any) {
+      alert(err.message || 'Gagal mengambil lokasi.');
+    } finally {
+      setLokasiJobId(null);
+    }
   };
 
   // Buka lembar konfirmasi: kurir mencatat cara bayar dari pelanggan
@@ -495,6 +524,25 @@ export default function PengantarPage() {
                   {AppStore.formatRupiah(job.total_akhir)}
                 </span>
               </div>
+
+              {/* Lokasi pelanggan: navigasi dan simpan lokasi (tombol terpisah) */}
+              {(() => {
+                const kontak = kontakList.find(k => k.id === job.kontak_id);
+                if (!kontak || kontak.id === 'kt-1') return null;
+                const adaLokasi = koordinatValid(kontak.lat, kontak.lng);
+                return (
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                    {adaLokasi && (
+                      <a className="btn btn-secondary btn-sm" href={urlNavigasiGoogleMaps(kontak.lat as number, kontak.lng as number)} target="_blank" rel="noopener noreferrer">
+                        <Navigation size={14} aria-hidden="true" /> Navigasi ke lokasi
+                      </a>
+                    )}
+                    <button type="button" className="btn btn-secondary btn-sm" disabled={lokasiJobId === job.id} onClick={() => simpanLokasiPelanggan(job)}>
+                      <MapPin size={14} aria-hidden="true" /> {lokasiJobId === job.id ? 'Mencari lokasi...' : adaLokasi ? 'Perbarui lokasi pelanggan' : 'Simpan lokasi pelanggan'}
+                    </button>
+                  </div>
+                );
+              })()}
 
               {/* Card Level Action Buttons */}
               <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>

@@ -67,6 +67,9 @@ export interface ZoneOngkir {
   tarif_per_galon: number;
   aktif: boolean;
   urutan: number;
+  // Batas jarak zona dari depo (km, garis lurus). null = tanpa batas (zona terjauh).
+  // Kosong/tidak ada = memakai nilai bawaan (lihat jarakZonaKm di lib/geo.ts)
+  jarak_maks_km?: number | null;
 }
 
 export type TipeTransaksi = 'isi_langsung' | 'tukar_galon' | 'titip_galon' | 'pinjam_galon' | 'pelunasan_hutang';
@@ -146,12 +149,34 @@ export interface SetoranKurir {
 export interface NotifikasiOwner {
   id: string;
   waktu: string;
-  jenis: 'koreksi_setoran' | 'pembatalan_setoran';
+  jenis: 'koreksi_setoran' | 'pembatalan_setoran' | 'setoran_owner' | 'selisih_setoran_owner';
   judul: string;
   pesan: string;
   dibaca: boolean;
   dibuat_oleh: string;
 }
+
+// Uang dari laci kasir ke owner: kasir menyerahkan (menunggu diterima) atau owner mengambil langsung.
+// Begitu dicatat, uangnya keluar dari hitungan laci. Selisih saat diterima dicatat atas nama kasir.
+export interface SetoranOwner {
+  id: string;
+  waktu: string;
+  jenis: 'serah_kasir' | 'ambil_owner';
+  kasir_id: string;
+  kasir_nama: string;
+  shift_id?: string;
+  saat_tutup?: boolean;            // diserahkan saat tutup shift (setelah uang laci dihitung)
+  nominal: number;                 // yang diserahkan kasir / diambil owner
+  status: 'menunggu' | 'diterima' | 'dibatalkan';
+  nominal_diterima?: number;       // yang benar-benar diterima owner
+  selisih?: number;                // diterima - nominal (negatif = kurang)
+  diterima_oleh?: string;
+  diterima_at?: string;
+  catatan?: string;
+}
+
+// Asal uang pengeluaran: hanya 'laci' yang mengurangi kas laci kasir
+export type SumberKas = 'laci' | 'kas_besar';
 
 // Saldo uang tunai yang sedang dibawa satu kurir (belum disetor ke kasir)
 export interface SaldoKurir {
@@ -226,6 +251,9 @@ export interface PengaturanDepo {
   header_struk: string;
   footer_struk: string;
   logo_url?: string;
+  // Koordinat depo (untuk peta sebaran pelanggan dan validasi zona ongkir)
+  lokasi_depo_lat?: number;
+  lokasi_depo_lng?: number;
   min_stok_air_baku_liter: number;
   stok_air_baku_saat_ini: number;
   notifikasi_air_baku_aktif?: boolean;
@@ -260,6 +288,8 @@ export interface ShiftKasir {
   selisih?: number;
   total_setoran_kurir?: number;        // setoran kurir yang diterima selama shift ini
   uang_di_kurir_saat_tutup?: number;   // uang tunai yang masih dibawa kurir saat shift ditutup
+  total_diserahkan_owner?: number;     // uang laci yang diserahkan ke owner selama shift (termasuk saat tutup)
+  sisa_laci_saat_tutup?: number;       // uang yang tetap di laci setelah tutup shift
   status: 'buka' | 'tutup';
 }
 
@@ -274,6 +304,7 @@ export interface Pengeluaran {
   karyawan_id?: string;
   karyawan_nama?: string;
   tipe_arus_kas?: 'keluar' | 'masuk';
+  sumber_kas?: SumberKas; // kosong = laci (data lama)
   kasir_id: string;
   kasir_nama: string;
   catatan?: string;

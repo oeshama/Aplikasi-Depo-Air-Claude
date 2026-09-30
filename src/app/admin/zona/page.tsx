@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ZoneOngkir } from '@/lib/types';
 import { AppStore } from '@/lib/store';
+import { jarakZonaKm } from '@/lib/geo';
 import { MapPin, Plus, Edit3, Trash2, Check, X, Layers } from 'lucide-react';
 
 export default function AdminZonaPage() {
@@ -17,6 +18,8 @@ export default function AdminZonaPage() {
   const [keterangan, setKeterangan] = useState('');
   const [tarifPerGalon, setTarifPerGalon] = useState<number>(3000);
   const [urutan, setUrutan] = useState<number>(1);
+  const [jarakMaks, setJarakMaks] = useState<number | ''>('');
+  const [tanpaBatas, setTanpaBatas] = useState<boolean>(false);
 
   const loadZona = () => {
     const list = AppStore.getZona();
@@ -37,6 +40,8 @@ export default function AdminZonaPage() {
     setKeterangan('Area pengiriman...');
     setTarifPerGalon(3000);
     setUrutan(zonaList.length + 1);
+    setJarakMaks('');
+    setTanpaBatas(false);
     setShowModal(true);
   };
 
@@ -46,6 +51,9 @@ export default function AdminZonaPage() {
     setKeterangan(zona.keterangan || '');
     setTarifPerGalon(zona.tarif_per_galon);
     setUrutan(zona.urutan);
+    const batas = jarakZonaKm(zona);
+    setJarakMaks(batas === null ? '' : batas);
+    setTanpaBatas(batas === null);
     setShowModal(true);
   };
 
@@ -61,7 +69,8 @@ export default function AdminZonaPage() {
             nama_zona: namaZona,
             keterangan: keterangan,
             tarif_per_galon: tarifPerGalon,
-            urutan: urutan
+            urutan: urutan,
+            jarak_maks_km: tanpaBatas ? null : Number(jarakMaks)
           };
         }
         return z;
@@ -76,7 +85,8 @@ export default function AdminZonaPage() {
         keterangan: keterangan,
         tarif_per_galon: tarifPerGalon,
         aktif: true,
-        urutan: urutan
+        urutan: urutan,
+        jarak_maks_km: tanpaBatas ? null : Number(jarakMaks)
       };
       const updated = [...zonaList, newZona];
       setZonaList(updated);
@@ -194,6 +204,29 @@ export default function AdminZonaPage() {
                 </div>
               </div>
 
+              <div className="form-group">
+                <label className="form-label" htmlFor="jarak-maks-zona">Batas jarak dari depo (km)</label>
+                <input
+                  id="jarak-maks-zona"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  className="form-input"
+                  value={tanpaBatas ? '' : jarakMaks}
+                  onChange={(e) => setJarakMaks(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder={tanpaBatas ? 'Tanpa batas' : 'Contoh: 3'}
+                  disabled={tanpaBatas}
+                  required={!tanpaBatas}
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', cursor: 'pointer', fontSize: '0.9rem' }}>
+                  <input type="checkbox" checked={tanpaBatas} onChange={(e) => setTanpaBatas(e.target.checked)} style={{ width: '20px', height: '20px' }} />
+                  Tanpa batas (zona terjauh)
+                </label>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Pelanggan yang jaraknya sampai batas ini (garis lurus dari depo) masuk zona ini. Dipakai untuk memeriksa apakah zona pelanggan sudah sesuai.
+                </span>
+              </div>
+
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>
                   Batal
@@ -218,7 +251,10 @@ export default function AdminZonaPage() {
                   Urutan {zona.urutan}
                 </span>
               </div>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px', minHeight: '36px' }}>{zona.keterangan || '-'}</p>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '6px', minHeight: '36px' }}>{zona.keterangan || '-'}</p>
+              <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--c-sky)', marginBottom: '14px' }}>
+                {jarakZonaKm(zona) === null ? 'Jarak: tanpa batas (zona terjauh)' : 'Jarak: sampai ' + jarakZonaKm(zona) + ' km dari depo'}
+              </p>
 
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Tarif Ongkir per Unit (Rp)</label>
