@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Pesanan, PengaturanDepo, SaldoKurir, UserApp, Kontak } from '@/lib/types';
 import { AppStore } from '@/lib/store';
 import KonfirmasiTerkirimSheet from '@/components/KonfirmasiTerkirimSheet';
+import RuteAntaran from '@/components/RuteAntaran';
 import { ambilLokasiSaatIni, koordinatValid, urlNavigasiGoogleMaps } from '@/lib/geo';
 import { calculateOrderDuration, alarmSound, formatThresholdText } from '@/lib/audioAndTimer';
 import { Truck, MapPin, Phone, CheckCircle, Navigation, Clock, BellOff, AlertTriangle, Volume2, Package } from 'lucide-react';
@@ -395,6 +396,13 @@ export default function PengantarPage() {
           </div>
         )}
       </div>
+
+      <RuteAntaran
+        antaran={deliveryJobs}
+        kontakList={kontakList}
+        depoLat={pengaturan.lokasi_depo_lat}
+        depoLng={pengaturan.lokasi_depo_lng}
+      />
 
       {/* Delivery Cards List (Detailed View) */}
       <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '10px' }}>

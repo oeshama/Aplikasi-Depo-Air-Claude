@@ -6,7 +6,8 @@ import { AppStore } from '@/lib/store';
 import { Kontak, ZoneOngkir } from '@/lib/types';
 import { jarakKm, jarakZonaKm, koordinatValid, urlGoogleMaps, urlNavigasiGoogleMaps } from '@/lib/geo';
 import { hitungFrekuensiSemua, INFO_KATEGORI, KategoriBeli, URUTAN_KATEGORI, AMBANG_BELI } from '@/lib/sebaran';
-import { MapPin, Navigation, ExternalLink, Phone, MapPinOff } from 'lucide-react';
+import { hitungSaranZona, SaranZona } from '@/lib/validasiZona';
+import { MapPin, Navigation, ExternalLink, Phone, MapPinOff, Check } from 'lucide-react';
 import type { CincinZona, TitikPeta } from '@/components/PetaSebaran';
 
 const PetaSebaran = dynamic(() => import('@/components/PetaSebaran'), {
@@ -42,6 +43,7 @@ export default function PetaPelangganPage() {
   }, [versi]);
 
   const { kontak, zona, pengaturan, frekuensi } = data;
+  const peran = AppStore.getCurrentUser().role;
   const depoAda = koordinatValid(pengaturan.lokasi_depo_lat, pengaturan.lokasi_depo_lng);
   const depo = depoAda ? { lat: pengaturan.lokasi_depo_lat as number, lng: pengaturan.lokasi_depo_lng as number } : null;
   const fmtTgl = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-');
@@ -80,6 +82,25 @@ export default function PetaPelangganPage() {
   const jarakTerpilih = terpilih && depo && koordinatValid(terpilih.lat, terpilih.lng)
     ? jarakKm(depo, { lat: terpilih.lat as number, lng: terpilih.lng as number })
     : null;
+
+  // Validasi zona: hanya owner dan admin yang boleh mengubah zona pelanggan
+  const bolehUbahZona = peran === 'owner' || peran === 'admin';
+  const saranZona = useMemo(() => (depo ? hitungSaranZona(difilter, zona, depo) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [difilter, zona, depoAda, pengaturan.lokasi_depo_lat, pengaturan.lokasi_depo_lng]);
+  const jelasSaran = saranZona.filter(s => !s.dekatBatas);
+
+  const terapkanZona = (daftar: SaranZona[]) => {
+    const peta = new Map(daftar.map(s => [s.kontak.id, s.zonaSaran.id]));
+    const list = AppStore.getKontak().map(k => (peta.has(k.id) ? { ...k, zona_id: peta.get(k.id) } : k));
+    AppStore.saveKontak(list);
+    alert(`Zona ${daftar.length} pelanggan diperbarui.`);
+  };
+
+  const terapkanSemuaJelas = () => {
+    if (!confirm(`Ubah zona ${jelasSaran.length} pelanggan sesuai jarak ke depo? Ongkir default mereka ikut berubah.`)) return;
+    terapkanZona(jelasSaran);
+  };
 
   const toggleKategori = (k: KategoriBeli) =>
     setKategoriAktif(list => (list.includes(k) ? list.filter(x => x !== k) : [...list, k]));
@@ -183,6 +204,52 @@ export default function PetaPelangganPage() {
             )}
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => setPilihId(null)}>Tutup</button>
           </div>
+        </section>
+      )}
+
+      {depo && (
+        <section aria-labelledby="judul-validasi-zona" style={{ marginBottom: '20px' }}>
+          <h2 id="judul-validasi-zona" style={{ fontSize: '1.05rem', fontWeight: 700, margin: '0 0 6px' }}>
+            Validasi zona ongkir ({saranZona.length})
+          </h2>
+          {saranZona.length === 0 ? (
+            <p style={{ color: 'var(--c-green)', fontSize: '0.9rem', fontWeight: 600 }}>
+              Semua zona pelanggan yang punya lokasi sudah sesuai jarak ke depo.
+            </p>
+          ) : (
+            <>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0 0 8px' }}>
+                Zona tersimpan berbeda dari zona menurut jarak ke depo (garis lurus, perkiraan). Yang dekat batas zona ditandai dan tidak ikut &quot;Terapkan semua&quot;.
+              </p>
+              {bolehUbahZona && jelasSaran.length > 0 && (
+                <button type="button" className="btn btn-primary btn-sm" onClick={terapkanSemuaJelas} style={{ marginBottom: '8px' }}>
+                  <Check size={14} aria-hidden="true" /> Terapkan semua yang jelas ({jelasSaran.length})
+                </button>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {saranZona.slice(0, 50).map(s => (
+                  <div key={s.kontak.id} style={{ border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '8px 12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <div>
+                        <strong style={{ fontSize: '0.9rem' }}>{s.kontak.nama}</strong>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                          {s.jarak.toFixed(1)} km dari depo - {s.zonaSekarang ? s.zonaSekarang.nama_zona : 'belum ada zona'} menjadi <strong style={{ color: 'var(--text-main)' }}>{s.zonaSaran.nama_zona}</strong>
+                          {s.dekatBatas ? ' (dekat batas zona)' : ''}
+                        </div>
+                      </div>
+                      <span style={{ display: 'flex', gap: '6px' }}>
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setPilihId(s.kontak.id)}>Lihat</button>
+                        {bolehUbahZona && (
+                          <button type="button" className="btn btn-success btn-sm" onClick={() => terapkanZona([s])}>Terapkan</button>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {saranZona.length > 50 && <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Menampilkan 50 pertama.</p>}
+              </div>
+            </>
+          )}
         </section>
       )}
 
