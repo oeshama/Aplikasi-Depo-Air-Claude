@@ -62,6 +62,27 @@ export default function ClientShell({ children }: { children: React.ReactNode })
     setAllowed(true);
   }, [pathname, synced]);
 
+  // Sesi login berakhir setelah 12 jam: cek berkala dan saat aplikasi dibuka kembali
+  useEffect(() => {
+    if (!synced || pathname === '/login') return;
+
+    const check = () => {
+      if (!AppStore.getSessionUser()) window.location.replace('/login');
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') check();
+    };
+
+    const timer = setInterval(check, 60 * 1000);
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', check);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', check);
+    };
+  }, [synced, pathname]);
+
   let content: React.ReactNode = null;
 
   if (!synced) {

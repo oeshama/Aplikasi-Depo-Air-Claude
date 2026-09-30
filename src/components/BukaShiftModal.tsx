@@ -8,9 +8,13 @@ import { Lock, Droplets, Banknote, ShieldCheck, User, KeyRound, Printer, Share2,
 interface BukaShiftModalProps {
   isOpen: boolean;
   onShiftOpened: (shift: ShiftKasir) => void;
+  // Diisi = popup boleh ditutup (buka shift nanti). Kosong = wajib diisi.
+  onClose?: () => void;
+  // Dipanggil sesaat sebelum shift dibuat, supaya halaman induk tidak menutup popup sebelum struk tampil
+  onSubmitted?: () => void;
 }
 
-export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModalProps) {
+export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmitted }: BukaShiftModalProps) {
   const [kasAwal, setKasAwal] = useState<number>(100000);
   const [meterAwal, setMeterAwal] = useState<number>(0);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
@@ -40,6 +44,16 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
       setOpenedShiftResult(null);
     }
   }, [isOpen]);
+
+  // Esc menutup popup (hanya saat formulir, bukan saat struk sudah tampil)
+  useEffect(() => {
+    if (!isOpen || !onClose || openedShiftResult) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose, openedShiftResult]);
 
   if (!isOpen) return null;
 
@@ -90,7 +104,9 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
       aktif: true
     };
     AppStore.setCurrentUser(fullUser);
+    AppStore.startSession(); // password sudah diverifikasi: masa login 12 jam dihitung ulang
 
+    onSubmitted?.();
     const newShift = AppStore.bukaShift(Number(kasAwal), Number(meterAwal), fullUser.id, fullUser.nama);
     
     setOpenedShiftResult({
@@ -148,15 +164,15 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
   const rawPhone = ownerUser?.no_hp || pengaturan.no_wa || '';
 
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(10px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: '16px'
-    }}>
-      <div className="glass-card animate-fade-in" style={{
-        width: '100%', maxWidth: '460px', backgroundColor: 'var(--surface-solid)', border: '2px solid var(--c-primary)',
-        borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column'
-      }}>
+    // Lembar dari bawah di HP (kotak di tengah di laptop). Wajib diisi, jadi tidak ada tombol tutup.
+    <div className="sheet-overlay" style={{ zIndex: 1200 }}>
+      <div
+        className="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="judul-buka-shift"
+        style={{ padding: 0, border: '2px solid var(--c-primary)', display: 'flex', flexDirection: 'column' }}
+      >
         {/* Header Banner */}
         <div className="no-print" style={{
           padding: '20px 24px', background: openedShiftResult ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(2, 132, 199, 0.2) 100%)' : 'linear-gradient(135deg, rgba(2, 132, 199, 0.3) 0%, rgba(16, 185, 129, 0.2) 100%)',
@@ -169,18 +185,29 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
             {openedShiftResult ? <CheckCircle2 size={26} color="#ffffff" /> : <ShieldCheck size={26} color="#ffffff" />}
           </div>
           <div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+            <h3 id="judul-buka-shift" style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
               {openedShiftResult ? 'SHIFT KASIR BERHASIL DIBUKA!' : 'ENTRI BUKA SHIFT KASIR'}
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
               {openedShiftResult ? 'Struk Bukti Pembukaan Shift Transaksi' : 'Pilih User / Karyawan, Password, Kas Awal & Meteran Awal'}
             </p>
           </div>
+          {onClose && !openedShiftResult && (
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={onClose}
+              aria-label="Tutup, buka shift nanti"
+              style={{ marginLeft: 'auto', flexShrink: 0 }}
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
+          )}
         </div>
 
         {!openedShiftResult ? (
           /* Input Form View */
-          <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
+          <form onSubmit={handleSubmit} style={{ padding: '20px 20px calc(24px + env(safe-area-inset-bottom))' }}>
             {/* Info Alert */}
             <div style={{
               padding: '12px 16px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)',
@@ -269,6 +296,11 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
             >
               BUKA SHIFT KASIR &amp; CEK STRUK
             </button>
+            {onClose && (
+              <p style={{ marginTop: '12px', fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                Belum siap? Tutup dulu dengan tombol X. Shift wajib dibuka sebelum menerima pembayaran.
+              </p>
+            )}
           </form>
         ) : (
           /* Receipt View */
@@ -336,7 +368,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened }: BukaShiftModal
 
             {/* Action Bar */}
             <div className="no-print" style={{
-              padding: '16px 20px', borderTop: '1px solid var(--glass-border)',
+              padding: '16px 20px calc(16px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--glass-border)',
               display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--inset-90)'
             }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>

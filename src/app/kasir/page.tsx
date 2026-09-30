@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Produk, Kontak, ZoneOngkir, Pesanan, PesananItem, 
   TipeTransaksi, MetodePembayaran, PembayaranDetail, TipeKontak, Pengeluaran, Karyawan, HutangToko, TipePihakHutang, PengaturanDepo 
@@ -420,6 +420,10 @@ export default function KasirPage() {
   };
 
   const [showBukaShiftModal, setShowBukaShiftModal] = useState<boolean>(false);
+  // Kasir belum punya shift aktif (popup boleh ditutup, tapi pembayaran diblokir)
+  const [needsShift, setNeedsShift] = useState<boolean>(false);
+  const shiftDismissedRef = useRef<boolean>(false);   // popup sudah ditutup kasir pada kunjungan ini
+  const holdShiftModalRef = useRef<boolean>(false);   // jangan tutup popup selagi struk buka shift tampil
 
   const loadData = () => {
     setProdukList(AppStore.getProduk().filter(p => p.aktif));
@@ -439,9 +443,11 @@ export default function KasirPage() {
     if (currentUser && currentUser.role === 'kasir') {
       const shiftAktif = AppStore.getShiftAktif(currentUser.id);
       if (!shiftAktif) {
-        setShowBukaShiftModal(true);
+        setNeedsShift(true);
+        if (!shiftDismissedRef.current) setShowBukaShiftModal(true);
       } else {
-        setShowBukaShiftModal(false);
+        setNeedsShift(false);
+        if (!holdShiftModalRef.current) setShowBukaShiftModal(false);
       }
     }
   };
@@ -696,6 +702,13 @@ export default function KasirPage() {
 
   // Process Transaction
   const handleProcessOrder = () => {
+    if (needsShift) {
+      setShowCheckout(false);
+      setShowBukaShiftModal(true);
+      alert('Buka shift dulu sebelum menerima pembayaran.');
+      return;
+    }
+
     if (cartItems.length === 0) {
       alert('Pilih minimal 1 produk terlebih dahulu!');
       return;
@@ -878,6 +891,15 @@ export default function KasirPage() {
   const alertCount = (isWaterStockCriticalCalc ? 1 : 0) + pendingDelivery.length;
   const alertUrgent = isWaterStockCriticalCalc || delayedPending.length > 0;
 
+  // Bayar: shift harus sudah dibuka, kalau belum popup buka shift muncul lagi
+  const openCheckout = () => {
+    if (needsShift) {
+      setShowBukaShiftModal(true);
+      return;
+    }
+    setShowCheckout(true);
+  };
+
   // Buka menu lain dari "Lainnya": tutup lembar menu dulu
   const openFromMenu = (fn: () => void) => () => {
     setShowMenuLainnya(false);
@@ -907,7 +929,34 @@ export default function KasirPage() {
       {/* Modals */}
       <ReceiptModal pesanan={activeReceipt} onClose={() => setActiveReceipt(null)} />
       <ExpenseReceiptModal pengeluaran={activeExpenseReceipt} onClose={() => setActiveExpenseReceipt(null)} />
-      <BukaShiftModal isOpen={showBukaShiftModal} onShiftOpened={() => setShowBukaShiftModal(false)} />
+      <BukaShiftModal
+        isOpen={showBukaShiftModal}
+        onSubmitted={() => { holdShiftModalRef.current = true; }}
+        onShiftOpened={() => {
+          holdShiftModalRef.current = false;
+          setNeedsShift(false);
+          setShowBukaShiftModal(false);
+        }}
+        onClose={() => {
+          shiftDismissedRef.current = true;
+          setShowBukaShiftModal(false);
+        }}
+      />
+
+      {/* Popup buka shift ditutup: ingatkan, dan bisa dibuka lagi kapan saja */}
+      {needsShift && !showBukaShiftModal && (
+        <div role="alert" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px',
+          padding: '12px 14px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.14)', border: '1px solid rgba(180, 83, 9, 0.45)'
+        }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--c-amber)', fontWeight: 600 }}>
+            <AlertTriangle size={20} aria-hidden="true" /> Shift belum dibuka. Buka shift dulu sebelum menerima pembayaran.
+          </span>
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowBukaShiftModal(true)}>
+            Buka shift
+          </button>
+        </div>
+      )}
 
       {/* RINGKAS: kas laci, antaran/peringatan, dan menu tugas jarang */}
       <div className="glass-card" style={{ padding: '12px 14px' }}>
@@ -1038,7 +1087,7 @@ export default function KasirPage() {
               </div>
               <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--c-green)' }}>{AppStore.formatRupiah(totalAkhir)}</div>
             </div>
-            <button type="button" className="btn btn-success btn-lg" onClick={() => setShowCheckout(true)} style={{ minWidth: '150px' }}>
+            <button type="button" className="btn btn-success btn-lg" onClick={openCheckout} style={{ minWidth: '150px' }}>
               <ShoppingCart size={20} aria-hidden="true" /> Bayar
             </button>
           </div>

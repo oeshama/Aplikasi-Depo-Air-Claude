@@ -209,15 +209,37 @@ export class AppStore {
     }
   }
 
-  // User yang benar-benar sudah login (null jika belum login / sudah logout)
+  // Login berlaku 12 jam sejak masuk, lalu harus login ulang
+  static readonly SESSION_MS = 12 * 60 * 60 * 1000;
+
+  // Catat waktu mulai login (dipanggil saat login dengan password berhasil)
+  static startSession() {
+    localStorage.setItem('depo_session_at', String(Date.now()));
+    localStorage.removeItem('depo_session_expired');
+  }
+
+  // User yang benar-benar sudah login (null jika belum login, sudah logout, atau sesi berakhir)
   static getSessionUser(): UserApp | null {
     if (typeof window === 'undefined') return null;
     if (!localStorage.getItem('depo_current_user')) return null;
+
+    const startedAt = Number(localStorage.getItem('depo_session_at'));
+    if (!startedAt) {
+      // Login lama (dari sebelum ada batas waktu): 12 jam dihitung mulai sekarang
+      this.startSession();
+    } else if (Date.now() - startedAt > this.SESSION_MS) {
+      localStorage.removeItem('depo_current_user');
+      localStorage.removeItem('depo_session_at');
+      localStorage.setItem('depo_session_expired', '1'); // supaya halaman login menjelaskan alasannya
+      return null;
+    }
+
     return this.getCurrentUser();
   }
 
   static logout() {
     localStorage.removeItem('depo_current_user');
+    localStorage.removeItem('depo_session_at');
     window.dispatchEvent(new Event('depo_user_updated'));
   }
 

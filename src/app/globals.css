@@ -422,6 +422,11 @@ option { background: var(--surface-solid); color: var(--text-main); }
   border-radius: 20px 20px 0 0;
   padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
   box-shadow: var(--shadow-sheet);
+  animation: sheetUp 0.25s ease-out;
+}
+@keyframes sheetUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 @media (min-width: 769px) {
   .sheet-overlay { align-items: center; }

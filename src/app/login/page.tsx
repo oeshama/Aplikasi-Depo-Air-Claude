@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppStore } from '@/lib/store';
 import { UserRole, UserApp } from '@/lib/types';
@@ -17,6 +17,18 @@ export default function LoginPage() {
   const [isCustomMode, setIsCustomMode] = useState(false);
   const [password, setPassword] = useState('');
   const [pengaturan, setPengaturan] = useState(AppStore.getPengaturan());
+
+  // Sesi login habis (12 jam): jelaskan kenapa diminta login lagi
+  const [sesiBerakhir] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('depo_session_expired') === '1';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    if (sesiBerakhir) localStorage.removeItem('depo_session_expired');
+  }, [sesiBerakhir]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +62,7 @@ export default function LoginPage() {
         aktif: true
       };
       AppStore.setCurrentUser(fullUser);
+      AppStore.startSession();
       redirectUser(fullUser.role);
     } else {
       alert(`User "${targetUsername}" tidak terdaftar. Tambahkan karyawan lewat Pengaturan Toko terlebih dahulu.`);
@@ -89,6 +102,15 @@ export default function LoginPage() {
           <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>{pengaturan.nama_depo}</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>{pengaturan.tagline}</p>
         </div>
+
+        {sesiBerakhir && (
+          <div role="alert" style={{
+            marginBottom: '16px', padding: '12px 14px', borderRadius: '12px', fontSize: '0.9rem',
+            background: 'rgba(245, 158, 11, 0.14)', border: '1px solid rgba(180, 83, 9, 0.4)', color: 'var(--c-amber)'
+          }}>
+            Sesi login sudah berakhir (batas 12 jam). Silakan login lagi.
+          </div>
+        )}
 
         <form onSubmit={handleLogin}>
           {/* User / Karyawan Selection */}
