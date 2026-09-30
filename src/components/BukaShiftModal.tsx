@@ -15,7 +15,8 @@ interface BukaShiftModalProps {
 }
 
 export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmitted }: BukaShiftModalProps) {
-  const [kasAwal, setKasAwal] = useState<number>(100000);
+  const [kasAwal, setKasAwal] = useState<number>(0);
+  const [sisaLaci, setSisaLaci] = useState<number>(0);
   const [meterAwal, setMeterAwal] = useState<number>(0);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -38,6 +39,8 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
     if (isOpen) {
       const p = AppStore.getPengaturan();
       setMeterAwal(p.meteran_air_awal_liter ?? 0);
+      setKasAwal(0); // bawaan 0; modal dari owner dicatat lewat petunjuk sisa laci atau diketik manual
+      setSisaLaci(AppStore.getSisaLaciShiftTerakhir());
       const cur = AppStore.getCurrentUser();
       setSelectedUserId(cur ? cur.id : (userList[0]?.id || 'usr-owner'));
       setPassword('');
@@ -263,13 +266,19 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
               <input 
                 type="number" 
                 className="form-input" 
-                value={kasAwal} 
+                value={kasAwal}
                 onChange={(e) => setKasAwal(Number(e.target.value))}
-                placeholder="Contoh: 100000"
+                placeholder="0 jika laci kosong"
                 required 
                 min="0"
                 style={{ fontSize: '1.1rem', fontWeight: 700, padding: '12px 14px' }}
               />
+              {sisaLaci > 0 && kasAwal !== sisaLaci && (
+                <div role="status" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  <span>Sisa laci shift sebelumnya: <strong style={{ color: 'var(--text-main)' }}>{AppStore.formatRupiah(sisaLaci)}</strong></span>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setKasAwal(sisaLaci)}>Gunakan</button>
+                </div>
+              )}
             </div>
 
             {/* 4. Meteran Air Awal */}

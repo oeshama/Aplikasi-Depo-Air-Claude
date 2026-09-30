@@ -13,11 +13,12 @@ import BukaShiftModal from '@/components/BukaShiftModal';
 import ZonaSelect from '@/components/ZonaSelect';
 import KonfirmasiTerkirimSheet from '@/components/KonfirmasiTerkirimSheet';
 import SetoranKurirSheet from '@/components/SetoranKurirSheet';
+import SerahOwnerSheet from '@/components/SerahOwnerSheet';
 import {
   ShoppingCart, Plus, Minus, User, Truck, Receipt,
   CreditCard, DollarSign, QrCode, Building, Clock, AlertTriangle, Check,
   BellOff, Volume2, Package, UserPlus, X, TrendingDown, FileText, Banknote, UserCheck, BookOpen,
-  Bell, MoreHorizontal, ChevronDown, ChevronUp, type LucideIcon
+  Bell, MoreHorizontal, ChevronDown, ChevronUp, HandCoins, type LucideIcon
 } from 'lucide-react';
 
 const TIPE_LABEL: Record<TipeTransaksi, string> = {
@@ -52,6 +53,7 @@ export default function KasirPage() {
   const [showKasDetail, setShowKasDetail] = useState<boolean>(false);
   const [konfirmasiPesanan, setKonfirmasiPesanan] = useState<Pesanan | null>(null);
   const [showSetoranKurir, setShowSetoranKurir] = useState<boolean>(false);
+  const [showSerahOwner, setShowSerahOwner] = useState<boolean>(false);
 
   // Alarm & Snooze State
   const [mutedIds, setMutedIds] = useState<string[]>([]);
@@ -320,6 +322,7 @@ export default function KasirPage() {
       karyawan_id: kary ? kary.id : undefined,
       karyawan_nama: kary ? kary.nama : undefined,
       tipe_arus_kas: isKasMasuk ? 'masuk' : 'keluar',
+      sumber_kas: 'laci', // dari layar kasir, uangnya selalu dari laci
       kasir_id: currentUser.id,
       kasir_nama: currentUser.nama,
       catatan: catatanPengeluaran.trim() || undefined,
@@ -475,6 +478,7 @@ export default function KasirPage() {
     window.addEventListener('depo_shift_updated', loadData);
     window.addEventListener('depo_pengeluaran_updated', loadData);
     window.addEventListener('depo_setoran_kurir_updated', loadData);
+    window.addEventListener('depo_setoran_owner_updated', loadData);
 
     const interval = setInterval(() => setNowTick(Date.now()), 10000);
 
@@ -487,6 +491,7 @@ export default function KasirPage() {
       window.removeEventListener('depo_shift_updated', loadData);
       window.removeEventListener('depo_pengeluaran_updated', loadData);
       window.removeEventListener('depo_setoran_kurir_updated', loadData);
+      window.removeEventListener('depo_setoran_owner_updated', loadData);
       clearInterval(interval);
     };
   }, []);
@@ -909,23 +914,17 @@ export default function KasirPage() {
   const modalAwalKasir = activeShiftInfo ? activeShiftInfo.saldo_awal : 0;
 
   // Tunai langsung (pesanan antar tunai tidak dihitung, uangnya lewat kurir) + setoran kurir yang diterima
-  const totalTunaiShift = AppStore.totalTunaiLangsung(shiftPesananList);
-  const totalSetoranShift = AppStore.getSetoranKurir()
-    .filter(s => !s.dibatalkan && (activeShiftInfo
-      ? new Date(s.tanggal).getTime() >= shiftBukaTime
-      : new Date(s.tanggal).toDateString() === new Date().toDateString()))
-    .reduce((acc, s) => acc + s.nominal, 0);
+  const awalHariIniKasir = new Date(); awalHariIniKasir.setHours(0, 0, 0, 0);
+  const kasLaciKasir = AppStore.hitungKasLaci(modalAwalKasir, activeShiftInfo ? shiftBukaTime : awalHariIniKasir.getTime());
+  const totalTunaiShift = kasLaciKasir.tunaiLangsung;
+  const totalSetoranShift = kasLaciKasir.setoranKurir;
   const uangDiKurir = AppStore.getTotalUangDiKurir();
 
-  const totalPengeluaranShiftKeluar = shiftPengeluaranList
-    .filter(p => p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon')
-    .reduce((acc, p) => acc + p.nominal, 0);
+  const totalPengeluaranShiftKeluar = kasLaciKasir.keluar;
+  const totalPengembalianKasbonShift = kasLaciKasir.kasbonKembali;
+  const totalDiserahkanOwnerShift = kasLaciKasir.diserahkanOwner;
 
-  const totalPengembalianKasbonShift = shiftPengeluaranList
-    .filter(p => p.tipe_arus_kas === 'masuk' || p.kategori === 'pengembalian_kasbon')
-    .reduce((acc, p) => acc + p.nominal, 0);
-
-  const saldoKasDiTangan = Math.max(0, (modalAwalKasir + totalTunaiShift + totalSetoranShift + totalPengembalianKasbonShift) - totalPengeluaranShiftKeluar);
+  const saldoKasDiTangan = Math.max(0, kasLaciKasir.ekspektasi);
 
   const alertCount = (isWaterStockCriticalCalc ? 1 : 0) + pendingDelivery.length;
   const alertUrgent = isWaterStockCriticalCalc || delayedPending.length > 0;
@@ -998,6 +997,7 @@ export default function KasirPage() {
         onDone={selesaiKonfirmasiTerkirim}
       />
       <SetoranKurirSheet isOpen={showSetoranKurir} onClose={() => setShowSetoranKurir(false)} />
+      <SerahOwnerSheet isOpen={showSerahOwner} onClose={() => setShowSerahOwner(false)} />
 
       {/* Popup buka shift ditutup: ingatkan, dan bisa dibuka lagi kapan saja */}
       {needsShift && !showBukaShiftModal && (
@@ -1075,6 +1075,12 @@ export default function KasirPage() {
               <span style={{ color: 'var(--text-muted)' }}>Pengeluaran: </span>
               <strong style={{ color: 'var(--c-red)' }}>-{AppStore.formatRupiah(totalPengeluaranShiftKeluar)}</strong>
             </div>
+            {totalDiserahkanOwnerShift > 0 && (
+              <div style={{ background: 'var(--inset-70)', padding: '8px 12px', borderRadius: '10px' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Diserahkan ke owner: </span>
+                <strong style={{ color: 'var(--c-red)' }}>-{AppStore.formatRupiah(totalDiserahkanOwnerShift)}</strong>
+              </div>
+            )}
             {(uangDiKurir > 0 || totalSetoranShift > 0) && (
               <div style={{ background: 'var(--inset-70)', padding: '8px 12px', borderRadius: '10px' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Uang di kurir: </span>
@@ -1419,6 +1425,7 @@ export default function KasirPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {[
                 { Icon: Truck, title: 'Setoran kurir', desc: uangDiKurir > 0 ? ('Uang di kurir saat ini ' + AppStore.formatRupiah(uangDiKurir)) : 'Terima uang tunai dari kurir', action: () => { if (needsShift) { setShowBukaShiftModal(true); } else { setShowSetoranKurir(true); } } },
+                { Icon: HandCoins, title: 'Serahkan uang ke owner', desc: 'Setor uang laci kapan saja, tidak harus saat tutup shift', action: () => { if (needsShift) { setShowBukaShiftModal(true); } else { setShowSerahOwner(true); } } },
                 { Icon: CreditCard, title: 'Bayar utang pelanggan', desc: 'Catat pelunasan utang pelanggan', action: () => openBayarHutangModal() },
                 { Icon: TrendingDown, title: 'Catat pengeluaran kas', desc: 'Bensin, gaji, beli air baku, dan lainnya', action: () => setShowAddPengeluaranModal(true) },
                 { Icon: FileText, title: 'Catat hutang toko', desc: 'Utang toko ke karyawan atau pihak ketiga', action: () => setShowAddHutangTokoModal(true) },

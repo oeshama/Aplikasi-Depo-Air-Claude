@@ -36,6 +36,7 @@ const SYNC_COLLECTIONS: CollectionDef[] = [
   { key: 'depo_hutang_toko', collection: 'hutang_toko', event: 'depo_hutang_toko_updated', kind: 'list', newestFirst: true, initial: () => [] },
   { key: 'depo_shift', collection: 'shift', event: 'depo_shift_updated', kind: 'list', newestFirst: true, initial: () => [] },
   { key: 'depo_setoran_kurir', collection: 'setoran_kurir', event: 'depo_setoran_kurir_updated', kind: 'list', newestFirst: true, initial: () => [] },
+  { key: 'depo_setoran_owner', collection: 'setoran_owner', event: 'depo_setoran_owner_updated', kind: 'list', newestFirst: true, initial: () => [] },
   { key: 'depo_notifikasi', collection: 'notifikasi', event: 'depo_notifikasi_updated', kind: 'list', newestFirst: true, initial: () => [] },
 ];
 

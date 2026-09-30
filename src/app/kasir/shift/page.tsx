@@ -18,7 +18,7 @@ export default function ShiftKasirPage() {
   const [shiftAktif, setShiftAktif] = useState<ShiftKasir | null>(null);
   const [showBukaModal, setShowBukaModal] = useState<boolean>(false);
   const [showTutupModal, setShowTutupModal] = useState<boolean>(false);
-  const [saldoAwal, setSaldoAwal] = useState<number>(100000);
+  const [saldoAwal, setSaldoAwal] = useState<number>(0);
   const [saldoAktual, setSaldoAktual] = useState<number>(0);
   const [isShiftTutup, setIsShiftTutup] = useState<boolean>(false);
 
@@ -58,8 +58,10 @@ export default function ShiftKasirPage() {
     window.addEventListener('depo_hutang_toko_updated', handleUpdate);
     window.addEventListener('depo_shift_updated', handleUpdate);
     window.addEventListener('depo_setoran_kurir_updated', handleUpdate);
+    window.addEventListener('depo_setoran_owner_updated', handleUpdate);
 
     return () => {
+      window.removeEventListener('depo_setoran_owner_updated', handleUpdate);
       window.removeEventListener('depo_pesanan_updated', handleUpdate);
       window.removeEventListener('depo_pengeluaran_updated', handleUpdate);
       window.removeEventListener('depo_hutang_toko_updated', handleUpdate);
@@ -69,10 +71,11 @@ export default function ShiftKasirPage() {
   }, []);
 
   // Tunai langsung + setoran kurir hari ini (pesanan antar tunai baru masuk laci saat kurir menyetor)
-  const totalSetoranHariIni = AppStore.getSetoranKurir()
-    .filter(s => !s.dibatalkan && new Date(s.tanggal).toDateString() === new Date().toDateString())
-    .reduce((acc, s) => acc + s.nominal, 0);
-  const totalTunai = AppStore.totalTunaiLangsung(pesananHariIni) + totalSetoranHariIni;
+  const awalHariIni = new Date(); awalHariIni.setHours(0, 0, 0, 0);
+  const kasLaci = AppStore.hitungKasLaci(saldoAwal, shiftAktif ? new Date(shiftAktif.waktu_buka).getTime() : awalHariIni.getTime());
+  const totalSetoranHariIni = kasLaci.setoranKurir;
+  const totalTunai = kasLaci.tunaiMasuk;
+  const totalDiserahkanOwner = kasLaci.diserahkanOwner;
   const uangDiKurir = AppStore.getTotalUangDiKurir();
 
   const totalNonTunai = pesananHariIni
@@ -86,18 +89,13 @@ export default function ShiftKasirPage() {
   const totalOmzet = pesananHariIni.reduce((acc, p) => acc + p.total_akhir, 0);
   
   // Total Pengeluaran Kasir Hari Ini (Kas Keluar vs Kas Masuk Pengembalian Kasbon)
-  const totalPengeluaranKeluar = pengeluaranHariIni
-    .filter(p => p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon')
-    .reduce((acc, p) => acc + p.nominal, 0);
+  // Hanya pengeluaran bersumber laci yang dihitung (pembayaran owner dari kas besar tidak mengurangi laci)
+  const totalPengeluaranKeluar = kasLaci.keluar;
+  const totalPengembalianKasbon = kasLaci.kasbonKembali;
 
-  const totalPengembalianKasbon = pengeluaranHariIni
-    .filter(p => p.tipe_arus_kas === 'masuk' || p.kategori === 'pengembalian_kasbon')
-    .reduce((acc, p) => acc + p.nominal, 0);
-
-  // Rumus Saldo Kas Fisik Bersih yang Siap Disetor ke Owner:
-  // (Modal Kas Awal + Total Kas Tunai Masuk + Pengembalian Kasbon) - Total Pengeluaran Kasir Keluar
-  const saldoKasirDisetorOwner = Math.max(0, (saldoAwal + totalTunai + totalPengembalianKasbon) - totalPengeluaranKeluar);
-  const saldoEkspektasiKas = (saldoAwal + totalTunai + totalPengembalianKasbon) - totalPengeluaranKeluar;
+  // Saldo laci = modal awal + tunai masuk + pelunasan kasbon - pengeluaran laci - uang yang sudah diserahkan ke owner
+  const saldoEkspektasiKas = kasLaci.ekspektasi;
+  const saldoKasirDisetorOwner = Math.max(0, saldoEkspektasiKas);
   const selisih = saldoAktual ? saldoAktual - saldoEkspektasiKas : 0;
 
   const handleDeletePengeluaran = (id: string, peruntukan: string) => {
@@ -144,6 +142,9 @@ export default function ShiftKasirPage() {
       msg += `• Pelunasan Kasbon Masuk: +${AppStore.formatRupiah(totalPengembalianKasbon)}\n`;
     }
     msg += `• Pengeluaran Kas Keluar: -${AppStore.formatRupiah(totalPengeluaranKeluar)}\n`;
+    if (totalDiserahkanOwner > 0) {
+      msg += `• Sudah diserahkan ke Owner: -${AppStore.formatRupiah(totalDiserahkanOwner)}\n`;
+    }
     msg += `--------------------------------\n`;
     msg += `*💰 KAS FISIK DISETOR KE OWNER: ${AppStore.formatRupiah(saldoKasirDisetorOwner)}*\n`;
     if (saldoAktual > 0) {
@@ -251,6 +252,9 @@ export default function ShiftKasirPage() {
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>Pengembalian Kasbon: <strong style={{ color: 'var(--c-green)' }}>+{AppStore.formatRupiah(totalPengembalianKasbon)}</strong></div>
               )}
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>Total Pengeluaran Kas: <strong style={{ color: 'var(--c-red)' }}>-{AppStore.formatRupiah(totalPengeluaranKeluar)}</strong></div>
+              {totalDiserahkanOwner > 0 && (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>Diserahkan ke Owner: <strong style={{ color: 'var(--c-red)' }}>-{AppStore.formatRupiah(totalDiserahkanOwner)}</strong></div>
+              )}
             </div>
             <div className="no-print" style={{ display: 'flex', gap: '6px' }}>
               <button onClick={handlePrintRekap} className="btn btn-secondary btn-sm" style={{ padding: '4px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>

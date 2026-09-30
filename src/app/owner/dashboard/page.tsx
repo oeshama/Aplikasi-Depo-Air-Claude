@@ -57,6 +57,7 @@ export default function OwnerDashboardPage() {
   const [nominalBayarStaf, setNominalBayarStaf] = useState<number>(0);
   const [peruntukanBayarStaf, setPeruntukanBayarStaf] = useState<string>('');
   const [catatanBayarStaf, setCatatanBayarStaf] = useState<string>('');
+  const [sumberBayarStaf, setSumberBayarStaf] = useState<'kas_besar' | 'laci'>('kas_besar');
 
   // Owner Water Meter & Stock Adjust Modal State
   const [showOwnerMeterAdjustModal, setShowOwnerMeterAdjustModal] = useState<boolean>(false);
@@ -129,6 +130,7 @@ export default function OwnerDashboardPage() {
     }
     
     setCatatanBayarStaf('');
+    setSumberBayarStaf('kas_besar');
     setShowBayarHakModal(true);
   };
 
@@ -153,6 +155,7 @@ export default function OwnerDashboardPage() {
       karyawan_id: targetKaryawanBayar.kary.id,
       karyawan_nama: targetKaryawanBayar.kary.nama,
       tipe_arus_kas: isKasMasuk ? 'masuk' : 'keluar',
+      sumber_kas: sumberBayarStaf,
       kasir_id: currentUser.id,
       kasir_nama: currentUser.nama,
       catatan: catatanBayarStaf.trim() || undefined
@@ -875,15 +878,12 @@ export default function OwnerDashboardPage() {
                     const tunaiMasukShift = s.total_tunai_masuk ?? (AppStore.totalTunaiLangsung(pesananShift)
                       + (setoranList || []).filter(x => !x.dibatalkan && new Date(x.tanggal).getTime() >= shiftBukaTime && new Date(x.tanggal).getTime() <= shiftTutupTime).reduce((sum, x) => sum + (x.nominal || 0), 0));
 
-                    const kasKeluarShift = pengeluaranShift
-                      .filter(p => p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon')
-                      .reduce((sum, p) => sum + (p.nominal || 0), 0);
+                    // Hanya pengeluaran bersumber laci; uang yang diserahkan ke owner selama shift juga mengurangi laci
+                    const kasShiftIni = AppStore.hitungKasLaci(s.saldo_awal, shiftBukaTime, shiftTutupTime);
+                    const kasKeluarShift = kasShiftIni.keluar;
+                    const kasbonKembaliShift = kasShiftIni.kasbonKembali;
 
-                    const kasbonKembaliShift = pengeluaranShift
-                      .filter(p => p.tipe_arus_kas === 'masuk' || p.kategori === 'pengembalian_kasbon')
-                      .reduce((sum, p) => sum + (p.nominal || 0), 0);
-
-                    const ekspektasiKasShift = (s.saldo_awal + tunaiMasukShift + kasbonKembaliShift) - kasKeluarShift;
+                    const ekspektasiKasShift = (s.saldo_awal + tunaiMasukShift + kasbonKembaliShift) - kasKeluarShift - kasShiftIni.diserahkanOwner;
                     const kasFisikAktualShift = isShiftBuka ? ekspektasiKasShift : (s.saldo_akhir_aktual ?? ekspektasiKasShift);
                     const selisihShift = isShiftBuka ? 0 : (s.selisih ?? (kasFisikAktualShift - ekspektasiKasShift));
 
@@ -2715,11 +2715,34 @@ export default function OwnerDashboardPage() {
               </div>
 
               <div className="form-group">
+                <div className="form-label" id="label-sumber-bayar-staf" style={{ marginBottom: '6px' }}>Dibayar dari</div>
+                <div className="seg-grid" role="radiogroup" aria-labelledby="label-sumber-bayar-staf">
+                  {([['kas_besar', 'Kas besar (owner)'], ['laci', 'Laci kasir']] as const).map(([nilai, label]) => (
+                    <button
+                      key={nilai}
+                      type="button"
+                      role="radio"
+                      aria-checked={sumberBayarStaf === nilai}
+                      className="seg-btn"
+                      onClick={() => setSumberBayarStaf(nilai)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                  {sumberBayarStaf === 'laci'
+                    ? 'Uang diambil dari laci kasir, jadi mengurangi uang laci.'
+                    : 'Dibayar owner dari kas besar, tidak mengurangi uang laci kasir.'}
+                </span>
+              </div>
+
+              <div className="form-group">
                 <label className="form-label">Catatan Tambahan (Opsional)</label>
-                <textarea 
-                  className="form-textarea" 
-                  rows={2} 
-                  value={catatanBayarStaf} 
+                <textarea
+                  className="form-textarea"
+                  rows={2}
+                  value={catatanBayarStaf}
                   onChange={(e) => setCatatanBayarStaf(e.target.value)} 
                   placeholder="Keterangan tanggal/no nota antaran..." 
                 />

@@ -1,7 +1,7 @@
 import {
   UserApp, Produk, ZoneOngkir, Kontak, Pesanan, TitipGalon,
   PengaturanDepo, ShiftKasir, UserRole, Pengeluaran, HutangToko,
-  SetoranKurir, NotifikasiOwner, SaldoKurir, MetodePembayaran
+  SetoranKurir, SetoranOwner, NotifikasiOwner, SaldoKurir, MetodePembayaran
 } from './types';
 import { 
   DEMO_USERS, INITIAL_PRODUK, INITIAL_ZONA, INITIAL_KONTAK, 
@@ -219,6 +219,157 @@ export class AppStore {
     return this.getSetoranKurir()
       .filter(s => !s.dibatalkan && new Date(s.tanggal).getTime() >= sinceMs)
       .reduce((acc, s) => acc + (s.nominal || 0), 0);
+  }
+
+  static getSetoranOwner(): SetoranOwner[] {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem('depo_setoran_owner');
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  static saveSetoranOwner(data: SetoranOwner[]) {
+    this.persist('depo_setoran_owner', data);
+    window.dispatchEvent(new Event('depo_setoran_owner_updated'));
+  }
+
+  // Hitungan kas laci kasir di satu rentang waktu (satu-satunya rumus; dipakai semua halaman).
+  // Hanya pengeluaran bersumber laci yang mengurangi laci; uang yang diserahkan/diambil owner juga keluar dari laci.
+  static hitungKasLaci(saldoAwal: number, sinceMs: number, untilMs: number = Infinity) {
+    const dalam = (iso: string) => {
+      const t = new Date(iso).getTime();
+      return t >= sinceMs && t <= untilMs;
+    };
+    const pesanan = this.getPesanan().filter(p => p && dalam(p.created_at));
+    const tunaiLangsung = this.totalTunaiLangsung(pesanan);
+    const setoranKurir = this.getSetoranKurir()
+      .filter(s => !s.dibatalkan && dalam(s.tanggal))
+      .reduce((acc, s) => acc + (s.nominal || 0), 0);
+    const pengeluaranLaci = this.getPengeluaran().filter(p => dalam(p.tanggal) && p.sumber_kas !== 'kas_besar');
+    const adaMasuk = (p: Pengeluaran) => p.tipe_arus_kas === 'masuk' || p.kategori === 'pengembalian_kasbon';
+    const kasbonKembali = pengeluaranLaci.filter(adaMasuk).reduce((acc, p) => acc + (p.nominal || 0), 0);
+    const keluar = pengeluaranLaci.filter(p => !adaMasuk(p)).reduce((acc, p) => acc + (p.nominal || 0), 0);
+    const diserahkanOwner = this.getSetoranOwner()
+      .filter(s => s.status !== 'dibatalkan' && !s.saat_tutup && dalam(s.waktu))
+      .reduce((acc, s) => acc + (s.nominal || 0), 0);
+    return {
+      saldoAwal,
+      tunaiLangsung,
+      setoranKurir,
+      tunaiMasuk: tunaiLangsung + setoranKurir,
+      kasbonKembali,
+      keluar,
+      diserahkanOwner,
+      ekspektasi: saldoAwal + tunaiLangsung + setoranKurir + kasbonKembali - keluar - diserahkanOwner
+    };
+  }
+
+  // Kas laci shift yang sedang berjalan (null jika tidak ada shift aktif)
+  static getKasLaciAktif(): ReturnType<typeof AppStore.hitungKasLaci> | null {
+    const shift = this.getShiftAktif();
+    return shift ? this.hitungKasLaci(shift.saldo_awal, new Date(shift.waktu_buka).getTime()) : null;
+  }
+
+  // Sisa uang di laci saat shift terakhir ditutup (petunjuk untuk modal awal shift berikutnya)
+  static getSisaLaciShiftTerakhir(): number {
+    const terakhir = this.getShiftList().find(s => s.status === 'tutup');
+    if (!terakhir) return 0;
+    if (terakhir.sisa_laci_saat_tutup !== undefined) return terakhir.sisa_laci_saat_tutup;
+    return terakhir.saldo_akhir_aktual || 0;
+  }
+
+  // Kasir menyerahkan uang dari laci ke owner (owner menerima dan memeriksa jumlahnya belakangan)
+  static serahkanKeOwner(nominal: number, catatan?: string): SetoranOwner {
+    const shift = this.getShiftAktif();
+    if (!shift) throw new Error('Belum ada shift yang dibuka.');
+    const jumlah = Math.round(nominal);
+    if (!(jumlah > 0)) throw new Error('Nominal harus lebih besar dari Rp 0!');
+    const laci = this.getKasLaciAktif();
+    if (laci && jumlah > laci.ekspektasi) {
+      throw new Error(`Uang di laci hanya ${this.formatRupiah(laci.ekspektasi)}, tidak cukup untuk menyerahkan ${this.formatRupiah(jumlah)}.`);
+    }
+    const user = this.getCurrentUser();
+    const s: SetoranOwner = {
+      id: `sto-${Date.now()}`,
+      waktu: new Date().toISOString(),
+      jenis: 'serah_kasir',
+      kasir_id: shift.kasir_id,
+      kasir_nama: shift.kasir_nama || user.nama,
+      shift_id: shift.id,
+      nominal: jumlah,
+      status: 'menunggu',
+      catatan: catatan?.trim() || undefined
+    };
+    const list = this.getSetoranOwner();
+    list.unshift(s);
+    this.saveSetoranOwner(list);
+    this.addNotifikasi({
+      jenis: 'setoran_owner',
+      judul: 'Setoran kasir menunggu diterima',
+      pesan: `${s.kasir_nama} menyerahkan ${this.formatRupiah(jumlah)} dari laci. Buka Keuangan Owner untuk menerimanya.`,
+      dibuat_oleh: user.nama
+    });
+    return s;
+  }
+
+  // Owner mengambil uang langsung dari laci (langsung sah, tanpa menunggu kasir)
+  static ambilDariLaciOlehOwner(nominal: number, catatan?: string): SetoranOwner {
+    const shift = this.getShiftAktif();
+    if (!shift) throw new Error('Belum ada shift yang dibuka, jadi tidak ada laci yang bisa diambil.');
+    const jumlah = Math.round(nominal);
+    if (!(jumlah > 0)) throw new Error('Nominal harus lebih besar dari Rp 0!');
+    const laci = this.getKasLaciAktif();
+    if (laci && jumlah > laci.ekspektasi) {
+      throw new Error(`Uang di laci hanya ${this.formatRupiah(laci.ekspektasi)}, tidak cukup untuk mengambil ${this.formatRupiah(jumlah)}.`);
+    }
+    const user = this.getCurrentUser();
+    const s: SetoranOwner = {
+      id: `sto-${Date.now()}`,
+      waktu: new Date().toISOString(),
+      jenis: 'ambil_owner',
+      kasir_id: shift.kasir_id,
+      kasir_nama: shift.kasir_nama || '',
+      shift_id: shift.id,
+      nominal: jumlah,
+      status: 'diterima',
+      nominal_diterima: jumlah,
+      selisih: 0,
+      diterima_oleh: user.nama,
+      diterima_at: new Date().toISOString(),
+      catatan: catatan?.trim() || undefined
+    };
+    const list = this.getSetoranOwner();
+    list.unshift(s);
+    this.saveSetoranOwner(list);
+    return s;
+  }
+
+  // Owner menerima setoran kasir dan mengisi uang yang benar-benar diterima; kurangnya tercatat sebagai selisih kasir
+  static terimaSetoranOwner(id: string, nominalDiterima: number): SetoranOwner {
+    const list = this.getSetoranOwner();
+    const s = list.find(x => x.id === id);
+    if (!s) throw new Error('Data setoran tidak ditemukan!');
+    if (s.status !== 'menunggu') throw new Error('Setoran ini sudah diproses.');
+    const diterima = Math.round(nominalDiterima);
+    if (!(diterima >= 0)) throw new Error('Nominal diterima tidak valid.');
+    const user = this.getCurrentUser();
+    s.status = 'diterima';
+    s.nominal_diterima = diterima;
+    s.selisih = diterima - s.nominal;
+    s.diterima_oleh = user.nama;
+    s.diterima_at = new Date().toISOString();
+    this.saveSetoranOwner(list);
+    return s;
+  }
+
+  // Setoran yang masih menunggu boleh dibatalkan (mis. salah ketik): uangnya kembali ke hitungan laci
+  static batalkanSetoranOwner(id: string): SetoranOwner {
+    const list = this.getSetoranOwner();
+    const s = list.find(x => x.id === id);
+    if (!s) throw new Error('Data setoran tidak ditemukan!');
+    if (s.status !== 'menunggu') throw new Error('Hanya setoran yang masih menunggu yang bisa dibatalkan.');
+    s.status = 'dibatalkan';
+    this.saveSetoranOwner(list);
+    return s;
   }
 
   // Saldo tunai yang sedang dibawa tiap kurir
@@ -686,14 +837,17 @@ export class AppStore {
     return newShift;
   }
 
-  static tutupShift(shiftId: string, saldoAkhirAktual: number, meterAkhir: number): ShiftKasir {
+  // diserahkanSaatTutup = uang laci yang langsung diserahkan ke owner saat tutup (menunggu diterima owner)
+  static tutupShift(shiftId: string, saldoAkhirAktual: number, meterAkhir: number, diserahkanSaatTutup: number = 0): ShiftKasir {
     const list = this.getShiftList();
     const idx = list.findIndex(s => s.id === shiftId);
     if (idx === -1) throw new Error('Shift tidak ditemukan!');
 
     const target = list[idx];
     const shiftBukaTime = new Date(target.waktu_buka).getTime();
-    
+    const serahTutup = Math.max(0, Math.round(diserahkanSaatTutup || 0));
+    if (serahTutup > saldoAkhirAktual) throw new Error('Uang yang diserahkan ke owner melebihi uang di laci.');
+
     // Filter pesanan & pengeluaran yang terjadi SEJAK SHIFT DIBUKA (bukan seluruh pesanan hari ini)
     const allPesanan = this.getPesanan().filter(p => new Date(p.created_at).getTime() >= shiftBukaTime);
     // Tunai langsung masuk laci + setoran kurir yang diterima selama shift ini
@@ -703,15 +857,8 @@ export class AppStore {
       .filter(p => p && p.pembayaran_details && Array.isArray(p.pembayaran_details) && p.pembayaran_details.some(d => d && d.metode !== 'tunai' && d.metode !== 'hutang'))
       .reduce((acc, p) => acc + (p.total_akhir || 0), 0);
 
-    const allPengeluaran = this.getPengeluaran().filter(p => new Date(p.tanggal).getTime() >= shiftBukaTime);
-    const totalKeluar = allPengeluaran
-      .filter(p => p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon')
-      .reduce((acc, p) => acc + (p.nominal || 0), 0);
-    const totalPengembalian = allPengeluaran
-      .filter(p => p.tipe_arus_kas === 'masuk' || p.kategori === 'pengembalian_kasbon')
-      .reduce((acc, p) => acc + (p.nominal || 0), 0);
-
-    const ekspektasiKas = (target.saldo_awal + totalTunai + totalPengembalian) - totalKeluar;
+    const kasLaci = this.hitungKasLaci(target.saldo_awal, shiftBukaTime);
+    const ekspektasiKas = kasLaci.ekspektasi;
     const selisihKas = saldoAkhirAktual - ekspektasiKas;
     const totalPemakaianAir = Math.max(0, meterAkhir - (target.meter_awal || 0));
 
@@ -724,9 +871,36 @@ export class AppStore {
     target.uang_di_kurir_saat_tutup = this.getTotalUangDiKurir();
     target.total_non_tunai = totalNonTunai;
     target.selisih = selisihKas;
+    target.total_diserahkan_owner = kasLaci.diserahkanOwner + serahTutup;
+    target.sisa_laci_saat_tutup = saldoAkhirAktual - serahTutup;
     target.status = 'tutup';
 
     this.saveShiftList(list);
+
+    if (serahTutup > 0) {
+      const user = this.getCurrentUser();
+      const setoran: SetoranOwner = {
+        id: `sto-${Date.now()}`,
+        waktu: target.waktu_tutup,
+        jenis: 'serah_kasir',
+        kasir_id: target.kasir_id,
+        kasir_nama: target.kasir_nama || user.nama,
+        shift_id: target.id,
+        saat_tutup: true,
+        nominal: serahTutup,
+        status: 'menunggu',
+        catatan: 'Diserahkan saat tutup shift'
+      };
+      const so = this.getSetoranOwner();
+      so.unshift(setoran);
+      this.saveSetoranOwner(so);
+      this.addNotifikasi({
+        jenis: 'setoran_owner',
+        judul: 'Setoran kasir menunggu diterima',
+        pesan: `${setoran.kasir_nama} menyerahkan ${this.formatRupiah(serahTutup)} saat tutup shift. Buka Keuangan Owner untuk menerimanya.`,
+        dibuat_oleh: user.nama
+      });
+    }
 
     const p = this.getPengaturan();
     p.meteran_air_awal_liter = meterAkhir;
@@ -800,6 +974,7 @@ export class AppStore {
       // Ditulis ulang ke nilai awal (bukan dihapus) supaya reset ikut tersinkron ke perangkat lain
       this.persist('depo_pesanan', INITIAL_PESANAN);
       this.persist('depo_setoran_kurir', []);
+      this.persist('depo_setoran_owner', []);
       this.persist('depo_notifikasi', []);
       this.persist('depo_produk', INITIAL_PRODUK);
       this.persist('depo_zona', INITIAL_ZONA);
@@ -814,6 +989,7 @@ export class AppStore {
 
       window.dispatchEvent(new Event('depo_pesanan_updated'));
       window.dispatchEvent(new Event('depo_setoran_kurir_updated'));
+      window.dispatchEvent(new Event('depo_setoran_owner_updated'));
       window.dispatchEvent(new Event('depo_notifikasi_updated'));
       window.dispatchEvent(new Event('depo_kontak_updated'));
       window.dispatchEvent(new Event('depo_produk_updated'));
@@ -833,6 +1009,7 @@ export class AppStore {
     if (options.pesanan) {
       this.persist('depo_pesanan', []);
       this.persist('depo_setoran_kurir', []);
+      this.persist('depo_setoran_owner', []);
       this.persist('depo_notifikasi', []);
       this.persist('depo_pengeluaran', []);
       this.persist('depo_hutang_toko', []);
@@ -850,6 +1027,7 @@ export class AppStore {
 
       window.dispatchEvent(new Event('depo_pesanan_updated'));
       window.dispatchEvent(new Event('depo_setoran_kurir_updated'));
+      window.dispatchEvent(new Event('depo_setoran_owner_updated'));
       window.dispatchEvent(new Event('depo_notifikasi_updated'));
       window.dispatchEvent(new Event('depo_pengeluaran_updated'));
       window.dispatchEvent(new Event('depo_hutang_toko_updated'));

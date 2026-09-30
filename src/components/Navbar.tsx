@@ -7,7 +7,7 @@ import { AppStore } from '@/lib/store';
 import { UserApp, UserRole } from '@/lib/types';
 import { 
   Droplets, ShoppingCart, Users, Package, MapPin, 
-  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell
+  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet
 } from 'lucide-react';
 import { getTheme, setTheme, Theme } from '@/lib/theme';
 
@@ -31,40 +31,18 @@ export default function Navbar() {
 
   const [kasDiTanganNav, setKasDiTanganNav] = useState<number>(0);
   const [notifCount, setNotifCount] = useState<number>(0);
+  const [menungguSetoran, setMenungguSetoran] = useState<number>(0);
 
   const calculateKasDiTangan = () => {
     const activeShift = AppStore.getShiftAktif();
-    const modalAwal = activeShift ? activeShift.saldo_awal : 0;
-    const shiftBukaTime = activeShift ? new Date(activeShift.waktu_buka).getTime() : 0;
-    const allPesanan = AppStore.getPesanan();
-    const allPengeluaran = AppStore.getPengeluaran();
+    const awalHariIni = new Date(); awalHariIni.setHours(0, 0, 0, 0);
+    const kas = activeShift
+      ? AppStore.hitungKasLaci(activeShift.saldo_awal, new Date(activeShift.waktu_buka).getTime())
+      : AppStore.hitungKasLaci(0, awalHariIni.getTime());
 
-    const shiftPesanan = activeShift 
-      ? allPesanan.filter(p => new Date(p.created_at).getTime() >= shiftBukaTime) 
-      : allPesanan.filter(p => new Date(p.created_at).toDateString() === new Date().toDateString());
-    
-    const shiftPengeluaran = activeShift 
-      ? allPengeluaran.filter(p => new Date(p.tanggal).getTime() >= shiftBukaTime)
-      : allPengeluaran.filter(p => new Date(p.tanggal).toDateString() === new Date().toDateString());
-
-    // Tunai langsung + setoran kurir (pesanan antar tunai baru masuk laci saat kurir menyetor)
-    const setoranKurir = AppStore.getSetoranKurir()
-      .filter(s => !s.dibatalkan && (activeShift
-        ? new Date(s.tanggal).getTime() >= shiftBukaTime
-        : new Date(s.tanggal).toDateString() === new Date().toDateString()))
-      .reduce((acc, s) => acc + s.nominal, 0);
-    const tunaiMasuk = AppStore.totalTunaiLangsung(shiftPesanan) + setoranKurir;
-
-    const kasKeluar = shiftPengeluaran
-      .filter(p => p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon')
-      .reduce((acc, p) => acc + p.nominal, 0);
-
-    const kasbonKembali = shiftPengeluaran
-      .filter(p => p.tipe_arus_kas === 'masuk' || p.kategori === 'pengembalian_kasbon')
-      .reduce((acc, p) => acc + p.nominal, 0);
-
-    setKasDiTanganNav(Math.max(0, (modalAwal + tunaiMasuk + kasbonKembali) - kasKeluar));
+    setKasDiTanganNav(Math.max(0, kas.ekspektasi));
     setNotifCount(AppStore.jumlahNotifikasiBelumDibaca());
+    setMenungguSetoran(AppStore.getSetoranOwner().filter(s => s.status === 'menunggu').length);
   };
 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ mode: 'local', pending: 0 });
@@ -107,6 +85,7 @@ export default function Navbar() {
     window.addEventListener('depo_pengeluaran_updated', handleUpdate);
     window.addEventListener('depo_shift_updated', handleUpdate);
     window.addEventListener('depo_setoran_kurir_updated', handleUpdate);
+    window.addEventListener('depo_setoran_owner_updated', handleUpdate);
     window.addEventListener('depo_notifikasi_updated', handleUpdate);
 
     return () => {
@@ -116,6 +95,7 @@ export default function Navbar() {
       window.removeEventListener('depo_pengeluaran_updated', handleUpdate);
       window.removeEventListener('depo_shift_updated', handleUpdate);
       window.removeEventListener('depo_setoran_kurir_updated', handleUpdate);
+      window.removeEventListener('depo_setoran_owner_updated', handleUpdate);
       window.removeEventListener('depo_notifikasi_updated', handleUpdate);
     };
   }, []);
@@ -283,8 +263,16 @@ export default function Navbar() {
           )}
 
           {(role === 'admin' || role === 'owner') && (
-            <Link href="/owner/dashboard" aria-current={pathname.startsWith('/owner') ? 'page' : undefined} className={linkClass(pathname.startsWith('/owner'))}>
+            <Link href="/owner/dashboard" aria-current={pathname === '/owner/dashboard' ? 'page' : undefined} className={linkClass(pathname === '/owner/dashboard')}>
               <LayoutDashboard size={16} aria-hidden="true" /> {role === 'owner' ? 'Dashboard Owner' : 'Dashboard & Target Harian'}
+            </Link>
+          )}
+          {role === 'owner' && (
+            <Link href="/owner/keuangan" aria-current={pathname === '/owner/keuangan' ? 'page' : undefined} className={linkClass(pathname === '/owner/keuangan')}>
+              <Wallet size={16} aria-hidden="true" /> Keuangan Owner
+              {menungguSetoran > 0 && (
+                <span aria-label={`${menungguSetoran} setoran menunggu`} style={{ marginLeft: '6px', minWidth: '20px', height: '20px', padding: '0 6px', borderRadius: '10px', background: '#dc2626', color: '#ffffff', fontSize: '0.72rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{menungguSetoran}</span>
+              )}
             </Link>
           )}
           {(role === 'admin' || role === 'owner') && (

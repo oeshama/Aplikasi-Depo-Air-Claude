@@ -15,6 +15,7 @@ interface TutupShiftModalProps {
 export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftClosed }: TutupShiftModalProps) {
   const [kasAkhir, setKasAkhir] = useState<number | ''>('');
   const [meterAkhir, setMeterAkhir] = useState<number | ''>('');
+  const [serah, setSerah] = useState<number | ''>(''); // '' = seluruh uang laci
 
   const [closedShiftResult, setClosedShiftResult] = useState<{
     shift: ShiftKasir;
@@ -28,11 +29,15 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
     totalPengembalian: number;
     totalSetoranKurir: number;
     uangDiKurir: number;
+    diserahkanSebelumnya: number;
+    serahOwner: number;
+    sisaLaci: number;
   } | null>(null);
 
   useEffect(() => {
     if (isOpen && shiftAktif) {
       setKasAkhir('');
+      setSerah('');
       setMeterAkhir(shiftAktif.meter_awal || 0);
       setClosedShiftResult(null);
     }
@@ -49,16 +54,16 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
   const kurirMembawaUang = AppStore.getSaldoKurirList().filter(k => k.saldo > 0);
   const uangDiKurir = kurirMembawaUang.reduce((acc, k) => acc + k.saldo, 0);
 
-  const allPengeluaran = AppStore.getPengeluaran().filter(p => new Date(p.tanggal).getTime() >= shiftBukaTime);
-  const totalKeluar = allPengeluaran
-    .filter(p => p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon')
-    .reduce((acc, p) => acc + (p.nominal || 0), 0);
-  const totalPengembalian = allPengeluaran
-    .filter(p => p.tipe_arus_kas === 'masuk' || p.kategori === 'pengembalian_kasbon')
-    .reduce((acc, p) => acc + (p.nominal || 0), 0);
+  const kasLaci = AppStore.hitungKasLaci(shiftAktif.saldo_awal, shiftBukaTime);
+  const totalKeluar = kasLaci.keluar;
+  const totalPengembalian = kasLaci.kasbonKembali;
+  const diserahkanSebelumnya = kasLaci.diserahkanOwner;
 
-  const saldoEkspektasiKas = (shiftAktif.saldo_awal + totalTunai + totalPengembalian) - totalKeluar; // totalTunai sudah termasuk setoran kurir
+  const saldoEkspektasiKas = kasLaci.ekspektasi;
   const numericKasAkhir = Number(kasAkhir) || 0;
+  // Bawaan: seluruh uang di laci diserahkan ke owner
+  const serahOwner = serah === '' ? numericKasAkhir : Math.min(Math.max(0, Number(serah) || 0), numericKasAkhir);
+  const sisaLaci = numericKasAkhir - serahOwner;
   const numericMeterAkhir = Number(meterAkhir) || 0;
   const selisihKas = numericKasAkhir - saldoEkspektasiKas;
   const pemakaianAir = Math.max(0, numericMeterAkhir - (shiftAktif.meter_awal || 0));
@@ -79,8 +84,8 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
     }
 
     try {
-      const closedShift = AppStore.tutupShift(shiftAktif.id, numericKasAkhir, numericMeterAkhir);
-      
+      const closedShift = AppStore.tutupShift(shiftAktif.id, numericKasAkhir, numericMeterAkhir, serahOwner);
+
       setClosedShiftResult({
         shift: closedShift,
         kasFisik: numericKasAkhir,
@@ -92,7 +97,10 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
         totalKeluar,
         totalPengembalian,
         totalSetoranKurir,
-        uangDiKurir
+        uangDiKurir,
+        diserahkanSebelumnya,
+        serahOwner,
+        sisaLaci
       });
     } catch (err: any) {
       alert(err.message || 'Gagal menutup shift!');
@@ -105,7 +113,7 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
 
   const handleSendWAOwner = () => {
     if (!closedShiftResult) return;
-    const { shift, kasFisik, meterAkhir, saldoEkspektasiKas, selisihKas, pemakaianAir, totalTunai, totalKeluar, totalPengembalian, totalSetoranKurir, uangDiKurir } = closedShiftResult;
+    const { shift, kasFisik, meterAkhir, saldoEkspektasiKas, selisihKas, pemakaianAir, totalTunai, totalKeluar, totalPengembalian, totalSetoranKurir, uangDiKurir, diserahkanSebelumnya, serahOwner, sisaLaci } = closedShiftResult;
     const pengaturan = AppStore.getPengaturan();
     const users = AppStore.getUsers();
     const ownerUser = users.find((u: UserApp) => u.role === 'owner');
@@ -133,9 +141,14 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
       msg += `• Pelunasan Kasbon Masuk: +${AppStore.formatRupiah(totalPengembalian)}\n`;
     }
     msg += `• Pengeluaran Kas Keluar: -${AppStore.formatRupiah(totalKeluar)}\n`;
+    if (diserahkanSebelumnya > 0) {
+      msg += `• Sudah diserahkan ke Owner selama shift: -${AppStore.formatRupiah(diserahkanSebelumnya)}\n`;
+    }
     msg += `• Ekspektasi Uang Laci: ${AppStore.formatRupiah(saldoEkspektasiKas)}\n`;
     msg += `--------------------------------\n`;
-    msg += `*💰 KAS FISIK DISETOR KE OWNER: ${AppStore.formatRupiah(kasFisik)}*\n`;
+    msg += `*💵 UANG LACI SAAT TUTUP: ${AppStore.formatRupiah(kasFisik)}*\n`;
+    msg += `*💰 DISERAHKAN KE OWNER: ${AppStore.formatRupiah(serahOwner)}*\n`;
+    if (sisaLaci > 0) msg += `*🗄️ TETAP DI LACI: ${AppStore.formatRupiah(sisaLaci)}*\n`;
     msg += `*⚖️ SELISIH KAS: ${selisihKas === 0 ? 'PAS (Rp 0)' : AppStore.formatRupiah(selisihKas)}*\n`;
     msg += `--------------------------------\n`;
     msg += `*💧 Control Air Baku & Meteran Depo:*\n`;
@@ -262,6 +275,28 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
               />
             </div>
 
+            {kasAkhir !== '' && numericKasAkhir > 0 && (
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label" htmlFor="serah-owner" style={{ fontWeight: 700 }}>
+                  Uang yang diserahkan ke owner (Rp)
+                </label>
+                <input
+                  id="serah-owner"
+                  type="number"
+                  className="form-input"
+                  value={serah === '' ? numericKasAkhir : serah}
+                  onChange={(e) => setSerah(e.target.value === '' ? 0 : Number(e.target.value))}
+                  min="0"
+                  max={numericKasAkhir}
+                  style={{ fontSize: '1.1rem', fontWeight: 700, padding: '12px 14px' }}
+                />
+                <div style={{ marginTop: '6px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  Bawaannya semua uang laci. Yang tetap di laci: <strong>{AppStore.formatRupiah(sisaLaci)}</strong>
+                  {' '}(terbawa ke shift berikutnya). Owner akan menerima dan memeriksa jumlahnya.
+                </div>
+              </div>
+            )}
+
             <div className="form-group" style={{ marginBottom: '18px' }}>
               <label className="form-label" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Droplets size={16} color="#38bdf8" /> Meteran Air Akhir Depo (Liter) <span style={{ color: 'var(--c-red)' }}>*</span>
@@ -360,6 +395,12 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
                   <span>Pengeluaran Kas (-)</span>
                   <span>-{AppStore.formatRupiah(closedShiftResult.totalKeluar)}</span>
                 </div>
+                {closedShiftResult.diserahkanSebelumnya > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Diserahkan ke Owner (-)</span>
+                    <span>-{AppStore.formatRupiah(closedShiftResult.diserahkanSebelumnya)}</span>
+                  </div>
+                )}
                 <p style={{ margin: '4px 0' }}>--------------------------------</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                   <span>Ekspektasi Uang Kas</span>
@@ -376,8 +417,18 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
               <div style={{ borderTop: '2px solid #000', borderBottom: '2px solid #000', padding: '6px 0', margin: '8px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1rem' }}>
                   <span>KAS DISETOR OWNER</span>
+                  <span>{AppStore.formatRupiah(closedShiftResult.serahOwner)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginTop: '2px' }}>
+                  <span>Uang laci saat tutup</span>
                   <span>{AppStore.formatRupiah(closedShiftResult.kasFisik)}</span>
                 </div>
+                {closedShiftResult.sisaLaci > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginTop: '2px' }}>
+                    <span>Tetap di laci</span>
+                    <span>{AppStore.formatRupiah(closedShiftResult.sisaLaci)}</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginTop: '2px' }}>
                   <span>Status Selisih Kas</span>
                   <span style={{ fontWeight: 'bold' }}>
