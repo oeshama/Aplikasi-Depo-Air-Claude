@@ -5,10 +5,11 @@ import { PengaturanDepo, KomponenServis, Karyawan, UserApp, GalonPinjamanPelangg
 import { AppStore } from '@/lib/store';
 import LokasiField from '@/components/LokasiField';
 import { PERIODE_TARGET, ambilTarget, aturTarget, LITER_PER_GALON } from '@/lib/target';
+import { cetakUji } from '@/lib/cetak';
 import {
   Settings, Image as ImageIcon, Upload, Save, Droplets, 
   CheckCircle, Trash2, AlertTriangle, Wrench, Plus, Gauge,
-  Users, UserPlus, Phone, MapPin, DollarSign, Calendar, Edit3, X, UserCheck, Target, Camera,
+  Users, UserPlus, Phone, MapPin, DollarSign, Calendar, Edit3, X, UserCheck, Target, Camera, Printer,
   Bell, BellOff, Volume2, Clock, Package, KeyRound
 } from 'lucide-react';
 
@@ -864,6 +865,99 @@ export default function AdminPengaturanPage() {
             {(pengaturan.foto_meter_mode || 'opsional') === 'nonaktif' && 'Kolom foto tidak tampil di buka dan tutup shift.'}
             {' '}Ingat tekan Simpan Seluruh Pengaturan di bawah setelah memilih.
           </p>
+        </div>
+
+        {/* SECTION Printer Struk */}
+        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-primary)' }}>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Printer size={22} color="#38bdf8" /> Printer Struk
+          </h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '14px' }}>
+            Atur cara mencetak struk penjualan ke printer thermal. Pengaturan ini berlaku di semua perangkat.
+          </p>
+
+          <div className="form-label" id="label-printer-metode" style={{ marginBottom: '6px' }}>Cara mencetak</div>
+          <div className="seg-grid" role="radiogroup" aria-labelledby="label-printer-metode" style={{ marginBottom: '14px' }}>
+            {([
+              ['dialog', 'Dialog cetak browser'],
+              ['rawbt', 'Aplikasi RawBT (printer Bluetooth)'],
+            ] as const).map(([nilai, label]) => (
+              <button
+                key={nilai}
+                type="button"
+                role="radio"
+                aria-checked={(pengaturan.printer_metode || 'dialog') === nilai}
+                className="seg-btn"
+                onClick={() => setPengaturan(prev => ({ ...prev, printer_metode: nilai }))}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="form-label" id="label-printer-lebar" style={{ marginBottom: '6px' }}>Lebar kertas</div>
+          <div className="seg-grid" role="radiogroup" aria-labelledby="label-printer-lebar" style={{ marginBottom: '14px' }}>
+            {([58, 80] as const).map(mm => (
+              <button
+                key={mm}
+                type="button"
+                role="radio"
+                aria-checked={(pengaturan.printer_lebar_mm || 58) === mm}
+                className="seg-btn"
+                onClick={() => setPengaturan(prev => ({ ...prev, printer_lebar_mm: mm }))}
+              >
+                {mm} mm
+              </button>
+            ))}
+          </div>
+
+          {pengaturan.printer_metode === 'rawbt' && (
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!pengaturan.printer_cetak_otomatis}
+                onChange={(e) => setPengaturan(prev => ({ ...prev, printer_cetak_otomatis: e.target.checked }))}
+                style={{ width: '20px', height: '20px', marginTop: '2px' }}
+              />
+              <span>
+                <strong style={{ display: 'block' }}>Cetak otomatis setelah bayar</strong>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Struk langsung dikirim ke printer begitu transaksi diproses.</span>
+              </span>
+            </label>
+          )}
+
+          {pengaturan.printer_metode === 'rawbt' && (
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '14px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!pengaturan.printer_buka_laci}
+                onChange={(e) => setPengaturan(prev => ({ ...prev, printer_buka_laci: e.target.checked }))}
+                style={{ width: '20px', height: '20px', marginTop: '2px' }}
+              />
+              <span>
+                <strong style={{ display: 'block' }}>Buka laci kas saat bayar tunai</strong>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Aktifkan hanya bila laci kas sudah dicolok ke printer (port RJ11/RJ12). Belum diuji dengan laci.</span>
+              </span>
+            </label>
+          )}
+
+          <button type="button" className="btn btn-secondary" onClick={() => cetakUji(pengaturan)} style={{ marginBottom: '14px' }}>
+            <Printer size={16} aria-hidden="true" /> Uji cetak
+          </button>
+
+          <details style={{ border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '0 12px' }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 600, minHeight: '48px', display: 'flex', alignItems: 'center' }}>Cara memasang printer Bluetooth (Android)</summary>
+            <ol style={{ margin: '0 0 12px', paddingLeft: '20px', fontSize: '0.88rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <li>Nyalakan printer, lalu di Pengaturan HP buka Bluetooth dan sambungkan (pairing) printernya. Kodenya biasanya 0000 atau 1234.</li>
+              <li>Pasang aplikasi <strong>RawBT</strong> dari Play Store (gratis).</li>
+              <li>Buka RawBT, pilih printer yang tadi disambungkan, dan atur lebar kertas 58 mm di dalam RawBT.</li>
+              <li>Di sini pilih <strong>Aplikasi RawBT</strong>, tekan Simpan Seluruh Pengaturan di bawah, lalu tekan <strong>Uji cetak</strong>. Pertama kali, Android bisa bertanya aplikasi mana yang dipakai: pilih RawBT.</li>
+              <li>Kalau uji cetak rapi, coba satu transaksi. Struk keluar dari tombol Cetak Thermal di struk, atau otomatis bila pilihan di atas diaktifkan.</li>
+            </ol>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>
+              Pengaturan ini hanya berlaku untuk struk penjualan. Struk buka/tutup shift dan bukti pengeluaran masih memakai dialog cetak browser.
+            </p>
+          </details>
         </div>
 
         {/* SECTION Notifikasi & Alarm Keterlambatan Pengiriman */}

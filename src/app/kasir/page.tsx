@@ -8,6 +8,7 @@ import {
 import { AppStore } from '@/lib/store';
 import { calculateOrderDuration, alarmSound, formatThresholdText } from '@/lib/audioAndTimer';
 import ReceiptModal from '@/components/ReceiptModal';
+import { cetakStrukPenjualan } from '@/lib/cetak';
 import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
 import BukaShiftModal from '@/components/BukaShiftModal';
 import ZonaSelect from '@/components/ZonaSelect';
@@ -904,6 +905,11 @@ export default function KasirPage() {
     }
 
     setActiveReceipt(newPesanan);
+    // Cetak otomatis hanya untuk printer lewat RawBT (dialog cetak browser tidak bisa otomatis)
+    const pengCetak = AppStore.getPengaturan();
+    if (pengCetak.printer_metode === 'rawbt' && pengCetak.printer_cetak_otomatis) {
+      cetakStrukPenjualan(newPesanan, { otomatis: true });
+    }
     clearCart();
     setShowCheckout(false);
     setShowOpsi(false);

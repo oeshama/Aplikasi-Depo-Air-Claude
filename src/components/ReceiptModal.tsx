@@ -3,6 +3,7 @@
 import React from 'react';
 import { Pesanan } from '@/lib/types';
 import { AppStore } from '@/lib/store';
+import { cetakStrukPenjualan } from '@/lib/cetak';
 import { Printer, Share2, X, CheckCircle2 } from 'lucide-react';
 
 interface ReceiptModalProps {
@@ -16,7 +17,7 @@ export default function ReceiptModal({ pesanan, onClose }: ReceiptModalProps) {
   const pengaturan = AppStore.getPengaturan();
 
   const handlePrint = () => {
-    window.print();
+    cetakStrukPenjualan(pesanan);
   };
 
   const handleSendWA = () => {

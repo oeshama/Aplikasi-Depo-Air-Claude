@@ -284,6 +284,11 @@ export interface PengaturanDepo {
   header_struk: string;
   footer_struk: string;
   logo_url?: string;
+  // Printer struk: dialog browser atau aplikasi RawBT (Android, printer Bluetooth); lebar kertas; cetak otomatis; laci kas
+  printer_metode?: 'dialog' | 'rawbt';
+  printer_lebar_mm?: 58 | 80;
+  printer_cetak_otomatis?: boolean;
+  printer_buka_laci?: boolean;
   // Foto meteran air depo saat buka/tutup shift: wajib, opsional (boleh dilewati), atau nonaktif. Kosong = opsional.
   foto_meter_mode?: ModeFotoMeter;
   // Koordinat depo (untuk peta sebaran pelanggan dan validasi zona ongkir)
