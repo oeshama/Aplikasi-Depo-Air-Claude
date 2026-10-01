@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Kontak, TipeKontak, Pesanan, PengaturanDepo, ZoneOngkir } from '@/lib/types';
+import { Kontak, TipeKontak, Pesanan, PengaturanDepo, ZoneOngkir, Produk } from '@/lib/types';
 import ZonaSelect from '@/components/ZonaSelect';
 import LokasiField from '@/components/LokasiField';
 import { koordinatValid, urlGoogleMaps } from '@/lib/geo';
@@ -28,6 +28,9 @@ export default function AdminKontakPage() {
   const [lng, setLng] = useState<number | undefined>(undefined);
   const [alamatMaps, setAlamatMaps] = useState<string>('');
   const [zonaList, setZonaList] = useState<ZoneOngkir[]>([]);
+  const [produkList, setProdukList] = useState<Produk[]>([]);
+  // Harga per produk yang diisi di form (awalnya harga umum); hanya yang berbeda dari harga umum disimpan sebagai harga khusus
+  const [hargaInput, setHargaInput] = useState<Record<string, number>>({});
 
   useEffect(() => {
     loadData();
@@ -48,6 +51,26 @@ export default function AdminKontakPage() {
     setPesananList(AppStore.getPesanan());
     setPengaturan(AppStore.getPengaturan());
     setZonaList(AppStore.getZona());
+    setProdukList(AppStore.getProduk().filter(p => p.aktif));
+  };
+
+  const siapkanHarga = (khusus?: Record<string, number>) => {
+    const awal: Record<string, number> = {};
+    AppStore.getProduk().filter(p => p.aktif).forEach(p => {
+      const k = khusus?.[p.id];
+      awal[p.id] = typeof k === 'number' && k > 0 ? k : p.harga_tempat;
+    });
+    setHargaInput(awal);
+  };
+
+  // Hanya harga yang beda dari harga umum yang disimpan; kosong = semua ikut harga umum
+  const hitungHargaKhusus = (): Record<string, number> | undefined => {
+    const hasil: Record<string, number> = {};
+    produkList.forEach(p => {
+      const h = hargaInput[p.id];
+      if (typeof h === 'number' && h > 0 && h !== p.harga_tempat) hasil[p.id] = h;
+    });
+    return Object.keys(hasil).length > 0 ? hasil : undefined;
   };
 
   const openAddModal = () => {
@@ -61,6 +84,7 @@ export default function AdminKontakPage() {
     setLat(undefined);
     setLng(undefined);
     setAlamatMaps('');
+    siapkanHarga();
     setShowModal(true);
   };
 
@@ -75,6 +99,7 @@ export default function AdminKontakPage() {
     setLat(kontak.lat);
     setLng(kontak.lng);
     setAlamatMaps(kontak.alamat_maps || '');
+    siapkanHarga(kontak.harga_khusus);
     setShowModal(true);
   };
 
@@ -108,7 +133,8 @@ export default function AdminKontakPage() {
             zona_id: zonaId || undefined,
             lat,
             lng,
-            alamat_maps: alamatMaps || undefined
+            alamat_maps: alamatMaps || undefined,
+            harga_khusus: hitungHargaKhusus()
           };
         }
         return k;
@@ -128,6 +154,7 @@ export default function AdminKontakPage() {
         lat,
         lng,
         alamat_maps: alamatMaps || undefined,
+        harga_khusus: hitungHargaKhusus(),
         hutang_saat_ini: 0,
         aktif: true
       };
@@ -329,6 +356,41 @@ export default function AdminKontakPage() {
                   onTautan={setAlamatMaps}
                 />
               </div>
+
+              <details className="form-group" style={{ border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '0 12px' }} open={!!editingId && !!kontakList.find(k => k.id === editingId)?.harga_khusus}>
+                <summary style={{ cursor: 'pointer', fontWeight: 600, minHeight: '48px', display: 'flex', alignItems: 'center' }}>
+                  Harga khusus (opsional){(() => { const n = produkList.filter(p => hargaInput[p.id] !== undefined && hargaInput[p.id] !== p.harga_tempat).length; return n > 0 ? ` - ${n} produk` : ''; })()}
+                </summary>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0 0 10px' }}>
+                  Awalnya semua mengikuti harga umum. Ganti angka produk yang harganya khusus untuk pelanggan ini. Di kasir, harga ini dipakai otomatis saat pelanggan dipilih.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '12px' }}>
+                  {produkList.map(p => {
+                    const berbeda = hargaInput[p.id] !== undefined && hargaInput[p.id] !== p.harga_tempat;
+                    return (
+                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'space-between' }}>
+                        <label htmlFor={`harga-${p.id}`} style={{ flex: 1, minWidth: 0, fontSize: '0.9rem' }}>
+                          <span style={{ display: 'block', fontWeight: 600 }}>{p.nama_produk}</span>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Harga umum {AppStore.formatRupiah(p.harga_tempat)}</span>
+                        </label>
+                        <input
+                          id={`harga-${p.id}`}
+                          type="number"
+                          inputMode="numeric"
+                          className="form-input"
+                          min="0"
+                          value={hargaInput[p.id] ?? ''}
+                          onChange={(e) => setHargaInput(prev => ({ ...prev, [p.id]: Number(e.target.value) }))}
+                          style={{ width: '120px', flexShrink: 0, borderColor: berbeda ? 'var(--c-primary)' : undefined, fontWeight: berbeda ? 700 : undefined }}
+                        />
+                      </div>
+                    );
+                  })}
+                  <button type="button" className="btn btn-secondary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => siapkanHarga()}>
+                    Kembalikan semua ke harga umum
+                  </button>
+                </div>
+              </details>
 
               <div className="form-group">
                 <label className="form-label">Limit Maksimum Hutang (Rp)</label>

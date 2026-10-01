@@ -24,6 +24,8 @@ export interface Kontak {
   lng?: number;
   // Zona ongkir langganan pelanggan ini (id dari ZoneOngkir); kosong = belum ditentukan
   zona_id?: string;
+  // Harga khusus pelanggan/reseller per produk (id produk -> harga satuan). Produk yang tidak ada di sini memakai harga umum.
+  harga_khusus?: Record<string, number>;
   galon_per_minggu?: number;
   qr_code?: string;
   pesanan_terakhir?: any;
@@ -85,6 +87,7 @@ export interface PesananItem {
   harga_satuan: number;
   subtotal: number;
   dihitung_ongkir: boolean;
+  harga_khusus?: boolean;   // harga satuan ini harga khusus pelanggan, bukan harga umum
 }
 
 export interface PembayaranDetail {

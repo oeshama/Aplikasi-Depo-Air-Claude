@@ -704,9 +704,12 @@ export default function KasirPage() {
   const calculateCartItems = (): PesananItem[] => {
     return Object.entries(cart).map(([produkId, qty]) => {
       const prod = produkList.find(p => p.id === produkId)!;
-      // Reseller check fallback to harga_tempat
-      const hargaSatuan = prod.harga_tempat;
+      // Harga khusus pelanggan terpilih (diatur owner/admin di data pelanggan); selain itu harga umum
+      const hargaKhusus = selectedKontak?.harga_khusus?.[produkId];
+      const adaHargaKhusus = typeof hargaKhusus === 'number' && hargaKhusus > 0 && hargaKhusus !== prod.harga_tempat;
+      const hargaSatuan = adaHargaKhusus ? (hargaKhusus as number) : prod.harga_tempat;
       return {
+        harga_khusus: adaHargaKhusus || undefined,
         id: `item-${produkId}`,
         produk_id: produkId,
         nama_produk: prod.nama_produk,
@@ -1189,6 +1192,7 @@ export default function KasirPage() {
                     <div style={{ fontWeight: 600 }}>{item.nama_produk}</div>
                     <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                       {AppStore.formatRupiah(item.harga_satuan)} x {item.jumlah} = <strong style={{ color: 'var(--c-sky)' }}>{AppStore.formatRupiah(item.subtotal)}</strong>
+                      {item.harga_khusus && <span className="badge badge-primary" style={{ marginLeft: '6px' }}>harga khusus</span>}
                     </div>
                   </div>
                   <div className="stepper" role="group" aria-label={`Jumlah ${item.nama_produk}`} style={{ flexShrink: 0 }}>
