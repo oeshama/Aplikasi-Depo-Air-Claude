@@ -3,6 +3,7 @@
 import React from 'react';
 import { Pengeluaran, UserApp } from '@/lib/types';
 import { AppStore } from '@/lib/store';
+import { cetakStrukBaris, susunBuktiKas } from '@/lib/cetak';
 import { Printer, Share2, X, CheckCircle2 } from 'lucide-react';
 
 interface ExpenseReceiptModalProps {
@@ -27,7 +28,7 @@ export default function ExpenseReceiptModal({ pengeluaran, onClose }: ExpenseRec
   }
 
   const handlePrint = () => {
-    window.print();
+    cetakStrukBaris(susunBuktiKas(pengeluaran, pengaturan, rawPhone));
   };
 
   const handleSendWAOwner = () => {

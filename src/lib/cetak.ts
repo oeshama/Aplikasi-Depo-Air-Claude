@@ -1,4 +1,4 @@
-import { PengaturanDepo, Pesanan } from './types';
+import { PengaturanDepo, Pesanan, Pengeluaran } from './types';
 import { AppStore } from './store';
 
 // Cetak struk ke printer thermal (mis. Panda 58 mm lewat Bluetooth).
@@ -295,4 +295,49 @@ export function cetakStrukBaris(baris: BarisStruk[]) {
   } else {
     cetakDialog(peng.printer_lebar_mm);
   }
+}
+
+// Bukti kas keluar/masuk (pengeluaran, gaji, kasbon, pembelian air baku, dll)
+export function susunBuktiKas(x: Pengeluaran, peng: PengaturanDepo, telpOwner: string): BarisStruk[] {
+  const masuk = x.tipe_arus_kas === 'masuk';
+  const s = penyusun(peng);
+  s.tengah(peng.nama_depo || 'Depo Air', true);
+  if (peng.alamat) s.tengah(peng.alamat);
+  s.tengah(`Telp/WA Owner: ${telpOwner || '-'}`);
+  s.garisSama();
+  s.tengah(`BUKTI KAS ${masuk ? 'MASUK' : 'KELUAR'}`, true);
+  s.garisSama();
+  s.kiri(`No   : ${x.id}`);
+  s.kiri(`Tgl  : ${new Date(x.tanggal).toLocaleString('id-ID')}`);
+  s.kiri(`Kat  : ${x.kategori ? x.kategori.toUpperCase().replace(/_/g, ' ') : '-'}`);
+  s.kiri(`Terima: ${x.karyawan_nama || '-'}`);
+  s.kiri(`Kasir: ${x.kasir_nama}`);
+  const sumber = x.sumber_kas === 'kas_besar' ? 'Kas besar' : x.sumber_kas === 'rekening' ? 'Rekening' : 'Laci kasir';
+  s.kiri(`Dari : ${sumber}`);
+  s.garisStrip();
+  s.kiri('Peruntukan:');
+  s.kiri(x.peruntukan);
+  if (x.kategori === 'pembelian_air_baku') {
+    s.kiri(`Vendor: ${x.nama_vendor_pengirim || '-'}`);
+    s.dua('Volume Air', `${(x.volume_air_masuk_liter || 0).toLocaleString('id-ID')} L`);
+    if (x.volume_air_masuk_liter) s.dua('HPP Air', `Rp ${((x.nominal || 0) / x.volume_air_masuk_liter).toFixed(1)}/L`);
+    if (x.meteran_waktu_diisi_liter) s.dua('Meteran diisi', `${x.meteran_waktu_diisi_liter.toLocaleString('id-ID')} L`);
+    if (x.harga_perolehan_air) s.dua('Harga perolehan', rp(x.harga_perolehan_air));
+    if (x.tips_sopir_pengirim) s.dua('Tips sopir', rp(x.tips_sopir_pengirim));
+  }
+  if (x.catatan) s.kiri(`Catatan: ${x.catatan}`);
+  s.garisStrip();
+  s.dua('TOTAL NOMINAL', rp(x.nominal), true);
+  s.garisStrip();
+  s.kosong(1);
+  s.kiri('Yang mengeluarkan:');
+  s.kosong(2);
+  s.tengah(`( ${x.kasir_nama} )`);
+  s.kosong(1);
+  s.kiri('Yang menerima:');
+  s.kosong(2);
+  s.tengah(`( ${x.karyawan_nama || '..................'} )`);
+  s.garisSama();
+  s.tengah(peng.footer_struk || 'Bukti Transaksi Sah Depo Air');
+  return s.baris;
 }
