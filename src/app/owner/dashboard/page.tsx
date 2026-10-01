@@ -147,6 +147,18 @@ export default function OwnerDashboardPage() {
       return;
     }
 
+    if (kategoriBayarStaf === 'pengembalian_kasbon') {
+      const sisaKasbon = targetKaryawanBayar.sisaKasbonAktif || 0;
+      if (nominalBayarStaf > sisaKasbon) {
+        alert('Kasbon ' + targetKaryawanBayar.kary.nama + ' tinggal ' + AppStore.formatRupiah(sisaKasbon) + '. Pengembalian tidak boleh lebih besar dari itu.');
+        return;
+      }
+    }
+    if (kategoriBayarStaf === 'gaji') {
+      const sisaGaji = targetKaryawanBayar.sisaGajiBelumDibayar || 0;
+      if (nominalBayarStaf > sisaGaji && !confirm('Gaji ' + targetKaryawanBayar.kary.nama + ' bulan ini tinggal ' + AppStore.formatRupiah(sisaGaji) + '. Nominal ' + AppStore.formatRupiah(nominalBayarStaf) + ' melebihi sisa itu. Tetap bayar?')) return;
+    }
+
     const currentUser = AppStore.getCurrentUser();
     const isKasMasuk = kategoriBayarStaf === 'pengembalian_kasbon';
 
@@ -325,8 +337,9 @@ export default function OwnerDashboardPage() {
       const canBayarGaji = sisaGajiBelumDibayar > 0;
       const totalInsentifGalon = 0;
 
-      // Total Hak Keuangan Karyawan dari Depo (Hutang Toko + Sisa Ongkir Belum Terbayar + Sisa Gaji Terhitung + Konsumsi)
-      const totalHakKeuangan = sisaHutangTokoKeKary + sisaOngkirBelumTerbayar + sisaGajiTerhitung + totalKonsumsiKasKeluar;
+      // Total hak karyawan yang MASIH TERUTANG dari Depo (Hutang Toko + Sisa Ongkir + Sisa Gaji).
+      // Uang makan/konsumsi yang sudah dibayar tidak dihitung lagi sebagai hak.
+      const totalHakKeuangan = sisaHutangTokoKeKary + sisaOngkirBelumTerbayar + sisaGajiTerhitung;
       
       // Total Piutang Depo ke Karyawan (Kasbon Aktif)
       const totalKewajibanKasbon = sisaKasbonAktif;
@@ -2655,7 +2668,17 @@ export default function OwnerDashboardPage() {
               background: 'rgba(16, 185, 129, 0.12)', border: '1px solid var(--c-green)',
               borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '0.82rem', color: 'var(--c-green-soft)'
             }}>
-              <strong>KAS KELUAR (-):</strong> Transaksi ini mencatat pengeluaran kas depo untuk membayar hak ongkir / gaji ke <strong>{targetKaryawanBayar.kary.nama}</strong>. Tampilan saldo Ongkir Belum Terbayar akan langsung berkurang/lunas!
+              {kategoriBayarStaf === 'pengembalian_kasbon' ? (
+                <><strong>KAS MASUK (+):</strong> Pengembalian kasbon dari <strong>{targetKaryawanBayar.kary.nama}</strong>. Sisa kasbon aktifnya akan berkurang.</>
+              ) : kategoriBayarStaf === 'kasbon' ? (
+                <><strong>KAS KELUAR (-):</strong> Pinjaman kasbon untuk <strong>{targetKaryawanBayar.kary.nama}</strong>. Kasbon aktifnya akan bertambah.</>
+              ) : kategoriBayarStaf === 'gaji' ? (
+                <><strong>KAS KELUAR (-):</strong> Pembayaran gaji bulan ini ke <strong>{targetKaryawanBayar.kary.nama}</strong>. Sisa gaji bulan ini akan berkurang.</>
+              ) : kategoriBayarStaf === 'ongkir' ? (
+                <><strong>KAS KELUAR (-):</strong> Pembayaran ongkir antaran ke <strong>{targetKaryawanBayar.kary.nama}</strong>. Saldo Ongkir Belum Terbayar akan berkurang.</>
+              ) : (
+                <><strong>KAS KELUAR (-):</strong> Pembayaran uang makan / konsumsi ke <strong>{targetKaryawanBayar.kary.nama}</strong>.</>
+              )}
             </div>
 
             <form onSubmit={handleSaveBayarHakStaf} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>

@@ -208,7 +208,7 @@ export default function KasirPage() {
     } else if (newKat === 'gaji') {
       const tglGaji = kary?.tanggal_jatuh_tempo_gaji || 25;
       setPeruntukanPengeluaran(karyNama ? `Pembayaran Gaji (Tgl ${tglGaji}) - ${karyNama}` : 'Pembayaran Gaji Karyawan');
-      if (kary && kary.gaji_basic) setNominalPengeluaran(kary.gaji_basic);
+      if (kary && kary.gaji_basic) setNominalPengeluaran(Math.max(0, kary.gaji_basic - AppStore.getGajiDibayarBulanIni(kary.id)) || kary.gaji_basic);
     } else if (newKat === 'kasbon') {
       setPeruntukanPengeluaran(karyNama ? `Kasbon Karyawan - ${karyNama}` : 'Pinjaman / Kasbon Karyawan');
     } else if (newKat === 'pengembalian_kasbon') {
@@ -242,7 +242,7 @@ export default function KasirPage() {
     if (kategoriPengeluaran === 'gaji') {
       const tglGaji = kary.tanggal_jatuh_tempo_gaji || 25;
       setPeruntukanPengeluaran(`Pembayaran Gaji (Tgl ${tglGaji}) - ${kary.nama}`);
-      if (kary.gaji_basic) setNominalPengeluaran(kary.gaji_basic);
+      if (kary.gaji_basic) setNominalPengeluaran(Math.max(0, kary.gaji_basic - AppStore.getGajiDibayarBulanIni(kary.id)) || kary.gaji_basic);
     } else if (kategoriPengeluaran === 'kasbon') {
       setPeruntukanPengeluaran(`Kasbon Karyawan - ${kary.nama}`);
     } else if (kategoriPengeluaran === 'pengembalian_kasbon') {
@@ -306,6 +306,25 @@ export default function KasirPage() {
       if (todayDate < dueDay) {
         alert(`Pembayaran gaji untuk "${kary.nama}" belum dapat diproses karena belum melewati tanggal jatuh tempo (Jatuh Tempo: Tanggal ${dueDay}).`);
         return;
+      }
+    }
+
+    if (kategoriPengeluaran === 'pengembalian_kasbon' && kary) {
+      const sisaKasbon = AppStore.getSisaKasbon(kary.id);
+      if (finalNominal > sisaKasbon) {
+        alert('Kasbon ' + kary.nama + ' tinggal ' + AppStore.formatRupiah(sisaKasbon) + '. Pengembalian tidak boleh lebih besar dari itu.');
+        return;
+      }
+    }
+    if (kategoriPengeluaran === 'gaji' && kary) {
+      const sisaGaji = Math.max(0, (kary.gaji_basic || 0) - AppStore.getGajiDibayarBulanIni(kary.id));
+      if (finalNominal > sisaGaji) {
+        const pesan = 'Gaji ' + kary.nama + ' bulan ini ' + (sisaGaji === 0 ? 'sudah dibayar penuh' : 'tinggal ' + AppStore.formatRupiah(sisaGaji)) + '. Nominal ' + AppStore.formatRupiah(finalNominal) + ' melebihi sisa itu.';
+        if (AppStore.getCurrentUser().role === 'kasir') {
+          alert(pesan + ' Hubungi owner kalau memang perlu dibayar lagi.');
+          return;
+        }
+        if (!confirm(pesan + ' Tetap bayar?')) return;
       }
     }
 

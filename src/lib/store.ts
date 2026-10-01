@@ -583,6 +583,23 @@ export class AppStore {
     this.tambahMutasi({ akun, arah: selisih > 0 ? 'masuk' : 'keluar', nominal: Math.abs(selisih), jenis: 'koreksi', keterangan: alasan.trim() });
   }
 
+  // Sisa kasbon aktif seorang karyawan (kasbon diberikan dikurangi pengembalian)
+  static getSisaKasbon(karyawanId: string): number {
+    const list = this.getPengeluaran().filter(p => p.karyawan_id === karyawanId);
+    const kasbon = list.filter(p => p.kategori === 'kasbon').reduce((a, p) => a + (p.nominal || 0), 0);
+    const kembali = list.filter(p => p.kategori === 'pengembalian_kasbon').reduce((a, p) => a + (p.nominal || 0), 0);
+    return Math.max(0, kasbon - kembali);
+  }
+
+  // Gaji yang sudah dibayarkan ke karyawan pada bulan berjalan
+  static getGajiDibayarBulanIni(karyawanId: string): number {
+    const now = new Date();
+    return this.getPengeluaran()
+      .filter(p => p.karyawan_id === karyawanId && p.kategori === 'gaji')
+      .filter(p => { const d = new Date(p.tanggal); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); })
+      .reduce((a, p) => a + (p.nominal || 0), 0);
+  }
+
   // Atur ulang Keuangan Owner: kosongkan rekening, mutasi, dan setoran ke owner, lalu minta isi saldo awal lagi.
   // Penjualan, shift, dan pengeluaran tidak disentuh.
   static resetKeuangan() {
