@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppStore } from '@/lib/store';
+import { namaCetak } from '@/lib/cetak';
 import { UserRole, UserApp } from '@/lib/types';
 import { Droplets, User, ArrowRight, KeyRound } from 'lucide-react';
 
@@ -99,7 +100,7 @@ export default function LoginPage() {
               <Droplets size={40} color="#ffffff" />
             )}
           </div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>{pengaturan.nama_depo}</h1>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>{namaCetak(pengaturan)}</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>{pengaturan.tagline}</p>
         </div>
 

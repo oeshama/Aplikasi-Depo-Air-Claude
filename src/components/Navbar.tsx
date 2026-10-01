@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AppStore } from '@/lib/store';
+import { namaCetak } from '@/lib/cetak';
 import { UserApp, UserRole, ShiftKasir } from '@/lib/types';
 import { 
   Droplets, ShoppingCart, Users, Package, MapPin, 
@@ -18,7 +19,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<UserApp | null>(null);
-  const [depoName, setDepoName] = useState('Depo Air Clean & Fresh');
+  const [depoName, setDepoName] = useState('');
   const [depoLogo, setDepoLogo] = useState<string>('');
   const [showTutupShiftModal, setShowTutupShiftModal] = useState<boolean>(false);
   const [pendingNextAction, setPendingNextAction] = useState<(() => void) | null>(null);
@@ -27,7 +28,7 @@ export default function Navbar() {
 
   const loadSettings = () => {
     const p = AppStore.getPengaturan();
-    setDepoName(p.nama_depo);
+    setDepoName(namaCetak(p));
     setDepoLogo(p.logo_url || '');
   };
 
