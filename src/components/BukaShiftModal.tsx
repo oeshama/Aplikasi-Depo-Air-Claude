@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AppStore } from '@/lib/store';
 import { ShiftKasir, UserApp } from '@/lib/types';
 import FotoMeterField from '@/components/FotoMeterField';
+import KepalaStruk from '@/components/KepalaStruk';
 import { cetakStrukBaris, susunStrukBukaShift } from '@/lib/cetak';
 import { Lock, Droplets, Banknote, ShieldCheck, User, KeyRound, Printer, Share2, CheckCircle2, X } from 'lucide-react';
 
@@ -359,8 +360,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
                 {pengaturan.logo_url && (
                   <img src={pengaturan.logo_url} alt={pengaturan.nama_depo} style={{ maxHeight: '45px', maxWidth: '120px', objectFit: 'contain', marginBottom: '6px' }} />
                 )}
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: 0 }}>{pengaturan.nama_depo}</h3>
-                <p style={{ fontSize: '0.75rem', color: '#555', margin: '2px 0' }}>{pengaturan.alamat}</p>
+                <KepalaStruk pengaturan={pengaturan} rapat />
                 <p style={{ fontSize: '0.75rem', color: '#555', margin: '2px 0' }}>Telp/WA Owner: {rawPhone || '-'}</p>
                 <p style={{ marginTop: '8px', marginBottom: '4px' }}>================================</p>
                 <h4 style={{ fontSize: '0.95rem', fontWeight: 'bold', textTransform: 'uppercase', margin: '4px 0' }}>

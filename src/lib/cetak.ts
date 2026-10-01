@@ -74,21 +74,30 @@ function penyusun(peng: PengaturanDepo) {
   return { L, baris, tengah, kiri, dua, garisStrip, garisSama, kosong };
 }
 
-function kepala(s: ReturnType<typeof penyusun>, peng: PengaturanDepo, judul: string) {
+// Kepala struk: isian "Header Struk Cetak" (baris pertama tebal). Kosong = Nama Depo, Alamat, WA.
+function tulisKepala(s: ReturnType<typeof penyusun>, peng: PengaturanDepo, denganWa = true) {
+  const baris = (peng.header_struk || '').split('\n').map(t => t.trim()).filter(Boolean);
+  if (baris.length > 0) {
+    baris.forEach((t, i) => s.tengah(t, i === 0));
+    return;
+  }
   s.tengah(peng.nama_depo || 'Depo Air', true);
   if (peng.alamat) s.tengah(peng.alamat);
-  if (peng.no_wa) s.tengah(`WA: ${peng.no_wa}`);
+  if (denganWa && peng.no_wa) s.tengah(`WA: ${peng.no_wa}`);
+}
+
+function kepala(s: ReturnType<typeof penyusun>, peng: PengaturanDepo, judul: string) {
+  tulisKepala(s, peng);
   s.garisSama();
   s.tengah(judul, true);
   s.garisSama();
 }
 
 export function susunStrukPenjualan(p: Pesanan, peng: PengaturanDepo): BarisStruk[] {
-  const { L, baris, tengah, kiri, dua } = penyusun(peng);
+  const s = penyusun(peng);
+  const { L, baris, tengah, kiri, dua } = s;
 
-  tengah(peng.nama_depo || 'Depo Air', true);
-  if (peng.alamat) tengah(peng.alamat);
-  if (peng.no_wa) tengah(`WA: ${peng.no_wa}`);
+  tulisKepala(s, peng);
   baris.push({ teks: garis(L) });
 
   kiri(`No   : ${p.no_nota}`);
@@ -122,7 +131,7 @@ export function susunStrukUji(peng: PengaturanDepo): BarisStruk[] {
   const angka = '1234567890'.repeat(5).slice(0, L);
   return [
     { teks: 'UJI CETAK', rata: 'tengah', tebal: true },
-    { teks: bersihkanTeks(peng.nama_depo || 'Depo Air'), rata: 'tengah' },
+    { teks: bersihkanTeks((peng.header_struk || '').split('\n').map(t => t.trim()).filter(Boolean)[0] || peng.nama_depo || 'Depo Air'), rata: 'tengah' },
     { teks: garis(L) },
     { teks: angka },
     { teks: `Kertas ${peng.printer_lebar_mm === 80 ? 80 : 58} mm` },
@@ -301,8 +310,7 @@ export function cetakStrukBaris(baris: BarisStruk[]) {
 export function susunBuktiKas(x: Pengeluaran, peng: PengaturanDepo, telpOwner: string): BarisStruk[] {
   const masuk = x.tipe_arus_kas === 'masuk';
   const s = penyusun(peng);
-  s.tengah(peng.nama_depo || 'Depo Air', true);
-  if (peng.alamat) s.tengah(peng.alamat);
+  tulisKepala(s, peng, false);
   s.tengah(`Telp/WA Owner: ${telpOwner || '-'}`);
   s.garisSama();
   s.tengah(`BUKTI KAS ${masuk ? 'MASUK' : 'KELUAR'}`, true);
@@ -369,7 +377,7 @@ export interface DataRekapShift {
 // Rekap shift versi ringkas untuk printer 58/80 mm
 export function susunRekapShift(d: DataRekapShift, peng: PengaturanDepo): BarisStruk[] {
   const s = penyusun(peng);
-  s.tengah(peng.nama_depo || 'Depo Air', true);
+  tulisKepala(s, peng, false);
   s.garisSama();
   s.tengah('REKAP SHIFT KASIR', true);
   s.garisSama();

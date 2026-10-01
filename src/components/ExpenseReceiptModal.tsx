@@ -4,6 +4,7 @@ import React from 'react';
 import { Pengeluaran, UserApp } from '@/lib/types';
 import { AppStore } from '@/lib/store';
 import { cetakStrukBaris, susunBuktiKas } from '@/lib/cetak';
+import KepalaStruk from '@/components/KepalaStruk';
 import { Printer, Share2, X, CheckCircle2 } from 'lucide-react';
 
 interface ExpenseReceiptModalProps {
@@ -97,8 +98,7 @@ export default function ExpenseReceiptModal({ pengeluaran, onClose }: ExpenseRec
             {pengaturan.logo_url && (
               <img src={pengaturan.logo_url} alt={pengaturan.nama_depo} style={{ maxHeight: '50px', maxWidth: '120px', objectFit: 'contain', marginBottom: '8px' }} />
             )}
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: 0 }}>{pengaturan.nama_depo}</h3>
-            <p style={{ fontSize: '0.75rem', color: '#555', margin: '2px 0' }}>{pengaturan.alamat}</p>
+            <KepalaStruk pengaturan={pengaturan} rapat />
             <p style={{ fontSize: '0.75rem', color: '#555', margin: '2px 0' }}>Telp/WA Owner: {rawPhone || '-'}</p>
             <p style={{ marginTop: '8px', marginBottom: '4px' }}>================================</p>
             <h4 style={{ fontSize: '0.95rem', fontWeight: 'bold', textTransform: 'uppercase', margin: '4px 0' }}>
