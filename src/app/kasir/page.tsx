@@ -96,7 +96,7 @@ export default function KasirPage() {
   const [newTipe, setNewTipe] = useState<TipeKontak>('pelanggan');
   const [newNoHp, setNewNoHp] = useState<string>('');
   const [newAlamat, setNewAlamat] = useState<string>('');
-  const [newLimitHutang, setNewLimitHutang] = useState<number>(100000);
+  const [newLimitHutang, setNewLimitHutang] = useState<number>(0);
   const [newZonaId, setNewZonaId] = useState<string>('');
 
   const handleSaveNewKontak = (e: React.FormEvent) => {
@@ -116,7 +116,7 @@ export default function KasirPage() {
       tipe: newTipe,
       no_hp: newNoHp.trim() || '-',
       alamat: newAlamat.trim() || '-',
-      limit_hutang: Number.isFinite(newLimitHutang) ? newLimitHutang : 100000, // 0 = tidak boleh berhutang
+      limit_hutang: Number.isFinite(newLimitHutang) ? newLimitHutang : 0, // 0 = tidak boleh berhutang
       zona_id: newZonaId || undefined,
       hutang_saat_ini: 0,
       aktif: true
@@ -136,7 +136,7 @@ export default function KasirPage() {
     setNewTipe('pelanggan');
     setNewNoHp('');
     setNewAlamat('');
-    setNewLimitHutang(100000);
+    setNewLimitHutang(0);
     setNewZonaId('');
     setShowAddKontakModal(false);
 
@@ -1905,7 +1905,7 @@ export default function KasirPage() {
                   value={newLimitHutang}
                   min="0"
                   onChange={(e) => setNewLimitHutang(Number(e.target.value))}
-                  placeholder="100000" 
+                  placeholder="0" 
                 />
               </div>
 

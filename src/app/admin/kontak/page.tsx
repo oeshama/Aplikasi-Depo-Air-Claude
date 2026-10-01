@@ -22,7 +22,7 @@ export default function AdminKontakPage() {
   const [tipe, setTipe] = useState<TipeKontak>('pelanggan');
   const [noHp, setNoHp] = useState('');
   const [alamat, setAlamat] = useState('');
-  const [limitHutang, setLimitHutang] = useState<number>(100000);
+  const [limitHutang, setLimitHutang] = useState<number>(0);
   const [zonaId, setZonaId] = useState<string>('');
   const [lat, setLat] = useState<number | undefined>(undefined);
   const [lng, setLng] = useState<number | undefined>(undefined);
@@ -79,7 +79,7 @@ export default function AdminKontakPage() {
     setTipe('pelanggan');
     setNoHp('');
     setAlamat('');
-    setLimitHutang(100000);
+    setLimitHutang(0); // pelanggan baru bawaannya tidak boleh berhutang
     setZonaId('');
     setLat(undefined);
     setLng(undefined);
@@ -94,7 +94,7 @@ export default function AdminKontakPage() {
     setTipe(kontak.tipe);
     setNoHp(kontak.no_hp);
     setAlamat(kontak.alamat || '');
-    setLimitHutang(kontak.limit_hutang ?? 100000); // 0 = tidak boleh berhutang, jangan diganti ke bawaan
+    setLimitHutang(kontak.limit_hutang ?? 0); // 0 = tidak boleh berhutang
     setZonaId(kontak.zona_id || '');
     setLat(kontak.lat);
     setLng(kontak.lng);
@@ -394,7 +394,7 @@ export default function AdminKontakPage() {
 
               <div className="form-group">
                 <label className="form-label">Limit Maksimum Hutang (Rp)</label>
-                <input type="number" className="form-input" value={limitHutang} onChange={(e) => setLimitHutang(Number(e.target.value))} placeholder="100000" required />
+                <input type="number" className="form-input" value={limitHutang} onChange={(e) => setLimitHutang(Number(e.target.value))} placeholder="0" min="0" required />
               </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
