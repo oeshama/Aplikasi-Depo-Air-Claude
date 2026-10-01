@@ -2761,9 +2761,6 @@ export default function OwnerDashboardPage() {
         </div>
       )}
 
-      {/* SECTION 6: Rekap Kas Setoran & Audit Shift Kasir */}
-      {renderRekapKasAndShiftAuditSection()}
-
       {fotoLihat && (
         <div className="sheet-overlay" style={{ zIndex: 10001 }} onClick={() => setFotoLihat(null)}>
           <div className="sheet" role="dialog" aria-modal="true" aria-label={fotoLihat.judul} onClick={(e) => e.stopPropagation()}>
