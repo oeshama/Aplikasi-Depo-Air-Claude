@@ -614,3 +614,14 @@ html body .leaflet-container.leaflet-touch .leaflet-bar a {
     display: block !important;
   }
 }
+
+/* Dashboard owner: audit shift berupa tabel di layar lebar, kartu di HP */
+.kartu-shift-sempit {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+@media (max-width: 720px) {
+  .tabel-shift-lebar { display: none; }
+  .kartu-shift-sempit { display: flex; }
+}

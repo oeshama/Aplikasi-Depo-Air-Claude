@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Pesanan, Kontak, Produk, PengaturanDepo, KomponenServis, Pengeluaran, HutangToko, UserApp, ShiftKasir, SetoranKurir, NotifikasiOwner, SaldoKurir, FotoMeter } from '@/lib/types';
+import { Pesanan, Kontak, Produk, PengaturanDepo, KomponenServis, Pengeluaran, HutangToko, UserApp, ShiftKasir, SetoranKurir, SetoranOwner, NotifikasiOwner, SaldoKurir, FotoMeter } from '@/lib/types';
 import { AppStore } from '@/lib/store';
 import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
 import KartuTarget from '@/components/KartuTarget';
@@ -36,6 +36,7 @@ export default function OwnerDashboardPage() {
   const [notifList, setNotifList] = useState<NotifikasiOwner[]>([]);
   const [saldoKurirList, setSaldoKurirList] = useState<SaldoKurir[]>([]);
   const [fotoMeterList, setFotoMeterList] = useState<FotoMeter[]>([]);
+  const [setoranOwnerList, setSetoranOwnerList] = useState<SetoranOwner[]>([]);
   const [fotoLihat, setFotoLihat] = useState<{ judul: string; gambar: string; info: string } | null>(null);
   const [pengaturan, setPengaturan] = useState<PengaturanDepo>(AppStore.getPengaturan());
   const [activeExpenseReceipt, setActiveExpenseReceipt] = useState<Pengeluaran | null>(null);
@@ -187,6 +188,7 @@ export default function OwnerDashboardPage() {
     setNotifList(AppStore.getNotifikasi());
     setSaldoKurirList(AppStore.getSaldoKurirList());
     setFotoMeterList(AppStore.getFotoMeter());
+    setSetoranOwnerList(AppStore.getSetoranOwner());
   };
 
   useEffect(() => {
@@ -205,6 +207,7 @@ export default function OwnerDashboardPage() {
     window.addEventListener('depo_produk_updated', handleUpdate);
     window.addEventListener('depo_setoran_kurir_updated', handleUpdate);
     window.addEventListener('depo_foto_meter_updated', handleUpdate);
+    window.addEventListener('depo_setoran_owner_updated', handleUpdate);
     window.addEventListener('depo_notifikasi_updated', handleUpdate);
 
     // Interval for dynamic duration updates
@@ -220,6 +223,7 @@ export default function OwnerDashboardPage() {
       window.removeEventListener('depo_produk_updated', handleUpdate);
       window.removeEventListener('depo_setoran_kurir_updated', handleUpdate);
       window.removeEventListener('depo_foto_meter_updated', handleUpdate);
+      window.removeEventListener('depo_setoran_owner_updated', handleUpdate);
       window.removeEventListener('depo_notifikasi_updated', handleUpdate);
       clearInterval(interval);
     };
@@ -743,7 +747,7 @@ export default function OwnerDashboardPage() {
             className="btn btn-secondary btn-sm"
             style={{ opacity: currentPage === 1 ? 0.5 : 1, padding: '4px 12px', fontSize: '0.8rem' }}
           >
-            Previous
+            Sebelumnya
           </button>
           <button
             type="button"
@@ -752,11 +756,43 @@ export default function OwnerDashboardPage() {
             className="btn btn-secondary btn-sm"
             style={{ opacity: currentPage === totalPages ? 0.5 : 1, padding: '4px 12px', fontSize: '0.8rem' }}
           >
-            Next 
+            Berikutnya
           </button>
         </div>
       </div>
     );
+  };
+
+  // Hitungan kas satu shift (dipakai tabel di layar lebar dan kartu di HP)
+  const hitungBarisShift = (s: ShiftKasir) => {
+      const isShiftBuka = s.status === 'buka';
+      const shiftBukaTime = new Date(s.waktu_buka).getTime();
+      const shiftTutupTime = s.waktu_tutup ? new Date(s.waktu_tutup).getTime() : Date.now();
+
+      const pesananShift = pesananList.filter(p => {
+        if (!p?.created_at) return false;
+        const t = new Date(p.created_at).getTime();
+        return t >= shiftBukaTime && t <= shiftTutupTime;
+      });
+
+      const pengeluaranShift = pengeluaranList.filter(p => {
+        if (!p?.tanggal) return false;
+        const t = new Date(p.tanggal).getTime();
+        return t >= shiftBukaTime && t <= shiftTutupTime;
+      });
+
+      const tunaiMasukShift = s.total_tunai_masuk ?? (AppStore.totalTunaiLangsung(pesananShift)
+        + (setoranList || []).filter(x => !x.dibatalkan && new Date(x.tanggal).getTime() >= shiftBukaTime && new Date(x.tanggal).getTime() <= shiftTutupTime).reduce((sum, x) => sum + (x.nominal || 0), 0));
+
+      // Hanya pengeluaran bersumber laci; uang yang diserahkan ke owner selama shift juga mengurangi laci
+      const kasShiftIni = AppStore.hitungKasLaci(s.saldo_awal, shiftBukaTime, shiftTutupTime);
+      const kasKeluarShift = kasShiftIni.keluar;
+      const kasbonKembaliShift = kasShiftIni.kasbonKembali;
+
+      const ekspektasiKasShift = (s.saldo_awal + tunaiMasukShift + kasbonKembaliShift) - kasKeluarShift - kasShiftIni.diserahkanOwner;
+      const kasFisikAktualShift = isShiftBuka ? ekspektasiKasShift : (s.saldo_akhir_aktual ?? ekspektasiKasShift);
+      const selisihShift = isShiftBuka ? 0 : (s.selisih ?? (kasFisikAktualShift - ekspektasiKasShift));
+    return { isShiftBuka, tunaiMasukShift, kasKeluarShift, ekspektasiKasShift, kasFisikAktualShift, selisihShift };
   };
 
   const renderRekapKasAndShiftAuditSection = () => {
@@ -765,7 +801,7 @@ export default function OwnerDashboardPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <TrendingDown size={22} color="#f87171" /> Rekap Kas Setoran &amp; Audit Shift Kasir ({periode.toUpperCase()})
+              <TrendingDown size={22} color="#f87171" /> Setoran Kas dan Audit Shift ({periode.toUpperCase()})
             </h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '2px' }}>
               Rangkuman modal kas awal kasir, hasil setoran tunai, pengeluaran kas, serta audit selisih kas fisik.
@@ -837,7 +873,8 @@ export default function OwnerDashboardPage() {
               Belum ada riwayat pembukaan/penutupan shift kasir pada periode {periode}.
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
+            <>
+            <div className="tabel-shift-lebar" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)', textAlign: 'left', background: 'var(--inset-60)' }}>
@@ -854,33 +891,7 @@ export default function OwnerDashboardPage() {
                 </thead>
                 <tbody>
                   {filteredShiftList.map(s => {
-                    const isShiftBuka = s.status === 'buka';
-                    const shiftBukaTime = new Date(s.waktu_buka).getTime();
-                    const shiftTutupTime = s.waktu_tutup ? new Date(s.waktu_tutup).getTime() : Date.now();
-
-                    const pesananShift = pesananList.filter(p => {
-                      if (!p?.created_at) return false;
-                      const t = new Date(p.created_at).getTime();
-                      return t >= shiftBukaTime && t <= shiftTutupTime;
-                    });
-
-                    const pengeluaranShift = pengeluaranList.filter(p => {
-                      if (!p?.tanggal) return false;
-                      const t = new Date(p.tanggal).getTime();
-                      return t >= shiftBukaTime && t <= shiftTutupTime;
-                    });
-
-                    const tunaiMasukShift = s.total_tunai_masuk ?? (AppStore.totalTunaiLangsung(pesananShift)
-                      + (setoranList || []).filter(x => !x.dibatalkan && new Date(x.tanggal).getTime() >= shiftBukaTime && new Date(x.tanggal).getTime() <= shiftTutupTime).reduce((sum, x) => sum + (x.nominal || 0), 0));
-
-                    // Hanya pengeluaran bersumber laci; uang yang diserahkan ke owner selama shift juga mengurangi laci
-                    const kasShiftIni = AppStore.hitungKasLaci(s.saldo_awal, shiftBukaTime, shiftTutupTime);
-                    const kasKeluarShift = kasShiftIni.keluar;
-                    const kasbonKembaliShift = kasShiftIni.kasbonKembali;
-
-                    const ekspektasiKasShift = (s.saldo_awal + tunaiMasukShift + kasbonKembaliShift) - kasKeluarShift - kasShiftIni.diserahkanOwner;
-                    const kasFisikAktualShift = isShiftBuka ? ekspektasiKasShift : (s.saldo_akhir_aktual ?? ekspektasiKasShift);
-                    const selisihShift = isShiftBuka ? 0 : (s.selisih ?? (kasFisikAktualShift - ekspektasiKasShift));
+                    const { isShiftBuka, tunaiMasukShift, kasKeluarShift, ekspektasiKasShift, kasFisikAktualShift, selisihShift } = hitungBarisShift(s);
 
                     return (
                       <tr key={s.id} style={{ borderBottom: '1px solid var(--w-6)' }}>
@@ -944,6 +955,57 @@ export default function OwnerDashboardPage() {
                 </tbody>
               </table>
             </div>
+            <div className="kartu-shift-sempit">
+              {filteredShiftList.map(s => {
+                const { isShiftBuka, tunaiMasukShift, kasKeluarShift, ekspektasiKasShift, kasFisikAktualShift, selisihShift } = hitungBarisShift(s);
+                return (
+                  <div key={s.id} className="glass-card" style={{ padding: '12px 14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <strong>{s.kasir_nama || 'Kasir'}</strong>
+                      {isShiftBuka ? (
+                        <span className="badge badge-primary" style={{ fontSize: '0.7rem' }}>SHIFT AKTIF</span>
+                      ) : selisihShift === 0 ? (
+                        <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>PAS</span>
+                      ) : selisihShift < 0 ? (
+                        <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>Kurang {AppStore.formatRupiah(Math.abs(selisihShift))}</span>
+                      ) : (
+                        <span className="badge badge-info" style={{ fontSize: '0.7rem' }}>Lebih +{AppStore.formatRupiah(selisihShift)}</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      {formatTanggalJam(s.waktu_buka)} sampai {s.waktu_tutup ? formatTanggalJam(s.waktu_tutup) : 'masih aktif'}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px', marginTop: '8px', fontSize: '0.85rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Modal awal</span><strong style={{ textAlign: 'right' }}>{AppStore.formatRupiah(s.saldo_awal)}</strong>
+                      <span style={{ color: 'var(--text-muted)' }}>Tunai masuk</span><strong style={{ textAlign: 'right', color: 'var(--c-green)' }}>+{AppStore.formatRupiah(tunaiMasukShift)}</strong>
+                      <span style={{ color: 'var(--text-muted)' }}>Kas keluar</span><strong style={{ textAlign: 'right', color: 'var(--c-red)' }}>-{AppStore.formatRupiah(kasKeluarShift)}</strong>
+                      <span style={{ color: 'var(--text-muted)' }}>Ekspektasi</span><strong style={{ textAlign: 'right' }}>{AppStore.formatRupiah(ekspektasiKasShift)}</strong>
+                      <span style={{ color: 'var(--text-muted)' }}>Kas fisik</span><strong style={{ textAlign: 'right', color: 'var(--c-sky)' }}>{isShiftBuka ? 'berjalan' : AppStore.formatRupiah(kasFisikAktualShift)}</strong>
+                    </div>
+                    {(['awal', 'akhir'] as const).some(jenis => fotoMeterList.some(f => f.shift_id === s.id && f.jenis === jenis)) && (
+                      <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                        {(['awal', 'akhir'] as const).map(jenis => {
+                          const foto = fotoMeterList.find(f => f.shift_id === s.id && f.jenis === jenis);
+                          const meter = jenis === 'awal' ? s.meter_awal : s.meter_akhir;
+                          if (!foto) return null;
+                          return (
+                            <button
+                              key={jenis}
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => setFotoLihat({ judul: `Meteran ${jenis} - ${s.kasir_nama || 'Kasir'}`, gambar: foto.gambar, info: `${formatTanggalJam(foto.waktu)}${meter !== undefined ? ` - tercatat ${meter.toLocaleString('id-ID')} Liter` : ''}` })}
+                            >
+                              Foto {jenis}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            </>
           )}
         </div>
 
@@ -1035,37 +1097,21 @@ export default function OwnerDashboardPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <ExpenseReceiptModal pengeluaran={activeExpenseReceipt} onClose={() => setActiveExpenseReceipt(null)} />
       
-      {/* Top Banner & Timeframe Filter Switcher */}
-      <div className="glass-card animate-fade-in" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(16, 185, 129, 0.15) 100%)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <LayoutDashboard size={28} color="#38bdf8" aria-hidden="true" /> Dashboard Owner
-            </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>
-              Penjualan, keuangan, piutang, dan analisa usaha.
-            </p>
-          </div>
-
-          {/* Timeframe Filter Buttons */}
-          <div role="group" aria-label="Periode laporan" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', background: 'var(--inset-60)', padding: '6px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '6px', marginRight: '4px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Calendar size={14} color="#38bdf8" aria-hidden="true" /> Periode:
-            </span>
-            {(['harian', 'mingguan', 'bulanan', 'tahunan', 'semua'] as PeriodeFilter[]).map(p => (
-              <button
-                key={p}
-                type="button"
-                aria-pressed={periode === p}
-                onClick={() => setPeriode(p)}
-                className={`btn btn-sm ${periode === p ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ padding: '6px 12px', fontSize: '0.8rem', textTransform: 'capitalize' }}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Kepala halaman dan pilihan periode */}
+      <div className="glass-card animate-fade-in" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+        <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+          <LayoutDashboard size={26} color="#38bdf8" aria-hidden="true" /> Dashboard Owner
+        </h1>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+          <Calendar size={16} color="#38bdf8" aria-hidden="true" /> Periode
+          <select className="form-select" aria-label="Periode laporan" value={periode} onChange={(e) => setPeriode(e.target.value as PeriodeFilter)} style={{ width: 'auto', minHeight: '44px' }}>
+            <option value="harian">Harian</option>
+            <option value="mingguan">Mingguan (7 hari terakhir)</option>
+            <option value="bulanan">Bulanan (bulan ini)</option>
+            <option value="tahunan">Tahunan</option>
+            <option value="semua">Semua waktu</option>
+          </select>
+        </label>
       </div>
 
       {/* BANNER NOTIFIKASI ALARM CRITICAL STOK AIR BAKU */}
@@ -1183,7 +1229,7 @@ export default function OwnerDashboardPage() {
               background: activeTab === 'pemeliharaan' ? 'linear-gradient(135deg, var(--c-amber-strong) 0%, #d97706 100%)' : undefined
             }}
           >
-            <Wrench size={18} aria-hidden="true" /> Filter
+            <Wrench size={18} aria-hidden="true" /> Mesin dan servis
           </button>
 
           <button
@@ -1202,6 +1248,66 @@ export default function OwnerDashboardPage() {
       {/* TAB CONTENT 1: RINGKASAN & METERAN (OVERVIEW) */}
       {activeTab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* ANGKA UTAMA: omzet dan sisa air baku */}
+          <section aria-label="Angka utama" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '12px' }}>
+            <div className="glass-card" style={{ padding: '18px' }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Omzet {periode === 'semua' ? 'seluruh waktu' : periode}</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--c-green)', marginTop: '4px' }}>{AppStore.formatRupiah(totalOmzet)}</div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                {filteredPesanan.length} transaksi{targetOmzetCurrent > 0 ? ` - ${persenCapaianOmzet}% dari target ${AppStore.formatRupiah(targetOmzetCurrent)}` : ''}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="glass-card"
+              onClick={() => setActiveTab('pemeliharaan')}
+              aria-label={`Sisa air baku ${currentStokAirBakuCalc.toLocaleString('id-ID')} liter, buka meteran dan servis`}
+              style={{ padding: '18px', textAlign: 'left', color: 'inherit', cursor: 'pointer', font: 'inherit', borderColor: isWaterStockCriticalCalc ? 'var(--c-red-strong)' : undefined }}
+            >
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Sisa air baku</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: isWaterStockCriticalCalc ? 'var(--c-red)' : 'var(--c-sky)', marginTop: '4px' }}>
+                {currentStokAirBakuCalc.toLocaleString('id-ID')} Liter
+              </div>
+              <div style={{ fontSize: '0.82rem', color: isWaterStockCriticalCalc ? 'var(--c-red-soft)' : 'var(--text-muted)', marginTop: '2px' }}>
+                Batas minimum {minStokAirBakuCalc.toLocaleString('id-ID')} L{isWaterStockCriticalCalc ? ' - segera pesan air baku' : ' - lihat meteran dan servis'}
+              </div>
+            </button>
+          </section>
+
+          {/* PERLU TINDAKAN: semua hal yang menunggu keputusan atau penanganan */}
+          <section aria-labelledby="judul-tindakan">
+            <h2 id="judul-tindakan" style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '10px' }}>Perlu tindakan</h2>
+            {(() => {
+              const setoranMenunggu = setoranOwnerList.filter(s => s.status === 'menunggu');
+              const totalMenunggu = setoranMenunggu.reduce((acc, s) => acc + s.nominal, 0);
+              const butir: React.ReactNode[] = [];
+              if (isWaterStockCriticalCalc) butir.push(<li key="air">Stok air baku menipis ({currentStokAirBakuCalc.toLocaleString('id-ID')} L, batas {minStokAirBakuCalc.toLocaleString('id-ID')} L)</li>);
+              if (currentUser?.role === 'owner' && setoranMenunggu.length > 0) {
+                butir.push(<li key="setoran">{setoranMenunggu.length} setoran kasir menunggu diterima ({AppStore.formatRupiah(totalMenunggu)}). <a href="/owner/keuangan" style={{ color: 'var(--c-sky)', fontWeight: 700 }}>Buka Keuangan Owner</a></li>);
+              }
+              if (delayedPending.length > 0) butir.push(<li key="antaran">{delayedPending.length} pesanan terlambat diantar (lebih dari {formatThresholdText(thresholdMins)})</li>);
+              if (hasClosedShift && totalSelisihKasShift !== 0) butir.push(<li key="selisih">Selisih kas shift {AppStore.formatRupiah(totalSelisihKasShift)} pada periode ini</li>);
+              const adaButir = butir.length > 0;
+              return (
+                <div
+                  role="status"
+                  style={{
+                    padding: '10px 14px', borderRadius: '12px', fontSize: '0.9rem',
+                    background: adaButir ? 'rgba(245, 158, 11, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                    border: `1px solid ${adaButir ? 'rgba(251, 191, 36, 0.5)' : 'rgba(52, 211, 153, 0.4)'}`
+                  }}
+                >
+                  {adaButir ? (
+                    <ul style={{ margin: '0 0 0 18px', color: 'var(--text-3)', lineHeight: 1.7 }}>{butir}</ul>
+                  ) : (
+                    <span style={{ color: 'var(--c-green)', fontWeight: 600 }}>Semua aman. Tidak ada yang perlu ditindaklanjuti.</span>
+                  )}
+                </div>
+              );
+            })()}
+          </section>
+
           {/* PEMBERITAHUAN: mis. kasir mengoreksi setoran kurir */}
           {notifList.length > 0 && (
             <section aria-labelledby="judul-pemberitahuan" className="glass-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--c-amber)' }}>
@@ -1233,22 +1339,22 @@ export default function OwnerDashboardPage() {
           {/* IKHTISAR: angka utama dan hal yang perlu perhatian */}
           <section aria-labelledby="judul-ikhtisar">
             <h2 id="judul-ikhtisar" style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '10px' }}>
-              Ikhtisar {periode === 'semua' ? 'seluruh waktu' : periode}
+              Uang dan antaran ({periode === 'semua' ? 'seluruh waktu' : periode})
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
               <div className="glass-card" style={{ padding: '14px' }}>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Omzet</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--c-green)', marginTop: '4px' }}>{AppStore.formatRupiah(totalOmzet)}</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  {filteredPesanan.length} transaksi{targetOmzetCurrent > 0 ? ` - ${persenCapaianOmzet}% dari target` : ''}
-                </div>
-              </div>
-
-              <div className="glass-card" style={{ padding: '14px' }}>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Kas bersih</div>
                 <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--c-sky)', marginTop: '4px' }}>{AppStore.formatRupiah(kasBersihSetoranOwner)}</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>Tunai masuk dikurangi pengeluaran</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>Uang tunai masuk dikurangi pengeluaran (belum tentu laba)</div>
               </div>
+
+              {currentUser?.role !== 'admin' && (
+                <div className="glass-card" style={{ padding: '14px' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Laba bersih</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--c-green)', marginTop: '4px' }}>{AppStore.formatRupiah(labaBersih)}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>Margin {profitMarginPercent}% (penjualan dikurangi HPP air dan biaya)</div>
+                </div>
+              )}
 
               <button
                 type="button"
@@ -1261,7 +1367,7 @@ export default function OwnerDashboardPage() {
                 <div style={{ fontSize: '1.3rem', fontWeight: 800, color: totalPiutangPelanggan > 0 ? 'var(--c-amber)' : 'var(--c-green)', marginTop: '4px' }}>
                   {AppStore.formatRupiah(totalPiutangPelanggan)}
                 </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>{pelangganBerhutang.length} pelanggan - lihat rincian</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>{pelangganBerhutang.length} pelanggan{pelangganBerhutang[0] ? `, tagih ${pelangganBerhutang[0].nama} dulu` : ''}</div>
               </button>
 
               <div className="glass-card" style={{ padding: '14px', borderColor: delayedPending.length > 0 ? 'var(--c-red-strong)' : undefined }}>
@@ -1287,143 +1393,68 @@ export default function OwnerDashboardPage() {
               </div>
             </div>
 
-            <div
-              role="status"
-              style={{
-                marginTop: '12px', padding: '10px 14px', borderRadius: '12px', fontSize: '0.88rem',
-                background: (isWaterStockCriticalCalc || delayedPending.length > 0 || (hasClosedShift && totalSelisihKasShift !== 0)) ? 'rgba(245, 158, 11, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                border: `1px solid ${(isWaterStockCriticalCalc || delayedPending.length > 0 || (hasClosedShift && totalSelisihKasShift !== 0)) ? 'rgba(251, 191, 36, 0.5)' : 'rgba(52, 211, 153, 0.4)'}`
-              }}
-            >
-              {(isWaterStockCriticalCalc || delayedPending.length > 0 || (hasClosedShift && totalSelisihKasShift !== 0)) ? (
-                <>
-                  <strong style={{ color: 'var(--c-amber)' }}>Perlu perhatian:</strong>
-                  <ul style={{ margin: '6px 0 0 18px', color: 'var(--text-3)', lineHeight: 1.6 }}>
-                    {isWaterStockCriticalCalc && <li>Stok air baku menipis ({currentStokAirBakuCalc.toLocaleString('id-ID')} L, batas {minStokAirBakuCalc.toLocaleString('id-ID')} L)</li>}
-                    {delayedPending.length > 0 && <li>{delayedPending.length} pesanan terlambat diantar (lebih dari {formatThresholdText(thresholdMins)})</li>}
-                    {hasClosedShift && totalSelisihKasShift !== 0 && <li>Selisih kas shift {AppStore.formatRupiah(totalSelisihKasShift)} pada periode ini</li>}
-                  </ul>
-                </>
-              ) : (
-                <span style={{ color: 'var(--c-green)', fontWeight: 600 }}>Semua aman. Tidak ada yang perlu ditindaklanjuti.</span>
-              )}
-            </div>
           </section>
 
-          {/* SECTION KONTROL METERAN AIR & STOK AIR BAKU DEPO (KHUSUS LOGIN BY OWNER) */}
-          {(currentUser?.role === 'owner' || !currentUser) && (
-        <div className="glass-card animate-fade-in" style={{ padding: '20px', borderLeft: '4px solid var(--c-sky)', background: 'rgba(2, 132, 199, 0.1)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Droplets size={22} color="#38bdf8" /> Kontrol Meteran Air &amp; Stok Air Baku Tangki Depo (Owner Only)
-              </h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '2px' }}>
-                Otomatis bertambah dari Pengisian Tangki Air Baku (+Liter) &amp; Otomatis berkurang saat ada Penjualan POS Kasir (-Liter).
-              </p>
-            </div>
 
-            <button 
-              onClick={() => {
-                setNewStokAirInput(pengaturan.stok_air_baku_saat_ini ?? 0);
-                const defaultMeter = meterDepoHitungOtomatis > 0 ? meterDepoHitungOtomatis : (hasMeterEntryKasir ? meterDepoEntryKasir! : (pengaturan.meteran_air_awal_liter ?? 10000));
-                setNewMeterAirInput(defaultMeter);
-                setShowOwnerMeterAdjustModal(true);
-              }}
-              className="btn btn-primary btn-sm"
-              style={{ background: 'linear-gradient(135deg, var(--c-primary) 0%, var(--c-sky) 100%)', fontWeight: 700, padding: '8px 14px' }}
-            >
-              Koreksi meter dan stok air baku
-            </button>
-          </div>
-
+      {/* SECTION 2: Target Penjualan & Capaiannya */}
+      <div className="glass-card animate-fade-in" style={{ padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Target size={22} color="#10b981" /> Target Penjualan & Capaian ({periode.toUpperCase()})
+          </h3>
           <button
-            type="button"
+            onClick={handleOpenEditTargetModal}
             className="btn btn-secondary btn-sm"
-            onClick={() => setShowMeteran(v => !v)}
-            aria-expanded={showMeteran}
-            style={{ marginTop: '12px' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', borderColor: 'rgba(16, 185, 129, 0.5)', color: 'var(--c-green)', background: 'rgba(16, 185, 129, 0.1)' }}
           >
-            {showMeteran ? 'Sembunyikan rincian meteran' : 'Lihat rincian meteran'}
+            Edit Target Penjualan
           </button>
-
-          {showMeteran && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '16px' }}>
-            {/* Card 1: Stok Air Baku */}
-            <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>STOK AIR BAKU TANGKI DEPO</span>
-              <h4 style={{ fontSize: '1.35rem', fontWeight: 800, color: (pengaturan.stok_air_baku_saat_ini || 0) <= (pengaturan.min_stok_air_baku_liter || 2000) ? 'var(--c-red)' : 'var(--c-green)', marginTop: '4px' }}>
-                {(pengaturan.stok_air_baku_saat_ini ?? 0).toLocaleString('id-ID')} Liter
-              </h4>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Min Target: {(pengaturan.min_stok_air_baku_liter || 2000).toLocaleString('id-ID')} Liter</span>
-            </div>
-
-            {/* Card 2: Meter Depo Hitung Otomatis */}
-            <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--c-blue-soft)', fontWeight: 600 }}>METER DEPO HITUNG OTOMATIS</span>
-              <h4 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--c-sky)', marginTop: '4px' }}>
-                {meterDepoHitungOtomatis.toLocaleString('id-ID')} Liter
-              </h4>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-2)' }}>
-                Awal + Penjualan POS (+{totalLiterShift.toLocaleString('id-ID')} L)
-              </span>
-            </div>
-
-            {/* Card 3: Meter Depo Entry Tutup Kasir */}
-            <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--c-amber)', fontWeight: 600 }}>METER ENTRY TUTUP KASIR</span>
-              <h4 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--c-amber)', marginTop: '4px' }}>
-                {hasMeterEntryKasir ? `${meterDepoEntryKasir!.toLocaleString('id-ID')} Liter` : '0 Liter'}
-              </h4>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-2)' }}>
-                {latestClosedShift ? `Kasir: ${latestClosedShift.kasir_nama}` : (pesananList || []).length === 0 ? 'Data Direset (0 Liter)' : 'Belum Tutup Shift'}
-              </span>
-            </div>
-
-            {/* Card 4: Selisih Meteran Air Depo */}
-            <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>SELISIH METERAN DEPO</span>
-              <h4 style={{
-                fontSize: '1.35rem', fontWeight: 800, marginTop: '4px',
-                color: !hasMeterEntryKasir ? 'var(--text-muted)' : selisihMeterAirDepo === 0 ? 'var(--c-green)' : selisihMeterAirDepo > 0 ? 'var(--c-sky)' : 'var(--c-red)'
-              }}>
-                {!hasMeterEntryKasir 
-                  ? 'PAS (0 Liter)' 
-                  : selisihMeterAirDepo === 0 
-                    ? 'PAS (0 Liter)' 
-                    : `${selisihMeterAirDepo > 0 ? '+' : ''}${selisihMeterAirDepo.toLocaleString('id-ID')} Liter`
-                }
-              </h4>
-              <span style={{ fontSize: '0.75rem', color: !hasMeterEntryKasir ? 'var(--text-muted)' : selisihMeterAirDepo === 0 ? 'var(--c-green)' : 'var(--c-red-soft)' }}>
-                {!hasMeterEntryKasir 
-                  ? 'Menunggu Laporan Kasir' 
-                  : selisihMeterAirDepo === 0 
-                    ? 'Sesuai Nota POS & Fisik' 
-                    : selisihMeterAirDepo < 0 
-                      ? 'Pemakaian Air Belum Tercatat POS' 
-                      : 'Entry Kasir Lebih Tinggi'
-                }
-              </span>
-            </div>
-
-            {/* Card 5: Air Terkuras */}
-            <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>AIR TERKURAS ({periode.toUpperCase()})</span>
-              <h4 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '4px' }}>
-                {totalLiterTerjual.toLocaleString('id-ID')} Liter
-              </h4>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total produk air terisi</span>
-            </div>
-          </div>
-          )}
         </div>
-      )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '16px' }}>
+          
+          {periode === 'semua' && (
+            <p style={{ gridColumn: '1 / -1', margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Target berlaku untuk periode Harian sampai Tahunan. Pilih salah satunya di bagian atas untuk melihat capaian.
+            </p>
+          )}
+
+          <KartuTarget
+            judul="Target Pendapatan / Omzet"
+            capaianTeks={AppStore.formatRupiah(totalOmzet)}
+            targetTeks={AppStore.formatRupiah(targetOmzetCurrent)}
+            persen={persenCapaianOmzet}
+            adaTarget={targetOmzetCurrent > 0}
+            warna="linear-gradient(90deg, var(--c-green-strong) 0%, var(--c-green) 100%)"
+          />
+
+          <KartuTarget
+            judul="Target Volume Penjualan Galon"
+            capaianTeks={`${totalGalonTerjual.toLocaleString('id-ID')} Galon`}
+            targetTeks={`${targetGalonCurrent.toLocaleString('id-ID')} Galon`}
+            persen={persenCapaianGalon}
+            adaTarget={targetGalonCurrent > 0}
+            warna="linear-gradient(90deg, var(--c-primary) 0%, var(--c-sky) 100%)"
+          />
+
+          <KartuTarget
+            judul="Target Volume Penjualan Liter"
+            capaianTeks={`${totalLiterTerjual.toLocaleString('id-ID')} Liter`}
+            targetTeks={`${targetLiterCurrent.toLocaleString('id-ID')} Liter`}
+            persen={persenCapaianLiter}
+            adaTarget={targetLiterCurrent > 0}
+            warna="linear-gradient(90deg, var(--c-amber-strong) 0%, var(--c-amber) 100%)"
+            keterangan="semua produk, dihitung dari volume tiap wadah"
+          />
+
+        </div>
+      </div>
 
       {/* SECTION PALING ATAS: Detail Pengiriman Pending (Belum Terkirim) */}
       <div className="glass-card animate-fade-in" style={{ padding: '24px', borderTop: '4px solid var(--c-amber)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
           <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Truck size={24} color="#fbbf24" /> Detail Pengiriman Pending (Belum Terkirim)
+            <Truck size={24} color="#fbbf24" /> Antaran Belum Terkirim
           </h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {delayedPending.length > 0 && (
@@ -1597,126 +1628,6 @@ export default function OwnerDashboardPage() {
         )}
       </div>
 
-      {/* SECTION 1: Resume Analisa Usaha Berjalan (Smart Executive Digest) */}
-      {currentUser?.role !== 'admin' && (
-        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-sky)', background: 'var(--inset-90)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Lightbulb size={22} color="#fbbf24" /> Resume Analisa Usaha Berjalan ({periode.toUpperCase()})
-            </h3>
-            <span className="badge badge-primary">Rangkuman Otomatis</span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
-            
-            <div style={{ background: 'rgba(2, 132, 199, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>KESEHATAN CASHFLOW</span>
-              <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--c-green)', marginTop: '4px' }}>
-                Laba Bersih: {AppStore.formatRupiah(labaBersih)}
-              </h4>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-2)', marginTop: '4px' }}>
-                Margin keuntungan usaha mencapai <strong style={{ color: 'var(--c-sky)' }}>{profitMarginPercent}%</strong> dari total pendapatan kotor.
-              </p>
-            </div>
-
-            <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>CAPAIAN TARGET</span>
-              <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--c-amber)', marginTop: '4px' }}>
-                {targetOmzetCurrent > 0 ? `${persenCapaianOmzet}% dari Target Omzet` : 'Target omzet belum diisi'}
-              </h4>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-2)', marginTop: '4px' }}>
-                Terjual {totalGalonTerjual} Galon{targetGalonCurrent > 0 ? ` (${persenCapaianGalon}% dari target ${targetGalonCurrent} galon)` : ''} dan {totalLiterTerjual.toLocaleString('id-ID')} Liter{targetLiterCurrent > 0 ? ` (${persenCapaianLiter}% dari target ${targetLiterCurrent.toLocaleString('id-ID')} liter)` : ''}.
-              </p>
-            </div>
-
-            <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>REKOMENDASI PENAGIHAN</span>
-              <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--c-red)', marginTop: '4px' }}>
-                Piutang: {AppStore.formatRupiah(totalPiutangPelanggan)}
-              </h4>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-2)', marginTop: '4px' }}>
-                {pelangganBerhutang.length} pelanggan menunggak. {pelangganBerhutang.length > 0 ? `Segera tagih ${pelangganBerhutang[0]?.nama}.` : 'Tidak ada tunggakan.'}
-              </p>
-            </div>
-
-            <div style={{ 
-              background: hasClosedShift && totalSelisihKasShift < 0 ? 'rgba(239, 68, 68, 0.15)' : hasClosedShift && totalSelisihKasShift > 0 ? 'rgba(56, 189, 248, 0.15)' : 'rgba(16, 185, 129, 0.1)', 
-              padding: '16px', 
-              borderRadius: '12px', 
-              border: `1px solid ${hasClosedShift && totalSelisihKasShift < 0 ? 'rgba(239, 68, 68, 0.4)' : hasClosedShift && totalSelisihKasShift > 0 ? 'rgba(56, 189, 248, 0.4)' : 'rgba(16, 185, 129, 0.2)'}` 
-            }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>AUDIT SETORAN KAS SHIFT</span>
-              <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: hasClosedShift && totalSelisihKasShift < 0 ? 'var(--c-red)' : hasClosedShift && totalSelisihKasShift > 0 ? 'var(--c-sky)' : 'var(--c-green)', marginTop: '4px' }}>
-                {!hasClosedShift ? 'Belum Ada Shift Tutup' : totalSelisihKasShift === 0 ? 'PAS (Rp 0)' : totalSelisihKasShift < 0 ? `Kurang Setor: -${AppStore.formatRupiah(Math.abs(totalSelisihKasShift))}` : `Lebih Setor: +${AppStore.formatRupiah(totalSelisihKasShift)}`}
-              </h4>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-2)', marginTop: '4px' }}>
-                {!hasClosedShift 
-                  ? 'Kasir belum melakukan tutup shift pada periode ini.' 
-                  : totalSelisihKasShift < 0 
-                  ? `Kasir tekor / kurang setor kas sebesar ${AppStore.formatRupiah(Math.abs(totalSelisihKasShift))}.` 
-                  : totalSelisihKasShift > 0 
-                  ? `Uang kas fisik surplus ${AppStore.formatRupiah(totalSelisihKasShift)}.` 
-                  : 'Seluruh uang kas fisik di laci cocok 100% dengan sistem.'}
-              </p>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* SECTION 2: Target Penjualan & Capaiannya */}
-      <div className="glass-card animate-fade-in" style={{ padding: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Target size={22} color="#10b981" /> Target Penjualan & Capaian ({periode.toUpperCase()})
-          </h3>
-          <button
-            onClick={handleOpenEditTargetModal}
-            className="btn btn-secondary btn-sm"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', borderColor: 'rgba(16, 185, 129, 0.5)', color: 'var(--c-green)', background: 'rgba(16, 185, 129, 0.1)' }}
-          >
-            Edit Target Penjualan
-          </button>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '16px' }}>
-          
-          {periode === 'semua' && (
-            <p style={{ gridColumn: '1 / -1', margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Target berlaku untuk periode Harian sampai Tahunan. Pilih salah satunya di bagian atas untuk melihat capaian.
-            </p>
-          )}
-
-          <KartuTarget
-            judul="Target Pendapatan / Omzet"
-            capaianTeks={AppStore.formatRupiah(totalOmzet)}
-            targetTeks={AppStore.formatRupiah(targetOmzetCurrent)}
-            persen={persenCapaianOmzet}
-            adaTarget={targetOmzetCurrent > 0}
-            warna="linear-gradient(90deg, var(--c-green-strong) 0%, var(--c-green) 100%)"
-          />
-
-          <KartuTarget
-            judul="Target Volume Penjualan Galon"
-            capaianTeks={`${totalGalonTerjual.toLocaleString('id-ID')} Galon`}
-            targetTeks={`${targetGalonCurrent.toLocaleString('id-ID')} Galon`}
-            persen={persenCapaianGalon}
-            adaTarget={targetGalonCurrent > 0}
-            warna="linear-gradient(90deg, var(--c-primary) 0%, var(--c-sky) 100%)"
-          />
-
-          <KartuTarget
-            judul="Target Volume Penjualan Liter"
-            capaianTeks={`${totalLiterTerjual.toLocaleString('id-ID')} Liter`}
-            targetTeks={`${targetLiterCurrent.toLocaleString('id-ID')} Liter`}
-            persen={persenCapaianLiter}
-            adaTarget={targetLiterCurrent > 0}
-            warna="linear-gradient(90deg, var(--c-amber-strong) 0%, var(--c-amber) 100%)"
-            keterangan="semua produk, dihitung dari volume tiap wadah"
-          />
-
-        </div>
-      </div>
     </div>
   )}
 
@@ -1783,7 +1694,7 @@ export default function OwnerDashboardPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Users size={22} color="#8b5cf6" /> Rekapitulasi Hak Keuangan &amp; Piutang Karyawan / Driver
+                  <Users size={22} color="#8b5cf6" /> Hak Keuangan dan Kasbon Karyawan / Kurir
                 </h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '2px' }}>
                   Monitoring Kasbon Staf, Talangan Depo, Ongkir Delivery Kurir Terjadi, dan Pembayaran Gaji Bulanan.
@@ -2028,7 +1939,7 @@ export default function OwnerDashboardPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
               <div>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Users size={22} color="#f87171" /> Rekapitulasi Piutang Pelanggan (Tagihan Menunggak)
+                  <Users size={22} color="#f87171" /> Piutang Pelanggan (Tagihan Menunggak)
                 </h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2px' }}>
                   Daftar pelanggan / toko reseller yang memiliki tagihan belum terbayar.
@@ -2188,11 +2099,121 @@ export default function OwnerDashboardPage() {
       {/* TAB CONTENT 4: PEMELIHARAAN FILTER */}
       {activeTab === 'pemeliharaan' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* SECTION KONTROL METERAN AIR & STOK AIR BAKU DEPO (KHUSUS LOGIN BY OWNER) */}
+          {(currentUser?.role === 'owner' || !currentUser) && (
+        <div className="glass-card animate-fade-in" style={{ padding: '20px', borderLeft: '4px solid var(--c-sky)', background: 'rgba(2, 132, 199, 0.1)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Droplets size={22} color="#38bdf8" /> Meteran Air dan Stok Air Baku Depo
+              </h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '2px' }}>
+                Otomatis bertambah dari Pengisian Tangki Air Baku (+Liter) &amp; Otomatis berkurang saat ada Penjualan POS Kasir (-Liter).
+              </p>
+            </div>
+
+            <button 
+              onClick={() => {
+                setNewStokAirInput(pengaturan.stok_air_baku_saat_ini ?? 0);
+                const defaultMeter = meterDepoHitungOtomatis > 0 ? meterDepoHitungOtomatis : (hasMeterEntryKasir ? meterDepoEntryKasir! : (pengaturan.meteran_air_awal_liter ?? 10000));
+                setNewMeterAirInput(defaultMeter);
+                setShowOwnerMeterAdjustModal(true);
+              }}
+              className="btn btn-primary btn-sm"
+              style={{ background: 'linear-gradient(135deg, var(--c-primary) 0%, var(--c-sky) 100%)', fontWeight: 700, padding: '8px 14px' }}
+            >
+              Koreksi meter dan stok air baku
+            </button>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowMeteran(v => !v)}
+            aria-expanded={showMeteran}
+            style={{ marginTop: '12px' }}
+          >
+            {showMeteran ? 'Sembunyikan rincian meteran' : 'Lihat rincian meteran'}
+          </button>
+
+          {showMeteran && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '16px' }}>
+            {/* Card 1: Stok Air Baku */}
+            <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>STOK AIR BAKU TANGKI DEPO</span>
+              <h4 style={{ fontSize: '1.35rem', fontWeight: 800, color: (pengaturan.stok_air_baku_saat_ini || 0) <= (pengaturan.min_stok_air_baku_liter || 2000) ? 'var(--c-red)' : 'var(--c-green)', marginTop: '4px' }}>
+                {(pengaturan.stok_air_baku_saat_ini ?? 0).toLocaleString('id-ID')} Liter
+              </h4>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Min Target: {(pengaturan.min_stok_air_baku_liter || 2000).toLocaleString('id-ID')} Liter</span>
+            </div>
+
+            {/* Card 2: Meter Depo Hitung Otomatis */}
+            <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--c-blue-soft)', fontWeight: 600 }}>METER DEPO HITUNG OTOMATIS</span>
+              <h4 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--c-sky)', marginTop: '4px' }}>
+                {meterDepoHitungOtomatis.toLocaleString('id-ID')} Liter
+              </h4>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-2)' }}>
+                Awal + Penjualan POS (+{totalLiterShift.toLocaleString('id-ID')} L)
+              </span>
+            </div>
+
+            {/* Card 3: Meter Depo Entry Tutup Kasir */}
+            <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--c-amber)', fontWeight: 600 }}>METER ENTRY TUTUP KASIR</span>
+              <h4 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--c-amber)', marginTop: '4px' }}>
+                {hasMeterEntryKasir ? `${meterDepoEntryKasir!.toLocaleString('id-ID')} Liter` : '0 Liter'}
+              </h4>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-2)' }}>
+                {latestClosedShift ? `Kasir: ${latestClosedShift.kasir_nama}` : (pesananList || []).length === 0 ? 'Data Direset (0 Liter)' : 'Belum Tutup Shift'}
+              </span>
+            </div>
+
+            {/* Card 4: Selisih Meteran Air Depo */}
+            <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>SELISIH METERAN DEPO</span>
+              <h4 style={{
+                fontSize: '1.35rem', fontWeight: 800, marginTop: '4px',
+                color: !hasMeterEntryKasir ? 'var(--text-muted)' : selisihMeterAirDepo === 0 ? 'var(--c-green)' : selisihMeterAirDepo > 0 ? 'var(--c-sky)' : 'var(--c-red)'
+              }}>
+                {!hasMeterEntryKasir 
+                  ? 'PAS (0 Liter)' 
+                  : selisihMeterAirDepo === 0 
+                    ? 'PAS (0 Liter)' 
+                    : `${selisihMeterAirDepo > 0 ? '+' : ''}${selisihMeterAirDepo.toLocaleString('id-ID')} Liter`
+                }
+              </h4>
+              <span style={{ fontSize: '0.75rem', color: !hasMeterEntryKasir ? 'var(--text-muted)' : selisihMeterAirDepo === 0 ? 'var(--c-green)' : 'var(--c-red-soft)' }}>
+                {!hasMeterEntryKasir 
+                  ? 'Menunggu Laporan Kasir' 
+                  : selisihMeterAirDepo === 0 
+                    ? 'Sesuai Nota POS & Fisik' 
+                    : selisihMeterAirDepo < 0 
+                      ? 'Pemakaian Air Belum Tercatat POS' 
+                      : 'Entry Kasir Lebih Tinggi'
+                }
+              </span>
+            </div>
+
+            {/* Card 5: Air Terkuras */}
+            <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>AIR TERKURAS ({periode.toUpperCase()})</span>
+              <h4 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '4px' }}>
+                {totalLiterTerjual.toLocaleString('id-ID')} Liter
+              </h4>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total produk air terisi</span>
+            </div>
+          </div>
+          )}
+        </div>
+      )}
+
+
           {/* SECTION 5: Notifikasi Servis Mesin & Air Baku Depo */}
           <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: isAirBakuMenipis ? '4px solid var(--c-red-strong)' : '4px solid var(--c-amber)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <AlertTriangle size={20} color={isAirBakuMenipis ? '#ef4444' : '#fbbf24'} /> Notifikasi Servis Mesin &amp; Air Baku Depo
+                <AlertTriangle size={20} color={isAirBakuMenipis ? '#ef4444' : '#fbbf24'} /> Servis Mesin dan Air Baku Depo
               </h3>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 Total Produksi Terhitung: <strong>{totalLiterTerjual} Liter</strong>
