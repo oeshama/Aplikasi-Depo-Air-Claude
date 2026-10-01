@@ -116,7 +116,7 @@ export default function KasirPage() {
       tipe: newTipe,
       no_hp: newNoHp.trim() || '-',
       alamat: newAlamat.trim() || '-',
-      limit_hutang: newLimitHutang || 100000,
+      limit_hutang: Number.isFinite(newLimitHutang) ? newLimitHutang : 100000, // 0 = tidak boleh berhutang
       zona_id: newZonaId || undefined,
       hutang_saat_ini: 0,
       aktif: true
@@ -1883,8 +1883,9 @@ export default function KasirPage() {
                 <input 
                   type="number" 
                   className="form-input" 
-                  value={newLimitHutang || ''} 
-                  onChange={(e) => setNewLimitHutang(Number(e.target.value))} 
+                  value={newLimitHutang}
+                  min="0"
+                  onChange={(e) => setNewLimitHutang(Number(e.target.value))}
                   placeholder="100000" 
                 />
               </div>

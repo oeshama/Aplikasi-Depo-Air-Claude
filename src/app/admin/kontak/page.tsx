@@ -94,7 +94,7 @@ export default function AdminKontakPage() {
     setTipe(kontak.tipe);
     setNoHp(kontak.no_hp);
     setAlamat(kontak.alamat || '');
-    setLimitHutang(kontak.limit_hutang || 100000);
+    setLimitHutang(kontak.limit_hutang ?? 100000); // 0 = tidak boleh berhutang, jangan diganti ke bawaan
     setZonaId(kontak.zona_id || '');
     setLat(kontak.lat);
     setLng(kontak.lng);
