@@ -341,3 +341,116 @@ export function susunBuktiKas(x: Pengeluaran, peng: PengaturanDepo, telpOwner: s
   s.tengah(peng.footer_struk || 'Bukti Transaksi Sah Depo Air');
   return s.baris;
 }
+
+export interface DataRekapShift {
+  kasir: string;
+  waktu: string;
+  status: string;
+  jumlahTransaksi: number;
+  omzet: number;
+  tunaiLangsung: number;
+  setoranKurir: number;
+  nonTunai: number;
+  hutang: number;
+  produk: { nama: string; jumlah: number }[];
+  modalAwal: number;
+  kasbonMasuk: number;
+  pengeluaran: number;
+  diserahkanOwner: number;
+  ekspektasi: number;
+  uangDiKurir: number;
+  fisik?: number;
+  selisih?: number;
+  meterAwal: number;
+  meterAkhir?: number;
+  daftarPengeluaran: { peruntukan: string; nominal: number }[];
+}
+
+// Rekap shift versi ringkas untuk printer 58/80 mm
+export function susunRekapShift(d: DataRekapShift, peng: PengaturanDepo): BarisStruk[] {
+  const s = penyusun(peng);
+  s.tengah(peng.nama_depo || 'Depo Air', true);
+  s.garisSama();
+  s.tengah('REKAP SHIFT KASIR', true);
+  s.garisSama();
+  s.kiri(`Kasir : ${d.kasir}`);
+  s.kiri(`Waktu : ${new Date(d.waktu).toLocaleString('id-ID')}`);
+  s.kiri(`Status: ${d.status}`);
+  s.garisStrip();
+  s.tengah('PENJUALAN', true);
+  s.dua('Transaksi', String(d.jumlahTransaksi));
+  s.dua('Omzet', rp(d.omzet), true);
+  s.dua('Tunai langsung', rp(d.tunaiLangsung));
+  if (d.setoranKurir > 0) s.dua('Setoran kurir', rp(d.setoranKurir));
+  s.dua('Non-tunai', rp(d.nonTunai));
+  s.dua('Hutang', rp(d.hutang));
+  if (d.produk.length > 0) {
+    s.garisStrip();
+    s.tengah('PRODUK TERJUAL', true);
+    d.produk.slice(0, 10).forEach(p => s.dua(p.nama, `x${p.jumlah}`));
+    if (d.produk.length > 10) s.kiri(`+${d.produk.length - 10} produk lain`);
+  }
+  s.garisStrip();
+  s.tengah('KAS LACI', true);
+  s.dua('Modal awal', rp(d.modalAwal));
+  s.dua('Tunai masuk (+)', rp(d.tunaiLangsung + d.setoranKurir));
+  if (d.kasbonMasuk > 0) s.dua('Kasbon masuk (+)', rp(d.kasbonMasuk));
+  s.dua('Pengeluaran (-)', d.pengeluaran > 0 ? `-${rp(d.pengeluaran)}` : rp(0));
+  if (d.diserahkanOwner > 0) s.dua('Ke owner (-)', `-${rp(d.diserahkanOwner)}`);
+  s.garisStrip();
+  s.dua('Ekspektasi kas', rp(d.ekspektasi), true);
+  if (d.uangDiKurir > 0) s.dua('Uang di kurir', rp(d.uangDiKurir));
+  if (d.fisik !== undefined && d.fisik > 0) {
+    s.dua('Uang fisik', rp(d.fisik));
+    s.dua('Selisih', (d.selisih || 0) === 0 ? 'PAS (Rp 0)' : rp(d.selisih || 0), true);
+  }
+  if (d.daftarPengeluaran.length > 0) {
+    s.garisStrip();
+    s.tengah('PENGELUARAN LACI', true);
+    d.daftarPengeluaran.slice(0, 8).forEach(x => s.dua(x.peruntukan.length > 18 ? `${x.peruntukan.slice(0, 17)}.` : x.peruntukan, rp(x.nominal)));
+    if (d.daftarPengeluaran.length > 8) s.kiri(`+${d.daftarPengeluaran.length - 8} pengeluaran lain`);
+  }
+  s.garisStrip();
+  s.tengah('METERAN AIR', true);
+  s.dua('Awal', `${d.meterAwal.toLocaleString('id-ID')} L`);
+  if (d.meterAkhir !== undefined) {
+    s.dua('Akhir', `${d.meterAkhir.toLocaleString('id-ID')} L`);
+    s.dua('Terpakai', `${Math.max(0, d.meterAkhir - d.meterAwal).toLocaleString('id-ID')} L`, true);
+  } else {
+    s.kiri('Shift masih berjalan');
+  }
+  s.garisSama();
+  s.tengah(`Dicetak ${new Date().toLocaleString('id-ID')}`);
+  return s.baris;
+}
+
+// Cetak lewat dialog browser hanya isi struk ini (bukan seluruh halaman)
+function cetakDialogTeks(baris: BarisStruk[], lebarMm: number | undefined) {
+  const L = kolomKertas(lebarMm);
+  const teks = baris.map(b => {
+    if (b.rata !== 'tengah') return b.teks;
+    return ' '.repeat(Math.max(0, Math.floor((L - b.teks.length) / 2))) + b.teks;
+  }).join('\n');
+  const wadah = document.createElement('div');
+  wadah.id = 'cetak-teks-sementara';
+  const pre = document.createElement('pre');
+  pre.textContent = teks;
+  wadah.appendChild(pre);
+  const gaya = document.createElement('style');
+  gaya.textContent =
+    `@page { size: ${lebarMm === 80 ? 80 : 58}mm auto; margin: 3mm; }` +
+    '#cetak-teks-sementara { display: none; }' +
+    '@media print { body > *:not(#cetak-teks-sementara) { display: none !important; } #cetak-teks-sementara { display: block !important; } }' +
+    '#cetak-teks-sementara pre { font: 12px/1.25 monospace; margin: 0; white-space: pre; color: #000; background: #fff; }';
+  document.head.appendChild(gaya);
+  document.body.appendChild(wadah);
+  window.print();
+  setTimeout(() => { gaya.remove(); wadah.remove(); }, 1000);
+}
+
+// Cetak rekap (teks saja): RawBT atau dialog browser dengan isi struk saja
+export function cetakRekapBaris(baris: BarisStruk[]) {
+  const peng = AppStore.getPengaturan();
+  if (peng.printer_metode === 'rawbt') kirimRawBt(baris, peng, false);
+  else cetakDialogTeks(baris, peng.printer_lebar_mm);
+}

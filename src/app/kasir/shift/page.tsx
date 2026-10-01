@@ -5,6 +5,7 @@ import { AppStore } from '@/lib/store';
 import { Pesanan, Pengeluaran, HutangToko, ShiftKasir, UserApp } from '@/lib/types';
 import BukaShiftModal from '@/components/BukaShiftModal';
 import TutupShiftModal from '@/components/TutupShiftModal';
+import { cetakRekapBaris, susunRekapShift } from '@/lib/cetak';
 import { 
   Receipt, DollarSign, CreditCard, Lock, CheckCircle, 
   TrendingDown, Trash2, ArrowDownCircle, Banknote, AlertCircle, BookOpen, Check, Droplets,
@@ -111,7 +112,35 @@ export default function ShiftKasirPage() {
   };
 
   const handlePrintRekap = () => {
-    window.print();
+    const pengCetak = AppStore.getPengaturan();
+    const perProduk = new Map<string, number>();
+    pesananHariIni.forEach(ps => (ps.items || []).forEach(it => perProduk.set(it.nama_produk, (perProduk.get(it.nama_produk) || 0) + (it.jumlah || 0))));
+    const meterAwal = shiftAktif?.meter_awal ?? pengCetak.meteran_air_awal_liter ?? 0;
+    cetakRekapBaris(susunRekapShift({
+      kasir: shiftAktif?.kasir_nama || AppStore.getCurrentUser().nama,
+      waktu: shiftAktif?.waktu_buka || new Date().toISOString(),
+      status: isShiftTutup ? 'SUDAH DITUTUP' : 'SHIFT AKTIF',
+      jumlahTransaksi: pesananHariIni.length,
+      omzet: totalOmzet,
+      tunaiLangsung: kasLaci.tunaiLangsung,
+      setoranKurir: kasLaci.setoranKurir,
+      nonTunai: totalNonTunai,
+      hutang: totalHutang,
+      produk: Array.from(perProduk.entries()).map(([nama, jumlah]) => ({ nama, jumlah })).sort((a, b) => b.jumlah - a.jumlah),
+      modalAwal: saldoAwal,
+      kasbonMasuk: totalPengembalianKasbon,
+      pengeluaran: totalPengeluaranKeluar,
+      diserahkanOwner: totalDiserahkanOwner,
+      ekspektasi: saldoEkspektasiKas,
+      uangDiKurir,
+      fisik: saldoAktual > 0 ? saldoAktual : undefined,
+      selisih: saldoAktual > 0 ? selisih : undefined,
+      meterAwal,
+      meterAkhir: shiftAktif?.meter_akhir,
+      daftarPengeluaran: pengeluaranHariIni
+        .filter(x => x.tipe_arus_kas !== 'masuk' && x.kategori !== 'pengembalian_kasbon' && (!x.sumber_kas || x.sumber_kas === 'laci'))
+        .map(x => ({ peruntukan: x.peruntukan, nominal: x.nominal }))
+    }, pengCetak));
   };
 
   const handleSendWAOwner = () => {
