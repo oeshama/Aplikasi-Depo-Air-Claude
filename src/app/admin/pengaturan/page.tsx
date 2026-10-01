@@ -176,7 +176,7 @@ export default function AdminPengaturanPage() {
     // Ensure default arrays & Stok Opname defaults
     if (!data.komponen_servis_list) data.komponen_servis_list = [];
     if (!data.karyawan_list) data.karyawan_list = [];
-    if (!data.min_stok_air_baku_liter) data.min_stok_air_baku_liter = 2000;
+    if (data.min_stok_air_baku_liter === undefined) data.min_stok_air_baku_liter = 2000;
     if (data.stok_air_baku_saat_ini === undefined) data.stok_air_baku_saat_ini = 0;
     if (data.stok_galon_milik_depo === undefined) data.stok_galon_milik_depo = 500;
     if (data.stok_galon_di_depo === undefined) data.stok_galon_di_depo = 360;

@@ -124,7 +124,7 @@ export default function OwnerDashboardPage() {
       setNominalBayarStaf(item.sisaKasbonAktif || 0);
       setPeruntukanBayarStaf(`Pengembalian Kasbon Karyawan - ${item.kary.nama}`);
     } else {
-      setNominalBayarStaf(item.kary.uang_makan_per_hari || 25000);
+      setNominalBayarStaf(item.kary.uang_makan_per_hari ?? 25000);
       setPeruntukanBayarStaf(`Uang Makan / Konsumsi - ${item.kary.nama}`);
     }
     
@@ -378,7 +378,7 @@ export default function OwnerDashboardPage() {
   const isAlarmEnabled = (pengaturan.notifikasi_alarm_aktif !== false) && (pengaturan.mode_suara_alarm !== 'silent');
 
   // Critical Low Water Stock Alarm
-  const minStokAirBakuCalc = pengaturan.min_stok_air_baku_liter || 2000;
+  const minStokAirBakuCalc = pengaturan.min_stok_air_baku_liter ?? 2000;
   const currentStokAirBakuCalc = pengaturan.stok_air_baku_saat_ini ?? 0;
   const isWaterStockCriticalCalc = currentStokAirBakuCalc <= minStokAirBakuCalc;
   const isWaterAlarmSnoozed = waterAlarmSnoozedUntil ? nowTick < waterAlarmSnoozedUntil : false;
@@ -702,7 +702,7 @@ export default function OwnerDashboardPage() {
   };
 
   // Evaluate Alerts
-  const minStokAirBaku = pengaturan.min_stok_air_baku_liter || 2000;
+  const minStokAirBaku = pengaturan.min_stok_air_baku_liter ?? 2000;
   const stokAirBakuSaatIni = pengaturan.stok_air_baku_saat_ini ?? 0;
   const isAirBakuMenipis = (pengaturan.notifikasi_air_baku_aktif !== false) && (stokAirBakuSaatIni <= minStokAirBaku);
 
@@ -2141,10 +2141,10 @@ export default function OwnerDashboardPage() {
             {/* Card 1: Stok Air Baku */}
             <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>STOK AIR BAKU TANGKI DEPO</span>
-              <h4 style={{ fontSize: '1.35rem', fontWeight: 800, color: (pengaturan.stok_air_baku_saat_ini || 0) <= (pengaturan.min_stok_air_baku_liter || 2000) ? 'var(--c-red)' : 'var(--c-green)', marginTop: '4px' }}>
+              <h4 style={{ fontSize: '1.35rem', fontWeight: 800, color: (pengaturan.stok_air_baku_saat_ini || 0) <= (pengaturan.min_stok_air_baku_liter ?? 2000) ? 'var(--c-red)' : 'var(--c-green)', marginTop: '4px' }}>
                 {(pengaturan.stok_air_baku_saat_ini ?? 0).toLocaleString('id-ID')} Liter
               </h4>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Min Target: {(pengaturan.min_stok_air_baku_liter || 2000).toLocaleString('id-ID')} Liter</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Min Target: {(pengaturan.min_stok_air_baku_liter ?? 2000).toLocaleString('id-ID')} Liter</span>
             </div>
 
             {/* Card 2: Meter Depo Hitung Otomatis */}

@@ -202,7 +202,7 @@ export default function ShiftKasirPage() {
 
   const pengaturan = AppStore.getPengaturan();
   const stokAirBakuShift = pengaturan.stok_air_baku_saat_ini ?? 5000;
-  const minStokAirBakuShift = pengaturan.min_stok_air_baku_liter || 2000;
+  const minStokAirBakuShift = pengaturan.min_stok_air_baku_liter ?? 2000;
   const isWaterStockCriticalShift = (pengaturan.notifikasi_air_baku_aktif !== false) && (stokAirBakuShift <= minStokAirBakuShift);
 
   return (

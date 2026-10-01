@@ -510,7 +510,7 @@ export default function KasirPage() {
   const isAlarmEnabled = (pengaturan.notifikasi_alarm_aktif !== false) && (pengaturan.mode_suara_alarm !== 'silent');
 
   // Critical Low Water Stock Alarm
-  const minStokAirBakuCalc = pengaturan.min_stok_air_baku_liter || 2000;
+  const minStokAirBakuCalc = pengaturan.min_stok_air_baku_liter ?? 2000;
   const currentStokAirBakuCalc = pengaturan.stok_air_baku_saat_ini ?? 5000;
   const isWaterStockCriticalCalc = currentStokAirBakuCalc <= minStokAirBakuCalc;
   const isWaterAlarmSnoozed = waterAlarmSnoozedUntil ? nowTick < waterAlarmSnoozedUntil : false;
