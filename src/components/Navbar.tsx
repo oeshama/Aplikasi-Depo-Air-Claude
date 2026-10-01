@@ -8,7 +8,7 @@ import { namaCetak } from '@/lib/cetak';
 import { UserApp, UserRole, ShiftKasir } from '@/lib/types';
 import { 
   Droplets, ShoppingCart, Users, Package, MapPin, 
-  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet, Map
+  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet, Map, FileText
 } from 'lucide-react';
 import { getTheme, setTheme, Theme } from '@/lib/theme';
 
@@ -281,6 +281,11 @@ export default function Navbar() {
               {menungguSetoran > 0 && (
                 <span aria-label={`${menungguSetoran} setoran menunggu`} style={{ marginLeft: '6px', minWidth: '20px', height: '20px', padding: '0 6px', borderRadius: '10px', background: '#dc2626', color: '#ffffff', fontSize: '0.72rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{menungguSetoran}</span>
               )}
+            </Link>
+          )}
+          {role === 'owner' && (
+            <Link href="/owner/laporan" aria-current={pathname === '/owner/laporan' ? 'page' : undefined} className={linkClass(pathname === '/owner/laporan')}>
+              <FileText size={16} aria-hidden="true" /> Laporan PDF
             </Link>
           )}
           {(role === 'admin' || role === 'owner') && (

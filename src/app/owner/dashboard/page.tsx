@@ -5,6 +5,7 @@ import { Pesanan, Kontak, Produk, PengaturanDepo, KomponenServis, Pengeluaran, H
 import { AppStore } from '@/lib/store';
 import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
 import KartuTarget from '@/components/KartuTarget';
+import { rentangTerakhirSelesai } from '@/lib/laporan';
 import { PERIODE_TARGET, ambilTarget, aturTarget, persenCapaian, PeriodeTarget, JenisTarget } from '@/lib/target';
 import { calculateOrderDuration, alarmSound, formatThresholdText } from '@/lib/audioAndTimer';
 import { 
@@ -46,6 +47,9 @@ export default function OwnerDashboardPage() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   const [periode, setPeriode] = useState<PeriodeFilter>('harian');
+  const [laporanDitutup, setLaporanDitutup] = useState<string[]>([]);
+  useEffect(() => { try { setLaporanDitutup(JSON.parse(localStorage.getItem('depo_laporan_ditutup') || '[]')); } catch { /* abaikan */ } }, []);
+  const tutupPengingatLaporan = (kunci: string) => { const baru = [...laporanDitutup, kunci].slice(-20); setLaporanDitutup(baru); try { localStorage.setItem('depo_laporan_ditutup', JSON.stringify(baru)); } catch { /* abaikan */ } };
   const [mutedIds, setMutedIds] = useState<string[]>([]);
   const [snoozedUntilMap, setSnoozedUntilMap] = useState<Record<string, number>>({});
   const [nowTick, setNowTick] = useState<number>(Date.now());
@@ -1301,6 +1305,18 @@ export default function OwnerDashboardPage() {
               }
               if (delayedPending.length > 0) butir.push(<li key="antaran">{delayedPending.length} pesanan terlambat diantar (lebih dari {formatThresholdText(thresholdMins)})</li>);
               if (hasClosedShift && totalSelisihKasShift !== 0) butir.push(<li key="selisih">Selisih kas shift {AppStore.formatRupiah(totalSelisihKasShift)} pada periode ini</li>);
+              if (currentUser?.role === 'owner') {
+                const sekarang = new Date();
+                const pengingat: { jenis: 'mingguan' | 'bulanan'; teks: string }[] = [];
+                if (sekarang.getDay() === 1 || sekarang.getDay() === 2) pengingat.push({ jenis: 'mingguan', teks: 'Laporan mingguan' });
+                if (sekarang.getDate() <= 2) pengingat.push({ jenis: 'bulanan', teks: 'Laporan bulanan' });
+                pengingat.forEach(pg => {
+                  const r = rentangTerakhirSelesai(pg.jenis, sekarang);
+                  const kunci = pg.jenis + ':' + r.kunci;
+                  if (laporanDitutup.includes(kunci)) return;
+                  butir.push(<li key={kunci}>{pg.teks} {r.label} siap diunduh. <a href="/owner/laporan" onClick={() => tutupPengingatLaporan(kunci)} style={{ color: 'var(--c-sky)', fontWeight: 700 }}>Buka Laporan</a> <button type="button" onClick={() => tutupPengingatLaporan(kunci)} style={{ marginLeft: '6px', background: 'none', border: 'none', color: 'var(--text-muted)', textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}>Tutup</button></li>);
+                });
+              }
               const adaButir = butir.length > 0;
               return (
                 <div
