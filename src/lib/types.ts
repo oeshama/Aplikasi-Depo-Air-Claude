@@ -276,6 +276,11 @@ export interface PengaturanDepo {
   target_galon_bulanan?: number;
   target_omzet_tahunan?: number;
   target_galon_tahunan?: number;
+  // Target volume penjualan dalam liter (kosong = target galon x 19 liter)
+  target_liter_harian?: number;
+  target_liter_mingguan?: number;
+  target_liter_bulanan?: number;
+  target_liter_tahunan?: number;
   header_struk: string;
   footer_struk: string;
   logo_url?: string;

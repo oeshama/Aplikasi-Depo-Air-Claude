@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { PengaturanDepo, KomponenServis, Karyawan, UserApp, GalonPinjamanPelanggan, Kontak } from '@/lib/types';
 import { AppStore } from '@/lib/store';
 import LokasiField from '@/components/LokasiField';
+import { PERIODE_TARGET, ambilTarget, aturTarget, LITER_PER_GALON } from '@/lib/target';
 import {
   Settings, Image as ImageIcon, Upload, Save, Droplets, 
   CheckCircle, Trash2, AlertTriangle, Wrench, Plus, Gauge,
@@ -802,77 +803,32 @@ export default function AdminPengaturanPage() {
             <Target size={22} color="#10b981" /> Target Penjualan Harian & Periode
           </h3>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '16px' }}>
-            Atur target penjualan omzet (Rp) dan volume penjualan galon untuk harian, mingguan, bulanan, dan tahunan yang tampil di Dashboard Owner.
+            Atur target omzet (Rp), volume penjualan galon, dan volume penjualan liter untuk harian, mingguan, bulanan, dan tahunan yang tampil di Dashboard Owner.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <div className="form-group">
-              <label className="form-label">Target Omzet Harian (Rp)</label>
-              <input 
-                type="number" 
-                className="form-input" 
-                value={pengaturan.target_omzet_harian ?? 500000} 
-                onChange={(e) => setPengaturan(prev => ({ ...prev, target_omzet_harian: Number(e.target.value) }))}
-                placeholder="500000"
-                required 
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Target Volume Galon Harian (Galon)</label>
-              <input 
-                type="number" 
-                className="form-input" 
-                value={pengaturan.target_galon_harian ?? 50} 
-                onChange={(e) => setPengaturan(prev => ({ ...prev, target_galon_harian: Number(e.target.value) }))}
-                placeholder="50"
-                required 
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Target Omzet Mingguan (Rp)</label>
-              <input 
-                type="number" 
-                className="form-input" 
-                value={pengaturan.target_omzet_mingguan ?? 3500000} 
-                onChange={(e) => setPengaturan(prev => ({ ...prev, target_omzet_mingguan: Number(e.target.value) }))}
-                placeholder="3500000"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Target Volume Galon Mingguan (Galon)</label>
-              <input 
-                type="number" 
-                className="form-input" 
-                value={pengaturan.target_galon_mingguan ?? 350} 
-                onChange={(e) => setPengaturan(prev => ({ ...prev, target_galon_mingguan: Number(e.target.value) }))}
-                placeholder="350"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Target Omzet Bulanan (Rp)</label>
-              <input 
-                type="number" 
-                className="form-input" 
-                value={pengaturan.target_omzet_bulanan ?? 15000000} 
-                onChange={(e) => setPengaturan(prev => ({ ...prev, target_omzet_bulanan: Number(e.target.value) }))}
-                placeholder="15000000"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Target Volume Galon Bulanan (Galon)</label>
-              <input 
-                type="number" 
-                className="form-input" 
-                value={pengaturan.target_galon_bulanan ?? 1500} 
-                onChange={(e) => setPengaturan(prev => ({ ...prev, target_galon_bulanan: Number(e.target.value) }))}
-                placeholder="1500"
-              />
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {PERIODE_TARGET.map(per => (
+              <div key={per.id} style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--c-sky)', marginBottom: '10px' }}>Target {per.label}</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))', gap: '12px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" htmlFor={`tg-omzet-${per.id}`}>Omzet (Rp)</label>
+                    <input id={`tg-omzet-${per.id}`} type="number" inputMode="numeric" min="0" className="form-input" value={ambilTarget(pengaturan, 'omzet', per.id)} onChange={(e) => setPengaturan(prev => aturTarget(prev, 'omzet', per.id, Number(e.target.value)))} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" htmlFor={`tg-galon-${per.id}`}>Volume galon (galon)</label>
+                    <input id={`tg-galon-${per.id}`} type="number" inputMode="numeric" min="0" className="form-input" value={ambilTarget(pengaturan, 'galon', per.id)} onChange={(e) => setPengaturan(prev => aturTarget(prev, 'galon', per.id, Number(e.target.value)))} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" htmlFor={`tg-liter-${per.id}`}>Volume liter (liter)</label>
+                    <input id={`tg-liter-${per.id}`} type="number" inputMode="numeric" min="0" className="form-input" value={ambilTarget(pengaturan, 'liter', per.id)} onChange={(e) => setPengaturan(prev => aturTarget(prev, 'liter', per.id, Number(e.target.value)))} />
+                  </div>
+                </div>
+              </div>
+            ))}
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+              Volume liter dihitung dari semua produk (botol, jerigen, galon) sesuai isi tiap wadah. Kalau belum diisi, targetnya otomatis target galon dikali {LITER_PER_GALON} liter. Isi 0 untuk tidak memakai target.
+            </p>
           </div>
         </div>
 

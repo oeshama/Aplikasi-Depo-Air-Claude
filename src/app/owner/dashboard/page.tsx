@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Pesanan, Kontak, Produk, PengaturanDepo, KomponenServis, Pengeluaran, HutangToko, UserApp, ShiftKasir, SetoranKurir, NotifikasiOwner, SaldoKurir } from '@/lib/types';
 import { AppStore } from '@/lib/store';
 import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
+import KartuTarget from '@/components/KartuTarget';
+import { PERIODE_TARGET, ambilTarget, aturTarget, persenCapaian, PeriodeTarget, JenisTarget } from '@/lib/target';
 import { calculateOrderDuration, alarmSound, formatThresholdText } from '@/lib/audioAndTimer';
 import { 
   LayoutDashboard, TrendingUp, ShoppingBag, AlertTriangle, 
@@ -15,6 +17,12 @@ import {
 } from 'lucide-react';
 
 type PeriodeFilter = 'harian' | 'mingguan' | 'bulanan' | 'tahunan' | 'semua';
+
+const JENIS_TARGET: { id: JenisTarget; label: string; satuan: string }[] = [
+  { id: 'omzet', label: 'Omzet', satuan: 'Rp' },
+  { id: 'galon', label: 'Volume galon', satuan: 'galon' },
+  { id: 'liter', label: 'Volume liter', satuan: 'liter' },
+];
 
 export default function OwnerDashboardPage() {
   const [currentUser, setCurrentUser] = useState<UserApp | null>(null);
@@ -65,40 +73,27 @@ export default function OwnerDashboardPage() {
   const [newStokAirInput, setNewStokAirInput] = useState<number>(5000);
   const [newMeterAirInput, setNewMeterAirInput] = useState<number>(10000);
 
-  // Modal Edit Target Penjualan State
+  // Modal Edit Target Penjualan State (kunci "jenis_periode", mis. omzet_harian)
   const [showEditTargetModal, setShowEditTargetModal] = useState<boolean>(false);
-  const [targetOmzetHarianInput, setTargetOmzetHarianInput] = useState<number>(500000);
-  const [targetGalonHarianInput, setTargetGalonHarianInput] = useState<number>(50);
-  const [targetOmzetMingguanInput, setTargetOmzetMingguanInput] = useState<number>(3500000);
-  const [targetGalonMingguanInput, setTargetGalonMingguanInput] = useState<number>(350);
-  const [targetOmzetBulananInput, setTargetOmzetBulananInput] = useState<number>(15000000);
-  const [targetGalonBulananInput, setTargetGalonBulananInput] = useState<number>(1500);
+  const [targetInput, setTargetInput] = useState<Record<string, number>>({});
 
   const handleOpenEditTargetModal = () => {
-    setTargetOmzetHarianInput(pengaturan.target_omzet_harian ?? 500000);
-    setTargetGalonHarianInput(pengaturan.target_galon_harian ?? 50);
-    setTargetOmzetMingguanInput(pengaturan.target_omzet_mingguan ?? 3500000);
-    setTargetGalonMingguanInput(pengaturan.target_galon_mingguan ?? 350);
-    setTargetOmzetBulananInput(pengaturan.target_omzet_bulanan ?? 15000000);
-    setTargetGalonBulananInput(pengaturan.target_galon_bulanan ?? 1500);
+    const awal: Record<string, number> = {};
+    PERIODE_TARGET.forEach(per => JENIS_TARGET.forEach(j => { awal[`${j.id}_${per.id}`] = ambilTarget(pengaturan, j.id, per.id); }));
+    setTargetInput(awal);
     setShowEditTargetModal(true);
   };
 
   const handleSaveTargetPenjualan = (e: React.FormEvent) => {
     e.preventDefault();
-    const updatedPengaturan: PengaturanDepo = {
-      ...pengaturan,
-      target_omzet_harian: Number(targetOmzetHarianInput) || 0,
-      target_galon_harian: Number(targetGalonHarianInput) || 0,
-      target_omzet_mingguan: Number(targetOmzetMingguanInput) || 0,
-      target_galon_mingguan: Number(targetGalonMingguanInput) || 0,
-      target_omzet_bulanan: Number(targetOmzetBulananInput) || 0,
-      target_galon_bulanan: Number(targetGalonBulananInput) || 0,
-    };
+    let updatedPengaturan: PengaturanDepo = { ...pengaturan };
+    PERIODE_TARGET.forEach(per => JENIS_TARGET.forEach(j => {
+      updatedPengaturan = aturTarget(updatedPengaturan, j.id, per.id, targetInput[`${j.id}_${per.id}`]);
+    }));
     AppStore.savePengaturan(updatedPengaturan);
     setPengaturan(updatedPengaturan);
     setShowEditTargetModal(false);
-    alert('Target Penjualan (Harian, Mingguan, Bulanan) berhasil diperbarui!');
+    alert('Target penjualan berhasil diperbarui!');
   };
 
   const handleOpenBayarOngkirModal = (item: any, kat: string = 'ongkir') => {
@@ -617,28 +612,15 @@ export default function OwnerDashboardPage() {
   const selisihMeterAirDepo = hasMeterEntryKasir ? (meterDepoEntryKasir! - meterDepoHitungOtomatis) : 0;
 
 
-  // Target Sales Calculations
-  const targetOmzetMap: Record<PeriodeFilter, number> = {
-    harian: pengaturan.target_omzet_harian ?? 500000,
-    mingguan: pengaturan.target_omzet_mingguan ?? 3500000,
-    bulanan: pengaturan.target_omzet_bulanan ?? 15000000,
-    tahunan: pengaturan.target_omzet_tahunan ?? 180000000,
-    semua: 200000000
-  };
+  // Target penjualan periode terpilih (periode "semua" tidak punya target)
+  const periodeTarget: PeriodeTarget | null = periode === 'semua' ? null : periode;
+  const targetOmzetCurrent = periodeTarget ? ambilTarget(pengaturan, 'omzet', periodeTarget) : 0;
+  const targetGalonCurrent = periodeTarget ? ambilTarget(pengaturan, 'galon', periodeTarget) : 0;
+  const targetLiterCurrent = periodeTarget ? ambilTarget(pengaturan, 'liter', periodeTarget) : 0;
 
-  const targetGalonMap: Record<PeriodeFilter, number> = {
-    harian: pengaturan.target_galon_harian ?? 50,
-    mingguan: pengaturan.target_galon_mingguan ?? 350,
-    bulanan: pengaturan.target_galon_bulanan ?? 1500,
-    tahunan: pengaturan.target_galon_tahunan ?? 18000,
-    semua: 20000
-  };
-
-  const targetOmzetCurrent = targetOmzetMap[periode];
-  const targetGalonCurrent = targetGalonMap[periode];
-
-  const persenCapaianOmzet = Math.min(100, Math.round((totalOmzet / targetOmzetCurrent) * 100));
-  const persenCapaianGalon = Math.min(100, Math.round((totalGalonTerjual / targetGalonCurrent) * 100));
+  const persenCapaianOmzet = persenCapaian(totalOmzet, targetOmzetCurrent);
+  const persenCapaianGalon = persenCapaian(totalGalonTerjual, targetGalonCurrent);
+  const persenCapaianLiter = persenCapaian(totalLiterTerjual, targetLiterCurrent);
 
   // Laba Rugi & Dynamic HPP Calculations
   // HPP per Liter = (Total Kas Pembelian Air Baku / Total Volume Air Baku Terkirim)
@@ -1615,10 +1597,10 @@ export default function OwnerDashboardPage() {
             <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>CAPAIAN TARGET</span>
               <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--c-amber)', marginTop: '4px' }}>
-                {persenCapaianOmzet}% dari Target Omzet
+                {targetOmzetCurrent > 0 ? `${persenCapaianOmzet}% dari Target Omzet` : 'Target omzet belum diisi'}
               </h4>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-2)', marginTop: '4px' }}>
-                Terjual {totalGalonTerjual} Galon ({persenCapaianGalon}% dari target {targetGalonCurrent} galon).
+                Terjual {totalGalonTerjual} Galon{targetGalonCurrent > 0 ? ` (${persenCapaianGalon}% dari target ${targetGalonCurrent} galon)` : ''} dan {totalLiterTerjual.toLocaleString('id-ID')} Liter{targetLiterCurrent > 0 ? ` (${persenCapaianLiter}% dari target ${targetLiterCurrent.toLocaleString('id-ID')} liter)` : ''}.
               </p>
             </div>
 
@@ -1674,65 +1656,39 @@ export default function OwnerDashboardPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '16px' }}>
           
-          {/* Target Omzet Progress */}
-          <div style={{ background: 'var(--inset-70)', padding: '18px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>Target Pendapatan / Omzet</span>
-              <span className={`badge ${persenCapaianOmzet >= 100 ? 'badge-success' : 'badge-warning'}`}>
-                {persenCapaianOmzet >= 100 ? 'TERCAPAI' : 'DALAM PROSES'}
-              </span>
-            </div>
+          {periode === 'semua' && (
+            <p style={{ gridColumn: '1 / -1', margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Target berlaku untuk periode Harian sampai Tahunan. Pilih salah satunya di bagian atas untuk melihat capaian.
+            </p>
+          )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
-              <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--c-green)' }}>
-                {AppStore.formatRupiah(totalOmzet)}
-              </h4>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Target: {AppStore.formatRupiah(targetOmzetCurrent)}
-              </span>
-            </div>
+          <KartuTarget
+            judul="Target Pendapatan / Omzet"
+            capaianTeks={AppStore.formatRupiah(totalOmzet)}
+            targetTeks={AppStore.formatRupiah(targetOmzetCurrent)}
+            persen={persenCapaianOmzet}
+            adaTarget={targetOmzetCurrent > 0}
+            warna="linear-gradient(90deg, var(--c-green-strong) 0%, var(--c-green) 100%)"
+          />
 
-            <div style={{ width: '100%', height: '10px', background: 'var(--w-10)', borderRadius: '5px', overflow: 'hidden' }}>
-              <div style={{
-                width: `${persenCapaianOmzet}%`, height: '100%',
-                background: 'linear-gradient(90deg, var(--c-green-strong) 0%, var(--c-green) 100%)',
-                transition: 'width 0.4s ease'
-              }} />
-            </div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '6px' }}>
-              Capaian: {persenCapaianOmzet}% dari target {periode}
-            </span>
-          </div>
+          <KartuTarget
+            judul="Target Volume Penjualan Galon"
+            capaianTeks={`${totalGalonTerjual.toLocaleString('id-ID')} Galon`}
+            targetTeks={`${targetGalonCurrent.toLocaleString('id-ID')} Galon`}
+            persen={persenCapaianGalon}
+            adaTarget={targetGalonCurrent > 0}
+            warna="linear-gradient(90deg, var(--c-primary) 0%, var(--c-sky) 100%)"
+          />
 
-          {/* Target Galon Progress */}
-          <div style={{ background: 'var(--inset-70)', padding: '18px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>Target Volume Penjualan Galon</span>
-              <span className={`badge ${persenCapaianGalon >= 100 ? 'badge-success' : 'badge-primary'}`}>
-                {persenCapaianGalon >= 100 ? 'TERCAPAI' : 'BERJALAN'}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
-              <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--c-sky)' }}>
-                {totalGalonTerjual} Galon
-              </h4>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Target: {targetGalonCurrent} Galon
-              </span>
-            </div>
-
-            <div style={{ width: '100%', height: '10px', background: 'var(--w-10)', borderRadius: '5px', overflow: 'hidden' }}>
-              <div style={{
-                width: `${persenCapaianGalon}%`, height: '100%',
-                background: 'linear-gradient(90deg, var(--c-primary) 0%, var(--c-sky) 100%)',
-                transition: 'width 0.4s ease'
-              }} />
-            </div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '6px' }}>
-              Capaian: {persenCapaianGalon}% dari target {periode} ({totalLiterTerjual} Liter)
-            </span>
-          </div>
+          <KartuTarget
+            judul="Target Volume Penjualan Liter"
+            capaianTeks={`${totalLiterTerjual.toLocaleString('id-ID')} Liter`}
+            targetTeks={`${targetLiterCurrent.toLocaleString('id-ID')} Liter`}
+            persen={persenCapaianLiter}
+            adaTarget={targetLiterCurrent > 0}
+            warna="linear-gradient(90deg, var(--c-amber-strong) 0%, var(--c-amber) 100%)"
+            keterangan="semua produk, dihitung dari volume tiap wadah"
+          />
 
         </div>
       </div>
@@ -2802,101 +2758,32 @@ export default function OwnerDashboardPage() {
 
             <form onSubmit={handleSaveTargetPenjualan} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Atur target omzet pendapatan (Rp) dan volume penjualan galon untuk memantau performa depo secara harian, mingguan, dan bulanan.
+                Atur target omzet (Rp), volume galon, dan volume liter untuk harian, mingguan, bulanan, dan tahunan. Isi 0 bila tidak mau memakai target tertentu.
               </p>
 
-              {/* TARGET HARIAN */}
-              <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--c-green)', marginBottom: '10px' }}>
-                  Target Penjualan HARIAN
-                </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Target Omzet Harian (Rp)</label>
-                    <input 
-                      type="number" 
-                      className="form-input" 
-                      value={targetOmzetHarianInput} 
-                      onChange={(e) => setTargetOmzetHarianInput(Number(e.target.value))}
-                      placeholder="500000"
-                      required 
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Target Volume Galon Harian</label>
-                    <input 
-                      type="number" 
-                      className="form-input" 
-                      value={targetGalonHarianInput} 
-                      onChange={(e) => setTargetGalonHarianInput(Number(e.target.value))}
-                      placeholder="50"
-                      required 
-                    />
+              {PERIODE_TARGET.map(per => (
+                <div key={per.id} style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--c-sky)', marginBottom: '10px' }}>
+                    Target {per.label}
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))', gap: '12px' }}>
+                    {JENIS_TARGET.map(j => (
+                      <div key={j.id} className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" htmlFor={`target-${j.id}-${per.id}`} style={{ fontSize: '0.8rem' }}>{j.label} ({j.satuan})</label>
+                        <input
+                          id={`target-${j.id}-${per.id}`}
+                          type="number"
+                          inputMode="numeric"
+                          min="0"
+                          className="form-input"
+                          value={targetInput[`${j.id}_${per.id}`] ?? 0}
+                          onChange={(e) => setTargetInput(prev => ({ ...prev, [`${j.id}_${per.id}`]: Number(e.target.value) }))}
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-
-              {/* TARGET MINGGUAN */}
-              <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--c-sky)', marginBottom: '10px' }}>
-                  Target Penjualan MINGGUAN
-                </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Target Omzet Mingguan (Rp)</label>
-                    <input 
-                      type="number" 
-                      className="form-input" 
-                      value={targetOmzetMingguanInput} 
-                      onChange={(e) => setTargetOmzetMingguanInput(Number(e.target.value))}
-                      placeholder="3500000"
-                      required 
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Target Volume Galon Mingguan</label>
-                    <input 
-                      type="number" 
-                      className="form-input" 
-                      value={targetGalonMingguanInput} 
-                      onChange={(e) => setTargetGalonMingguanInput(Number(e.target.value))}
-                      placeholder="350"
-                      required 
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* TARGET BULANAN */}
-              <div style={{ background: 'var(--inset-70)', padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--c-amber)', marginBottom: '10px' }}>
-                  Target Penjualan BULANAN
-                </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Target Omzet Bulanan (Rp)</label>
-                    <input 
-                      type="number" 
-                      className="form-input" 
-                      value={targetOmzetBulananInput} 
-                      onChange={(e) => setTargetOmzetBulananInput(Number(e.target.value))}
-                      placeholder="15000000"
-                      required 
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Target Volume Galon Bulanan</label>
-                    <input 
-                      type="number" 
-                      className="form-input" 
-                      value={targetGalonBulananInput} 
-                      onChange={(e) => setTargetGalonBulananInput(Number(e.target.value))}
-                      placeholder="1500"
-                      required 
-                    />
-                  </div>
-                </div>
-              </div>
+              ))}
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button type="button" onClick={() => setShowEditTargetModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>
