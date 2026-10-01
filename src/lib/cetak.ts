@@ -13,6 +13,12 @@ export interface BarisStruk {
   tebal?: boolean;
 }
 
+// Nama toko untuk struk dan pesan WhatsApp: baris pertama "Header Struk Cetak", atau Nama Depo bila kosong
+export function namaCetak(peng: PengaturanDepo): string {
+  const pertama = (peng.header_struk || '').split('\n').map(t => t.trim()).filter(Boolean)[0];
+  return pertama || peng.nama_depo || 'Depo Air';
+}
+
 export function kolomKertas(lebarMm: number | undefined): number {
   return lebarMm === 80 ? 48 : 32;
 }

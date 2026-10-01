@@ -5,7 +5,7 @@ import { AppStore } from '@/lib/store';
 import { Pesanan, Pengeluaran, HutangToko, ShiftKasir, UserApp } from '@/lib/types';
 import BukaShiftModal from '@/components/BukaShiftModal';
 import TutupShiftModal from '@/components/TutupShiftModal';
-import { cetakRekapBaris, susunRekapShift } from '@/lib/cetak';
+import { cetakRekapBaris, namaCetak, susunRekapShift } from '@/lib/cetak';
 import { 
   Receipt, DollarSign, CreditCard, Lock, CheckCircle, 
   TrendingDown, Trash2, ArrowDownCircle, Banknote, AlertCircle, BookOpen, Check, Droplets,
@@ -161,7 +161,7 @@ export default function ShiftKasirPage() {
 
     let msg = `*📊 REKAP SHIFT & SETORAN KAS KASIR*\n`;
     msg += `--------------------------------\n`;
-    msg += `*Depo:* ${pengaturan.nama_depo}\n`;
+    msg += `*Depo:* ${namaCetak(pengaturan)}\n`;
     msg += `*Kasir:* ${currentKasir.nama}\n`;
     msg += `*Tanggal:* ${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}\n`;
     msg += `*Status Shift:* ${isShiftTutup ? '🔒 SUDAH DITUTUP' : '🟢 SHIFT AKTIF'}\n`;
@@ -191,7 +191,7 @@ export default function ShiftKasirPage() {
       msg += `• Status Meteran: Masih berjalan (Shift aktif)\n`;
     }
     msg += `--------------------------------\n`;
-    msg += `_Laporan otomatis dari Kasir ${pengaturan.nama_depo}_`;
+    msg += `_Laporan otomatis dari Kasir ${namaCetak(pengaturan)}_`;
 
     const url = cleanPhone 
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`

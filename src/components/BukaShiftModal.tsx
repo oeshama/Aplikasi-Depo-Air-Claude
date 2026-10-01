@@ -5,7 +5,7 @@ import { AppStore } from '@/lib/store';
 import { ShiftKasir, UserApp } from '@/lib/types';
 import FotoMeterField from '@/components/FotoMeterField';
 import KepalaStruk from '@/components/KepalaStruk';
-import { cetakStrukBaris, susunStrukBukaShift } from '@/lib/cetak';
+import { cetakStrukBaris, namaCetak, susunStrukBukaShift } from '@/lib/cetak';
 import { Lock, Droplets, Banknote, ShieldCheck, User, KeyRound, Printer, Share2, CheckCircle2, X } from 'lucide-react';
 
 interface BukaShiftModalProps {
@@ -168,14 +168,14 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
 
     let msg = `*🔓 LAPORAN PEMBUKAAN SHIFT KASIR*\n`;
     msg += `--------------------------------\n`;
-    msg += `*Depo:* ${pengaturan.nama_depo}\n`;
+    msg += `*Depo:* ${namaCetak(pengaturan)}\n`;
     msg += `*Kasir Bertugas:* ${petugasNama}\n`;
     msg += `*Waktu Buka:* ${new Date(shift.waktu_buka).toLocaleString('id-ID')}\n`;
     msg += `--------------------------------\n`;
     msg += `*💵 Modal Kas Awal Laci:* ${AppStore.formatRupiah(kasAwal)}\n`;
     msg += `*💧 Meteran Air Awal Depo:* ${meterAwal.toLocaleString('id-ID')} Liter\n`;
     msg += `--------------------------------\n`;
-    msg += `_Laporan pembukaan shift otomatis dari Kasir ${pengaturan.nama_depo}_`;
+    msg += `_Laporan pembukaan shift otomatis dari Kasir ${namaCetak(pengaturan)}_`;
 
     const url = cleanPhone 
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`

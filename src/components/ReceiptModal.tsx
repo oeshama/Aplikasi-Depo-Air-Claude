@@ -3,7 +3,7 @@
 import React from 'react';
 import { Pesanan } from '@/lib/types';
 import { AppStore } from '@/lib/store';
-import { cetakStrukPenjualan } from '@/lib/cetak';
+import { cetakStrukPenjualan, namaCetak } from '@/lib/cetak';
 import KepalaStruk from '@/components/KepalaStruk';
 import { Printer, Share2, X, CheckCircle2 } from 'lucide-react';
 
@@ -22,7 +22,7 @@ export default function ReceiptModal({ pesanan, onClose }: ReceiptModalProps) {
   };
 
   const handleSendWA = () => {
-    let msg = `*${pengaturan.nama_depo}*\n`;
+    let msg = `*${namaCetak(pengaturan)}*\n`;
     msg += `No. Struk: ${pesanan.no_nota}\n`;
     msg += `Tanggal: ${new Date(pesanan.created_at).toLocaleString('id-ID')}\n`;
     msg += `Pelanggan: ${pesanan.nama_pelanggan}\n`;

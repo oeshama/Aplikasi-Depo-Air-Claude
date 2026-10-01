@@ -3,7 +3,7 @@
 import React from 'react';
 import { Pengeluaran, UserApp } from '@/lib/types';
 import { AppStore } from '@/lib/store';
-import { cetakStrukBaris, susunBuktiKas } from '@/lib/cetak';
+import { cetakStrukBaris, namaCetak, susunBuktiKas } from '@/lib/cetak';
 import KepalaStruk from '@/components/KepalaStruk';
 import { Printer, Share2, X, CheckCircle2 } from 'lucide-react';
 
@@ -36,7 +36,7 @@ export default function ExpenseReceiptModal({ pengeluaran, onClose }: ExpenseRec
     const isMasuk = pengeluaran.tipe_arus_kas === 'masuk';
     let msg = `*📢 LAPORAN KAS ${isMasuk ? 'MASUK' : 'KELUAR'} DEPO*\n`;
     msg += `--------------------------------\n`;
-    msg += `*Depo:* ${pengaturan.nama_depo}\n`;
+    msg += `*Depo:* ${namaCetak(pengaturan)}\n`;
     msg += `*No. Transaksi:* ${pengeluaran.id}\n`;
     msg += `*Tanggal:* ${new Date(pengeluaran.tanggal).toLocaleString('id-ID')}\n`;
     msg += `*Jenis:* Kas ${isMasuk ? 'Masuk (Pengembalian)' : 'Keluar (Pengeluaran)'}\n`;
@@ -54,7 +54,7 @@ export default function ExpenseReceiptModal({ pengeluaran, onClose }: ExpenseRec
     msg += `*NOMINAL: ${AppStore.formatRupiah(pengeluaran.nominal)}*\n`;
     msg += `*Kasir/Petugas:* ${pengeluaran.kasir_nama}\n`;
     msg += `--------------------------------\n`;
-    msg += `_Laporan otomatis dari Kasir ${pengaturan.nama_depo}_`;
+    msg += `_Laporan otomatis dari Kasir ${namaCetak(pengaturan)}_`;
 
     const url = cleanPhone 
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`

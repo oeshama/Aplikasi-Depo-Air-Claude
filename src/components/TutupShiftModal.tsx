@@ -5,7 +5,7 @@ import { AppStore } from '@/lib/store';
 import { ShiftKasir, UserApp } from '@/lib/types';
 import FotoMeterField from '@/components/FotoMeterField';
 import KepalaStruk from '@/components/KepalaStruk';
-import { cetakStrukBaris, susunStrukTutupShift } from '@/lib/cetak';
+import { cetakStrukBaris, namaCetak, susunStrukTutupShift } from '@/lib/cetak';
 import { Lock, Droplets, Banknote, AlertTriangle, CheckCircle2, X, Printer, Share2 } from 'lucide-react';
 
 interface TutupShiftModalProps {
@@ -166,7 +166,7 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
 
     let msg = `*🔒 LAPORAN PENUTUPAN SHIFT & SETORAN KAS OWNER*\n`;
     msg += `--------------------------------\n`;
-    msg += `*Depo:* ${pengaturan.nama_depo}\n`;
+    msg += `*Depo:* ${namaCetak(pengaturan)}\n`;
     msg += `*Kasir Bertugas:* ${shift.kasir_nama || AppStore.getCurrentUser().nama}\n`;
     msg += `*Waktu Buka:* ${new Date(shift.waktu_buka).toLocaleString('id-ID')}\n`;
     msg += `*Waktu Tutup:* ${new Date().toLocaleString('id-ID')}\n`;
@@ -196,7 +196,7 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
     msg += `• Meteran Air Akhir: ${meterAkhir.toLocaleString('id-ID')} Liter\n`;
     msg += `• *Total Air Terpakai: ${pemakaianAir.toLocaleString('id-ID')} Liter*\n`;
     msg += `--------------------------------\n`;
-    msg += `_Laporan penutupan shift otomatis dari Kasir ${pengaturan.nama_depo}_`;
+    msg += `_Laporan penutupan shift otomatis dari Kasir ${namaCetak(pengaturan)}_`;
 
     const url = cleanPhone 
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
