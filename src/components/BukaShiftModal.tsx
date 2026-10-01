@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AppStore } from '@/lib/store';
 import { ShiftKasir, UserApp } from '@/lib/types';
 import FotoMeterField from '@/components/FotoMeterField';
+import { cetakStrukBaris, susunStrukBukaShift } from '@/lib/cetak';
 import { Lock, Droplets, Banknote, ShieldCheck, User, KeyRound, Printer, Share2, CheckCircle2, X } from 'lucide-react';
 
 interface BukaShiftModalProps {
@@ -137,7 +138,18 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
   };
 
   const handlePrint = () => {
-    window.print();
+    if (!openedShiftResult) {
+      window.print();
+      return;
+    }
+    const owner = AppStore.getUsers().find((u: UserApp) => u.role === 'owner');
+    cetakStrukBaris(susunStrukBukaShift({
+      kasir: openedShiftResult.petugasNama,
+      waktuBuka: openedShiftResult.shift.waktu_buka,
+      kasAwal: openedShiftResult.kasAwal,
+      meterAwal: openedShiftResult.meterAwal,
+      ownerNama: owner?.nama || ''
+    }, AppStore.getPengaturan()));
   };
 
   const handleSendWAOwner = () => {

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AppStore } from '@/lib/store';
 import { ShiftKasir, UserApp } from '@/lib/types';
 import FotoMeterField from '@/components/FotoMeterField';
+import { cetakStrukBaris, susunStrukTutupShift } from '@/lib/cetak';
 import { Lock, Droplets, Banknote, AlertTriangle, CheckCircle2, X, Printer, Share2 } from 'lucide-react';
 
 interface TutupShiftModalProps {
@@ -120,7 +121,33 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
   };
 
   const handlePrint = () => {
-    window.print();
+    if (!closedShiftResult) {
+      window.print();
+      return;
+    }
+    const r = closedShiftResult;
+    const owner = AppStore.getUsers().find((u: UserApp) => u.role === 'owner');
+    cetakStrukBaris(susunStrukTutupShift({
+      kasir: r.shift.kasir_nama || AppStore.getCurrentUser().nama,
+      waktuBuka: r.shift.waktu_buka,
+      waktuTutup: r.shift.waktu_tutup || new Date().toISOString(),
+      modalAwal: r.shift.saldo_awal,
+      penjualanTunai: r.totalTunai - r.totalSetoranKurir,
+      setoranKurir: r.totalSetoranKurir,
+      pelunasanKasbon: r.totalPengembalian,
+      pengeluaran: r.totalKeluar,
+      diserahkanSebelumnya: r.diserahkanSebelumnya,
+      ekspektasi: r.saldoEkspektasiKas,
+      uangDiKurir: r.uangDiKurir,
+      serahOwner: r.serahOwner,
+      kasFisik: r.kasFisik,
+      sisaLaci: r.sisaLaci,
+      selisih: r.selisihKas,
+      meterAwal: r.shift.meter_awal || 0,
+      meterAkhir: r.meterAkhir,
+      pemakaianAir: r.pemakaianAir,
+      ownerNama: owner?.nama || ''
+    }, AppStore.getPengaturan()));
   };
 
   const handleSendWAOwner = () => {

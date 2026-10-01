@@ -955,7 +955,7 @@ export default function AdminPengaturanPage() {
               <li>Kalau uji cetak rapi, coba satu transaksi. Struk keluar dari tombol Cetak Thermal di struk, atau otomatis bila pilihan di atas diaktifkan.</li>
             </ol>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>
-              Pengaturan ini hanya berlaku untuk struk penjualan. Struk buka/tutup shift dan bukti pengeluaran masih memakai dialog cetak browser.
+              Pengaturan ini berlaku untuk struk penjualan dan struk buka/tutup shift. Bukti pengeluaran dan rekap shift di halaman Rekap Shift masih memakai dialog cetak browser.
             </p>
           </details>
         </div>

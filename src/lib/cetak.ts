@@ -60,13 +60,31 @@ function rp(n: number): string {
   return bersihkanTeks(AppStore.formatRupiah(n));
 }
 
-export function susunStrukPenjualan(p: Pesanan, peng: PengaturanDepo): BarisStruk[] {
+// Alat bantu menyusun baris struk selebar kertas
+function penyusun(peng: PengaturanDepo) {
   const L = kolomKertas(peng.printer_lebar_mm);
   const baris: BarisStruk[] = [];
   // Bungkus dulu (baris baru di teks dihormati), baru dibersihkan per baris
   const tengah = (t: string, tebal = false) => bungkus(t, L).forEach(b => baris.push({ teks: bersihkanTeks(b), rata: 'tengah', tebal }));
   const kiri = (t: string) => bungkus(t, L).forEach(b => baris.push({ teks: bersihkanTeks(b) }));
   const dua = (a: string, b: string, tebal = false) => kiriKanan(a, b, L).forEach(x => baris.push({ teks: x, tebal }));
+  const garisStrip = () => baris.push({ teks: garis(L) });
+  const garisSama = () => baris.push({ teks: garis(L, '=') });
+  const kosong = (n = 1) => { for (let i = 0; i < n; i++) baris.push({ teks: '' }); };
+  return { L, baris, tengah, kiri, dua, garisStrip, garisSama, kosong };
+}
+
+function kepala(s: ReturnType<typeof penyusun>, peng: PengaturanDepo, judul: string) {
+  s.tengah(peng.nama_depo || 'Depo Air', true);
+  if (peng.alamat) s.tengah(peng.alamat);
+  if (peng.no_wa) s.tengah(`WA: ${peng.no_wa}`);
+  s.garisSama();
+  s.tengah(judul, true);
+  s.garisSama();
+}
+
+export function susunStrukPenjualan(p: Pesanan, peng: PengaturanDepo): BarisStruk[] {
+  const { L, baris, tengah, kiri, dua } = penyusun(peng);
 
   tengah(peng.nama_depo || 'Depo Air', true);
   if (peng.alamat) tengah(peng.alamat);
@@ -171,6 +189,109 @@ export function cetakStrukPenjualan(p: Pesanan, opsi: { otomatis?: boolean } = {
 export function cetakUji(peng: PengaturanDepo) {
   if (peng.printer_metode === 'rawbt') {
     kirimRawBt(susunStrukUji(peng), peng, false);
+  } else {
+    cetakDialog(peng.printer_lebar_mm);
+  }
+}
+
+export interface DataBukaShift {
+  kasir: string;
+  waktuBuka: string;
+  kasAwal: number;
+  meterAwal: number;
+  ownerNama: string;
+}
+
+export function susunStrukBukaShift(d: DataBukaShift, peng: PengaturanDepo): BarisStruk[] {
+  const s = penyusun(peng);
+  kepala(s, peng, 'STRUK BUKA SHIFT KASIR');
+  s.kiri(`Kasir : ${d.kasir}`);
+  s.kiri(`Buka  : ${new Date(d.waktuBuka).toLocaleString('id-ID')}`);
+  s.garisStrip();
+  s.dua('MODAL KAS AWAL', rp(d.kasAwal), true);
+  s.dua('METERAN AIR AWAL', `${d.meterAwal.toLocaleString('id-ID')} L`, true);
+  s.garisStrip();
+  s.kosong(2);
+  s.kiri('Petugas Shift:');
+  s.kosong(2);
+  s.tengah(`( ${d.kasir} )`);
+  s.kosong(1);
+  s.kiri('Pengelola Depo:');
+  s.kosong(2);
+  s.tengah(`( ${d.ownerNama || 'Owner'} )`);
+  s.garisSama();
+  s.tengah(peng.footer_struk || 'Struk Buka Shift Sah Depo Air');
+  return s.baris;
+}
+
+export interface DataTutupShift {
+  kasir: string;
+  waktuBuka: string;
+  waktuTutup: string;
+  modalAwal: number;
+  penjualanTunai: number;
+  setoranKurir: number;
+  pelunasanKasbon: number;
+  pengeluaran: number;
+  diserahkanSebelumnya: number;
+  ekspektasi: number;
+  uangDiKurir: number;
+  serahOwner: number;
+  kasFisik: number;
+  sisaLaci: number;
+  selisih: number;
+  meterAwal: number;
+  meterAkhir: number;
+  pemakaianAir: number;
+  ownerNama: string;
+}
+
+export function susunStrukTutupShift(d: DataTutupShift, peng: PengaturanDepo): BarisStruk[] {
+  const s = penyusun(peng);
+  kepala(s, peng, 'STRUK TUTUP SHIFT & SETORAN');
+  s.kiri(`Kasir : ${d.kasir}`);
+  s.kiri(`Buka  : ${new Date(d.waktuBuka).toLocaleString('id-ID')}`);
+  s.kiri(`Tutup : ${new Date(d.waktuTutup).toLocaleString('id-ID')}`);
+  s.garisStrip();
+  s.tengah('RINCIAN KAS LACI', true);
+  s.dua('Modal Awal Kas', rp(d.modalAwal));
+  s.dua('Penjualan Tunai (+)', rp(d.penjualanTunai));
+  if (d.setoranKurir > 0) s.dua('Setoran Kurir (+)', rp(d.setoranKurir));
+  if (d.pelunasanKasbon > 0) s.dua('Pelunasan Kasbon (+)', rp(d.pelunasanKasbon));
+  s.dua('Pengeluaran Kas (-)', d.pengeluaran > 0 ? `-${rp(d.pengeluaran)}` : rp(0));
+  if (d.diserahkanSebelumnya > 0) s.dua('Diserahkan Owner (-)', `-${rp(d.diserahkanSebelumnya)}`);
+  s.garisStrip();
+  s.dua('Ekspektasi Kas', rp(d.ekspektasi), true);
+  if (d.uangDiKurir > 0) s.dua('Uang di kurir', rp(d.uangDiKurir));
+  s.garisSama();
+  s.dua('KAS DISETOR OWNER', rp(d.serahOwner), true);
+  s.dua('Uang laci saat tutup', rp(d.kasFisik));
+  if (d.sisaLaci > 0) s.dua('Tetap di laci', rp(d.sisaLaci));
+  s.dua('Selisih Kas', d.selisih === 0 ? 'PAS (Rp 0)' : rp(d.selisih), true);
+  s.garisSama();
+  s.tengah('AIR BAKU & METERAN', true);
+  s.dua('Meteran Awal', `${d.meterAwal.toLocaleString('id-ID')} L`);
+  s.dua('Meteran Akhir', `${d.meterAkhir.toLocaleString('id-ID')} L`);
+  s.dua('Pemakaian Air', `${d.pemakaianAir.toLocaleString('id-ID')} L`, true);
+  s.garisStrip();
+  s.kosong(1);
+  s.kiri('Diserahkan oleh:');
+  s.kosong(2);
+  s.tengah(`( ${d.kasir} )`);
+  s.kosong(1);
+  s.kiri('Diterima oleh:');
+  s.kosong(2);
+  s.tengah(`( ${d.ownerNama || 'Owner'} )`);
+  s.garisSama();
+  s.tengah(peng.footer_struk || 'Struk Laporan Shift Sah Depo Air');
+  return s.baris;
+}
+
+// Cetak struk non-penjualan (shift) sesuai pengaturan: RawBT atau dialog browser
+export function cetakStrukBaris(baris: BarisStruk[]) {
+  const peng = AppStore.getPengaturan();
+  if (peng.printer_metode === 'rawbt') {
+    kirimRawBt(baris, peng, false);
   } else {
     cetakDialog(peng.printer_lebar_mm);
   }
