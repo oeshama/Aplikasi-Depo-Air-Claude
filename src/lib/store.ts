@@ -583,6 +583,23 @@ export class AppStore {
     this.tambahMutasi({ akun, arah: selisih > 0 ? 'masuk' : 'keluar', nominal: Math.abs(selisih), jenis: 'koreksi', keterangan: alasan.trim() });
   }
 
+  // Atur ulang Keuangan Owner: kosongkan rekening, mutasi, dan setoran ke owner, lalu minta isi saldo awal lagi.
+  // Penjualan, shift, dan pengeluaran tidak disentuh.
+  static resetKeuangan() {
+    this.persist('depo_rekening', []);
+    this.persist('depo_mutasi_keuangan', []);
+    this.persist('depo_setoran_owner', []);
+    const p = this.getPengaturan();
+    delete p.keuangan_mulai;
+    delete p.rekening_metode;
+    this.savePengaturan(p);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('depo_rekening_updated'));
+      window.dispatchEvent(new Event('depo_mutasi_keuangan_updated'));
+      window.dispatchEvent(new Event('depo_setoran_owner_updated'));
+    }
+  }
+
   // Laporan selisih per kasir sejak waktu tertentu: selisih hitung laci saat tutup shift + selisih setoran ke owner
   static laporanSelisihKasir(sinceMs: number) {
     type Baris = {
@@ -1231,9 +1248,14 @@ export class AppStore {
     servis?: boolean;
     karyawan?: boolean;
     pengeluaran?: boolean;
+    keuangan?: boolean;
     factoryAll?: boolean;
   }) {
     if (typeof window === 'undefined') return;
+
+    if (options.keuangan && !options.factoryAll) {
+      this.resetKeuangan();
+    }
 
     if (options.factoryAll) {
       // Ditulis ulang ke nilai awal (bukan dihapus) supaya reset ikut tersinkron ke perangkat lain

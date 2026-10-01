@@ -39,6 +39,7 @@ export default function AdminPengaturanPage() {
     zona: false,
     servis: false,
     karyawan: false,
+    keuangan: false,
     factoryAll: false
   });
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
@@ -55,12 +56,13 @@ export default function AdminPengaturanPage() {
         zona: val,
         servis: val,
         karyawan: val,
+        keuangan: val,
         factoryAll: val
       });
     } else {
       setResetOptions(prev => {
         const next = { ...prev, [key]: !prev[key] };
-        const allChecked = next.pesanan && next.kontak && next.produk && next.zona && next.servis && next.karyawan;
+        const allChecked = next.pesanan && next.kontak && next.produk && next.zona && next.servis && next.karyawan && next.keuangan;
         return { ...next, factoryAll: allChecked };
       });
     }
@@ -95,6 +97,7 @@ export default function AdminPengaturanPage() {
       zona: false,
       servis: false,
       karyawan: false,
+      keuangan: false,
       factoryAll: false
     });
 
@@ -1376,6 +1379,24 @@ export default function AdminPengaturanPage() {
               </div>
             </label>
 
+            {/* Option 7: Keuangan Owner */}
+            <label style={{
+              background: resetOptions.keuangan ? 'rgba(239, 68, 68, 0.2)' : 'var(--inset-60)',
+              border: resetOptions.keuangan ? '1px solid var(--c-red-strong)' : '1px solid var(--glass-border)',
+              borderRadius: '12px', padding: '14px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '10px', transition: 'all 0.2s'
+            }}>
+              <input
+                type="checkbox"
+                checked={resetOptions.keuangan}
+                onChange={() => handleToggleResetOption('keuangan')}
+                style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: 'var(--c-red-strong)' }}
+              />
+              <div>
+                <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem', display: 'block' }}>Keuangan Owner</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Kas besar, rekening, buku kas, dan setoran ke owner. Penjualan dan shift tidak ikut terhapus</span>
+              </div>
+            </label>
+
           </div>
 
           {/* Option 7: Factory Reset All */}
@@ -1623,6 +1644,7 @@ export default function AdminPengaturanPage() {
                       {resetOptions.zona && <li>Data Zona Ongkir</li>}
                       {resetOptions.servis && <li>Notifikasi Servis & Counter Air Baku</li>}
                       {resetOptions.karyawan && <li>Data Karyawan & Gaji</li>}
+                      {resetOptions.keuangan && <li>Keuangan Owner (kas besar, rekening, buku kas, setoran)</li>}
                     </>
                   )}
                 </ul>
