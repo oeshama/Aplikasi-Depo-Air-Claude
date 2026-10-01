@@ -1,7 +1,7 @@
 import {
   UserApp, Produk, ZoneOngkir, Kontak, Pesanan, TitipGalon,
   PengaturanDepo, ShiftKasir, UserRole, Pengeluaran, HutangToko,
-  SetoranKurir, SetoranOwner, Rekening, MutasiKeuangan, JenisMutasi, NotifikasiOwner, SaldoKurir, MetodePembayaran
+  SetoranKurir, SetoranOwner, FotoMeter, ModeFotoMeter, Rekening, MutasiKeuangan, JenisMutasi, NotifikasiOwner, SaldoKurir, MetodePembayaran
 } from './types';
 import { 
   DEMO_USERS, INITIAL_PRODUK, INITIAL_ZONA, INITIAL_KONTAK, 
@@ -1085,6 +1085,37 @@ export class AppStore {
     }
   }
 
+  // ===== Foto meteran air depo per shift =====
+  static getModeFotoMeter(): ModeFotoMeter {
+    return this.getPengaturan().foto_meter_mode || 'opsional';
+  }
+
+  static getFotoMeter(): FotoMeter[] {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem('depo_foto_meter');
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  static getFotoMeterShift(shiftId: string, jenis: 'awal' | 'akhir'): FotoMeter | undefined {
+    return this.getFotoMeter().find(f => f.shift_id === shiftId && f.jenis === jenis);
+  }
+
+  // Simpan foto meter. Foto lebih lama dari 60 hari dibuang supaya penyimpanan perangkat tidak penuh.
+  // Mengembalikan false bila gagal (mis. penyimpanan penuh); shift tetap berjalan tanpa foto.
+  static simpanFotoMeter(shiftId: string, jenis: 'awal' | 'akhir', gambar: string): boolean {
+    try {
+      const user = this.getCurrentUser();
+      const batas = Date.now() - 60 * 24 * 60 * 60 * 1000;
+      const list = this.getFotoMeter().filter(f => !(f.shift_id === shiftId && f.jenis === jenis) && new Date(f.waktu).getTime() >= batas);
+      list.unshift({ id: `${shiftId}-${jenis}`, shift_id: shiftId, jenis, gambar, waktu: new Date().toISOString(), oleh: user.nama });
+      this.persist('depo_foto_meter', list);
+      window.dispatchEvent(new Event('depo_foto_meter_updated'));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   static getShiftAktif(kasirId?: string): ShiftKasir | null {
     const list = this.getShiftList();
     return list.find(s => (kasirId ? s.kasir_id === kasirId : true) && s.status === 'buka') || null;
@@ -1269,7 +1300,7 @@ export class AppStore {
       this.persist('depo_zona', INITIAL_ZONA);
       this.persist('depo_pengeluaran', []);
       this.persist('depo_hutang_toko', []);
-      this.persist('depo_shift', []);
+      this.persist('depo_shift', []); this.persist('depo_foto_meter', []);
 
       const cleanKontak = INITIAL_KONTAK.map(k => ({ ...k, hutang_saat_ini: 0, galon_dipinjam: 0 }));
       this.persist('depo_kontak', cleanKontak);
@@ -1304,7 +1335,7 @@ export class AppStore {
       this.persist('depo_notifikasi', []);
       this.persist('depo_pengeluaran', []);
       this.persist('depo_hutang_toko', []);
-      this.persist('depo_shift', []);
+      this.persist('depo_shift', []); this.persist('depo_foto_meter', []);
 
       // Reset all contact debts & borrowed galons
       const currentKontak = this.getKontak();
@@ -1354,7 +1385,7 @@ export class AppStore {
       if (options.servis) {
         p.stok_air_baku_saat_ini = 5000;
         p.meteran_air_awal_liter = 0;
-        this.persist('depo_shift', []);
+        this.persist('depo_shift', []); this.persist('depo_foto_meter', []);
         window.dispatchEvent(new Event('depo_shift_updated'));
         if (p.komponen_servis_list) {
           p.komponen_servis_list = p.komponen_servis_list.map(c => ({ ...c, liter_terakhir_ganti: 0 }));

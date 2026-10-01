@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppStore } from '@/lib/store';
 import { ShiftKasir, UserApp } from '@/lib/types';
+import FotoMeterField from '@/components/FotoMeterField';
 import { Lock, Droplets, Banknote, AlertTriangle, CheckCircle2, X, Printer, Share2 } from 'lucide-react';
 
 interface TutupShiftModalProps {
@@ -15,6 +16,7 @@ interface TutupShiftModalProps {
 export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftClosed }: TutupShiftModalProps) {
   const [kasAkhir, setKasAkhir] = useState<number | ''>('');
   const [meterAkhir, setMeterAkhir] = useState<number | ''>('');
+  const [fotoMeter, setFotoMeter] = useState<string | null>(null);
   const [serah, setSerah] = useState<number | ''>(''); // '' = seluruh uang laci
 
   const [closedShiftResult, setClosedShiftResult] = useState<{
@@ -38,6 +40,7 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
     if (isOpen && shiftAktif) {
       setKasAkhir('');
       setSerah('');
+      setFotoMeter(null);
       setMeterAkhir(shiftAktif.meter_awal || 0);
       setClosedShiftResult(null);
     }
@@ -83,8 +86,17 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
       return;
     }
 
+    const modeFoto = AppStore.getModeFotoMeter();
+    if (modeFoto === 'wajib' && !fotoMeter) {
+      alert('Foto meteran air akhir wajib diambil dulu.');
+      return;
+    }
+
     try {
       const closedShift = AppStore.tutupShift(shiftAktif.id, numericKasAkhir, numericMeterAkhir, serahOwner);
+      if (fotoMeter && modeFoto !== 'nonaktif' && !AppStore.simpanFotoMeter(shiftAktif.id, 'akhir', fotoMeter)) {
+        alert('Shift sudah ditutup, tapi foto meteran tidak tersimpan (penyimpanan perangkat penuh).');
+      }
 
       setClosedShiftResult({
         shift: closedShift,
@@ -312,6 +324,10 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
                 style={{ fontSize: '1.1rem', fontWeight: 700, padding: '12px 14px' }}
               />
             </div>
+
+            {AppStore.getModeFotoMeter() !== 'nonaktif' && (
+              <FotoMeterField id="foto-meter-akhir" label="Foto meteran air akhir" value={fotoMeter} onChange={setFotoMeter} wajib={AppStore.getModeFotoMeter() === 'wajib'} />
+            )}
 
             {/* Live Math Calculation Preview */}
             {kasAkhir !== '' && (

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppStore } from '@/lib/store';
 import { ShiftKasir, UserApp } from '@/lib/types';
+import FotoMeterField from '@/components/FotoMeterField';
 import { Lock, Droplets, Banknote, ShieldCheck, User, KeyRound, Printer, Share2, CheckCircle2, X } from 'lucide-react';
 
 interface BukaShiftModalProps {
@@ -17,6 +18,7 @@ interface BukaShiftModalProps {
 export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmitted }: BukaShiftModalProps) {
   const [kasAwal, setKasAwal] = useState<number>(0);
   const [sisaLaci, setSisaLaci] = useState<number>(0);
+  const [fotoMeter, setFotoMeter] = useState<string | null>(null);
   const [modalOwner, setModalOwner] = useState<number>(0); // modal untuk laci yang dicatat owner dari kas besar
   const [meterAwal, setMeterAwal] = useState<number>(0);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
@@ -43,6 +45,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
       // Bawaan 0; bila owner sudah mencatat "modal untuk laci" dari kas besar, angkanya muncul otomatis
       const modal = AppStore.getModalLaciTersedia();
       setModalOwner(modal);
+      setFotoMeter(null);
       setKasAwal(modal);
       setSisaLaci(AppStore.getSisaLaciShiftTerakhir());
       const cur = AppStore.getCurrentUser();
@@ -86,6 +89,12 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
       return;
     }
 
+    const modeFoto = AppStore.getModeFotoMeter();
+    if (modeFoto === 'wajib' && !fotoMeter) {
+      alert('Foto meteran air depo wajib diambil dulu.');
+      return;
+    }
+
     // Find target user
     const targetUser = userList.find(u => u.id === selectedUserId) || userList[0] || {
       id: selectedUserId || 'usr-owner',
@@ -115,6 +124,9 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
 
     onSubmitted?.();
     const newShift = AppStore.bukaShift(Number(kasAwal), Number(meterAwal), fullUser.id, fullUser.nama);
+    if (fotoMeter && modeFoto !== 'nonaktif' && !AppStore.simpanFotoMeter(newShift.id, 'awal', fotoMeter)) {
+      alert('Shift sudah dibuka, tapi foto meteran tidak tersimpan (penyimpanan perangkat penuh).');
+    }
     
     setOpenedShiftResult({
       shift: newShift,
@@ -306,6 +318,10 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
                 style={{ fontSize: '1.1rem', fontWeight: 700, padding: '12px 14px' }}
               />
             </div>
+
+            {AppStore.getModeFotoMeter() !== 'nonaktif' && (
+              <FotoMeterField id="foto-meter-awal" label="Foto meteran air awal" value={fotoMeter} onChange={setFotoMeter} wajib={AppStore.getModeFotoMeter() === 'wajib'} />
+            )}
 
             <button 
               type="submit" 

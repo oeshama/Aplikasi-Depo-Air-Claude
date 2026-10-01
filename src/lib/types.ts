@@ -284,6 +284,8 @@ export interface PengaturanDepo {
   header_struk: string;
   footer_struk: string;
   logo_url?: string;
+  // Foto meteran air depo saat buka/tutup shift: wajib, opsional (boleh dilewati), atau nonaktif. Kosong = opsional.
+  foto_meter_mode?: ModeFotoMeter;
   // Koordinat depo (untuk peta sebaran pelanggan dan validasi zona ongkir)
   lokasi_depo_lat?: number;
   lokasi_depo_lng?: number;
@@ -331,6 +333,18 @@ export interface ShiftKasir {
 }
 
 export type Tunai = number;
+
+export type ModeFotoMeter = 'wajib' | 'opsional' | 'nonaktif';
+
+// Foto meteran air depo untuk satu shift (awal saat buka, akhir saat tutup). Gambar dikecilkan dulu supaya ringan.
+export interface FotoMeter {
+  id: string;            // `${shift_id}-awal` atau `${shift_id}-akhir`
+  shift_id: string;
+  jenis: 'awal' | 'akhir';
+  gambar: string;        // data URL JPEG
+  waktu: string;
+  oleh: string;
+}
 
 export interface Pengeluaran {
   id: string;

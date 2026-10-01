@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Pesanan, Kontak, Produk, PengaturanDepo, KomponenServis, Pengeluaran, HutangToko, UserApp, ShiftKasir, SetoranKurir, NotifikasiOwner, SaldoKurir } from '@/lib/types';
+import { Pesanan, Kontak, Produk, PengaturanDepo, KomponenServis, Pengeluaran, HutangToko, UserApp, ShiftKasir, SetoranKurir, NotifikasiOwner, SaldoKurir, FotoMeter } from '@/lib/types';
 import { AppStore } from '@/lib/store';
 import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
 import KartuTarget from '@/components/KartuTarget';
@@ -35,6 +35,8 @@ export default function OwnerDashboardPage() {
   const [setoranList, setSetoranList] = useState<SetoranKurir[]>([]);
   const [notifList, setNotifList] = useState<NotifikasiOwner[]>([]);
   const [saldoKurirList, setSaldoKurirList] = useState<SaldoKurir[]>([]);
+  const [fotoMeterList, setFotoMeterList] = useState<FotoMeter[]>([]);
+  const [fotoLihat, setFotoLihat] = useState<{ judul: string; gambar: string; info: string } | null>(null);
   const [pengaturan, setPengaturan] = useState<PengaturanDepo>(AppStore.getPengaturan());
   const [activeExpenseReceipt, setActiveExpenseReceipt] = useState<Pengeluaran | null>(null);
   
@@ -184,6 +186,7 @@ export default function OwnerDashboardPage() {
     setSetoranList(AppStore.getSetoranKurir());
     setNotifList(AppStore.getNotifikasi());
     setSaldoKurirList(AppStore.getSaldoKurirList());
+    setFotoMeterList(AppStore.getFotoMeter());
   };
 
   useEffect(() => {
@@ -201,6 +204,7 @@ export default function OwnerDashboardPage() {
     window.addEventListener('depo_kontak_updated', handleUpdate);
     window.addEventListener('depo_produk_updated', handleUpdate);
     window.addEventListener('depo_setoran_kurir_updated', handleUpdate);
+    window.addEventListener('depo_foto_meter_updated', handleUpdate);
     window.addEventListener('depo_notifikasi_updated', handleUpdate);
 
     // Interval for dynamic duration updates
@@ -215,6 +219,7 @@ export default function OwnerDashboardPage() {
       window.removeEventListener('depo_kontak_updated', handleUpdate);
       window.removeEventListener('depo_produk_updated', handleUpdate);
       window.removeEventListener('depo_setoran_kurir_updated', handleUpdate);
+      window.removeEventListener('depo_foto_meter_updated', handleUpdate);
       window.removeEventListener('depo_notifikasi_updated', handleUpdate);
       clearInterval(interval);
     };
@@ -844,6 +849,7 @@ export default function OwnerDashboardPage() {
                     <th style={{ padding: '10px', textAlign: 'right' }}>Ekspektasi Kas</th>
                     <th style={{ padding: '10px', textAlign: 'right' }}>Kas Fisik (Aktual)</th>
                     <th style={{ padding: '10px', textAlign: 'center' }}>Audit Selisih</th>
+                    <th style={{ padding: '10px', textAlign: 'center' }}>Foto Meter</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -912,6 +918,25 @@ export default function OwnerDashboardPage() {
                           ) : (
                             <span className="badge badge-info" style={{ fontSize: '0.7rem' }}>Lebih +{AppStore.formatRupiah(selisihShift)}</span>
                           )}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          {(['awal', 'akhir'] as const).map(jenis => {
+                            const foto = fotoMeterList.find(f => f.shift_id === s.id && f.jenis === jenis);
+                            const meter = jenis === 'awal' ? s.meter_awal : s.meter_akhir;
+                            if (!foto) return null;
+                            return (
+                              <button
+                                key={jenis}
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => setFotoLihat({ judul: `Meteran ${jenis} - ${s.kasir_nama || 'Kasir'}`, gambar: foto.gambar, info: `${formatTanggalJam(foto.waktu)}${meter !== undefined ? ` - tercatat ${meter.toLocaleString('id-ID')} Liter` : ''}` })}
+                                style={{ marginInline: '2px', fontSize: '0.72rem' }}
+                              >
+                                Foto {jenis}
+                              </button>
+                            );
+                          })}
+                          {!fotoMeterList.some(f => f.shift_id === s.id) && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>-</span>}
                         </td>
                       </tr>
                     );
@@ -2738,6 +2763,19 @@ export default function OwnerDashboardPage() {
 
       {/* SECTION 6: Rekap Kas Setoran & Audit Shift Kasir */}
       {renderRekapKasAndShiftAuditSection()}
+
+      {fotoLihat && (
+        <div className="sheet-overlay" style={{ zIndex: 10001 }} onClick={() => setFotoLihat(null)}>
+          <div className="sheet" role="dialog" aria-modal="true" aria-label={fotoLihat.judul} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-header">
+              <h2 className="sheet-title">{fotoLihat.judul}</h2>
+              <button type="button" className="icon-btn" aria-label="Tutup foto" onClick={() => setFotoLihat(null)}><X size={20} aria-hidden="true" /></button>
+            </div>
+            <img src={fotoLihat.gambar} alt={fotoLihat.judul} style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '12px', background: '#000' }} />
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '10px 0 0' }}>{fotoLihat.info}</p>
+          </div>
+        </div>
+      )}
 
       {/* MODAL EDIT TARGET PENJUALAN */}
       {showEditTargetModal && (

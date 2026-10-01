@@ -8,7 +8,7 @@ import { PERIODE_TARGET, ambilTarget, aturTarget, LITER_PER_GALON } from '@/lib/
 import {
   Settings, Image as ImageIcon, Upload, Save, Droplets, 
   CheckCircle, Trash2, AlertTriangle, Wrench, Plus, Gauge,
-  Users, UserPlus, Phone, MapPin, DollarSign, Calendar, Edit3, X, UserCheck, Target,
+  Users, UserPlus, Phone, MapPin, DollarSign, Calendar, Edit3, X, UserCheck, Target, Camera,
   Bell, BellOff, Volume2, Clock, Package, KeyRound
 } from 'lucide-react';
 
@@ -830,6 +830,40 @@ export default function AdminPengaturanPage() {
               Volume liter dihitung dari semua produk (botol, jerigen, galon) sesuai isi tiap wadah. Kalau belum diisi, targetnya otomatis target galon dikali {LITER_PER_GALON} liter. Isi 0 untuk tidak memakai target.
             </p>
           </div>
+        </div>
+
+        {/* SECTION Foto Meteran Air Depo */}
+        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-sky)' }}>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Camera size={22} color="#38bdf8" /> Foto Meteran Air Depo
+          </h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '14px' }}>
+            Saat kasir mengisi meteran air awal (buka shift) dan akhir (tutup shift), aplikasi bisa meminta foto meterannya sebagai bukti. Foto dikecilkan otomatis, dan yang lebih lama dari 60 hari dihapus sendiri.
+          </p>
+          <div className="seg-grid" role="radiogroup" aria-label="Aturan foto meteran air">
+            {([
+              ['wajib', 'Wajib foto'],
+              ['opsional', 'Boleh dilewati'],
+              ['nonaktif', 'Tidak usah foto'],
+            ] as const).map(([nilai, label]) => (
+              <button
+                key={nilai}
+                type="button"
+                role="radio"
+                aria-checked={(pengaturan.foto_meter_mode || 'opsional') === nilai}
+                className="seg-btn"
+                onClick={() => setPengaturan(prev => ({ ...prev, foto_meter_mode: nilai }))}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '10px' }}>
+            {(pengaturan.foto_meter_mode || 'opsional') === 'wajib' && 'Kasir tidak bisa membuka atau menutup shift sebelum memfoto meteran.'}
+            {(pengaturan.foto_meter_mode || 'opsional') === 'opsional' && 'Kolom foto tampil, tapi kasir boleh melewatinya.'}
+            {(pengaturan.foto_meter_mode || 'opsional') === 'nonaktif' && 'Kolom foto tidak tampil di buka dan tutup shift.'}
+            {' '}Ingat tekan Simpan Seluruh Pengaturan di bawah setelah memilih.
+          </p>
         </div>
 
         {/* SECTION Notifikasi & Alarm Keterlambatan Pengiriman */}
