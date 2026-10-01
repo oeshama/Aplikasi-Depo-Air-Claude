@@ -126,7 +126,7 @@ export default function PetaSebaran({ titik, depoLat, depoLng, cincin, pilihId, 
       peta.on('zoomend moveend', gambarTitik);
       petaRef.current = peta;
       setSiap(true);
-      setTimeout(() => { peta.invalidateSize(); gambarTitik(); }, 250);
+      setTimeout(() => { if (petaRef.current === peta) { peta.invalidateSize(); gambarTitik(); } }, 250);
     });
     return () => {
       batal = true;

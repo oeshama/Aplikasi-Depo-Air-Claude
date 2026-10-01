@@ -41,7 +41,7 @@ export default function PetaRute({ perhentian, depoLat, depoLng, tinggi = 300 }:
       layerRef.current = L.layerGroup().addTo(peta);
       petaRef.current = peta;
       setSiap(true);
-      setTimeout(() => peta.invalidateSize(), 250);
+      setTimeout(() => { if (petaRef.current === peta) peta.invalidateSize(); }, 250);
     });
     return () => {
       batal = true;

@@ -5,17 +5,37 @@ import { PengaturanDepo, KomponenServis, Karyawan, UserApp, GalonPinjamanPelangg
 import { AppStore } from '@/lib/store';
 import LokasiField from '@/components/LokasiField';
 import { PERIODE_TARGET, ambilTarget, aturTarget, LITER_PER_GALON } from '@/lib/target';
-import { cetakUji } from '@/lib/cetak';
+import { cetakUji, namaCetak } from '@/lib/cetak';
 import {
   Settings, Image as ImageIcon, Upload, Save, Droplets, 
   CheckCircle, Trash2, AlertTriangle, Wrench, Plus, Gauge,
   Users, UserPlus, Phone, MapPin, DollarSign, Calendar, Edit3, X, UserCheck, Target, Camera, Printer,
-  Bell, BellOff, Volume2, Clock, Package, KeyRound
+  Bell, BellOff, Volume2, Clock, Package, KeyRound, ChevronRight, ArrowLeft, Store, type LucideIcon
 } from 'lucide-react';
+
+type KategoriId = 'toko' | 'karyawan' | 'printer' | 'target' | 'operasional' | 'data';
+
+const KATEGORI: { id: KategoriId; judul: string; Ikon: LucideIcon; warna: string }[] = [
+  { id: 'toko', judul: 'Toko', Ikon: Store, warna: '#0284c7' },
+  { id: 'karyawan', judul: 'Karyawan dan gaji', Ikon: Users, warna: '#10b981' },
+  { id: 'printer', judul: 'Printer dan struk', Ikon: Printer, warna: '#0284c7' },
+  { id: 'target', judul: 'Target penjualan', Ikon: Target, warna: '#10b981' },
+  { id: 'operasional', judul: 'Operasional depo', Ikon: Wrench, warna: '#f59e0b' },
+  { id: 'data', judul: 'Data dan reset', Ikon: AlertTriangle, warna: '#ef4444' },
+];
+
+const KATEGORI_FORM: KategoriId[] = ['toko', 'printer', 'target', 'operasional'];
 
 export default function AdminPengaturanPage() {
   const [pengaturan, setPengaturan] = useState<PengaturanDepo>(AppStore.getPengaturan());
   const [saveSuccess, setSaveSuccess] = useState(false);
+  // Kategori yang sedang dibuka (kosong = daftar kategori) dan salinan data yang terakhir disimpan
+  const simpanPengaturan = (data: PengaturanDepo) => {
+    AppStore.savePengaturan(data);
+    setDisimpanJson(JSON.stringify(data));
+  };
+  const [kategori, setKategori] = useState<KategoriId | null>(null);
+  const [disimpanJson, setDisimpanJson] = useState<string>('');
   const [logoPreview, setLogoPreview] = useState<string>('');
 
   // Karyawan Modal State
@@ -171,6 +191,7 @@ export default function AdminPengaturanPage() {
     }
 
     setPengaturan(data);
+    setDisimpanJson(JSON.stringify(data));
     setLogoPreview(data.logo_url || '');
   }, []);
 
@@ -281,7 +302,7 @@ export default function AdminPengaturanPage() {
       });
       const updatedPengaturan = { ...pengaturan, karyawan_list: updatedList };
       setPengaturan(updatedPengaturan);
-      AppStore.savePengaturan(updatedPengaturan);
+      simpanPengaturan(updatedPengaturan);
     } else {
       // Add Mode
       const newKaryawan: Karyawan = {
@@ -301,7 +322,7 @@ export default function AdminPengaturanPage() {
       const updatedList = [...(pengaturan.karyawan_list || []), newKaryawan];
       const updatedPengaturan = { ...pengaturan, karyawan_list: updatedList };
       setPengaturan(updatedPengaturan);
-      AppStore.savePengaturan(updatedPengaturan);
+      simpanPengaturan(updatedPengaturan);
     }
 
     setShowKaryawanModal(false);
@@ -312,7 +333,7 @@ export default function AdminPengaturanPage() {
       const updatedList = (pengaturan.karyawan_list || []).filter(k => k.id !== id);
       const updatedPengaturan = { ...pengaturan, karyawan_list: updatedList };
       setPengaturan(updatedPengaturan);
-      AppStore.savePengaturan(updatedPengaturan);
+      simpanPengaturan(updatedPengaturan);
     }
   };
 
@@ -322,12 +343,12 @@ export default function AdminPengaturanPage() {
     );
     const updatedPengaturan = { ...pengaturan, karyawan_list: updatedList };
     setPengaturan(updatedPengaturan);
-    AppStore.savePengaturan(updatedPengaturan);
+    simpanPengaturan(updatedPengaturan);
   };
 
   const handleSubmitMain = (e: React.FormEvent) => {
     e.preventDefault();
-    AppStore.savePengaturan(pengaturan);
+    simpanPengaturan(pengaturan);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 4000);
   };
@@ -368,7 +389,7 @@ export default function AdminPengaturanPage() {
 
     const updatedPengaturan = { ...pengaturan, galon_pinjaman_pelanggan: updatedList };
     setPengaturan(updatedPengaturan);
-    AppStore.savePengaturan(updatedPengaturan);
+    simpanPengaturan(updatedPengaturan);
 
     // Sync Kontak galon_dipinjam to 0 if no active loan remains
     const allKontak = AppStore.getKontak();
@@ -386,7 +407,7 @@ export default function AdminPengaturanPage() {
       setPinjamanListState([]);
       const updatedPengaturan = { ...pengaturan, galon_pinjaman_pelanggan: [] };
       setPengaturan(updatedPengaturan);
-      AppStore.savePengaturan(updatedPengaturan);
+      simpanPengaturan(updatedPengaturan);
 
       const allKontak = AppStore.getKontak();
       const updatedKontak = allKontak.map(k => ({ ...k, galon_dipinjam: 0 }));
@@ -438,9 +459,32 @@ export default function AdminPengaturanPage() {
     alert('Koreksi Stok Opname (Galon Milik Depo, Pinjaman Pelanggan, Meteran Air Awal, & Stok Komponen Mesin) Berhasil Disimpan oleh Owner!');
   };
 
+  const tampil = (...ids: KategoriId[]) => kategori !== null && ids.includes(kategori);
+  const adaPerubahan = disimpanJson !== '' && JSON.stringify(pengaturan) !== disimpanJson;
+
+  const pilihKategori = (id: KategoriId | null) => {
+    setKategori(id);
+    if (typeof window !== 'undefined') window.scrollTo(0, 0);
+  };
+
+  const ringkasan = (id: KategoriId): string => {
+    const modeFoto = { wajib: 'wajib', opsional: 'boleh dilewati', nonaktif: 'mati' }[pengaturan.foto_meter_mode || 'opsional'];
+    switch (id) {
+      case 'toko': return namaCetak(pengaturan);
+      case 'karyawan': return `${(pengaturan.karyawan_list || []).length} karyawan`;
+      case 'printer': return `${pengaturan.printer_metode === 'rawbt' ? 'RawBT' : 'Dialog browser'}, ${pengaturan.printer_lebar_mm || 58} mm`;
+      case 'target': return `Harian ${AppStore.formatRupiah(ambilTarget(pengaturan, 'omzet', 'harian'))}`;
+      case 'operasional': return `Foto meteran ${modeFoto}, ${(pengaturan.komponen_servis_list || []).length} komponen mesin`;
+      default: return 'Reset data dan pemulihan';
+    }
+  };
+  const judulKategori = KATEGORI.find(k => k.id === kategori)?.judul || '';
+
   return (
     <div style={{ maxWidth: '920px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
+      {kategori === null && (
+        <>
       {/* Header */}
       <div className="glass-card animate-fade-in" style={{ padding: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
@@ -460,6 +504,51 @@ export default function AdminPengaturanPage() {
         </div>
       </div>
 
+        </>
+      )}
+
+      {/* Daftar kategori */}
+      {kategori === null && (
+        <div className="glass-card animate-fade-in" style={{ padding: '8px' }}>
+          {KATEGORI.map((k, i) => (
+            <button
+              key={k.id}
+              type="button"
+              onClick={() => pilihKategori(k.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '14px', width: '100%', textAlign: 'left', minHeight: '68px',
+                padding: '12px 14px', border: 0, borderBottom: i < KATEGORI.length - 1 ? '1px solid var(--glass-border)' : 0,
+                background: 'transparent', color: 'inherit', cursor: 'pointer'
+              }}
+            >
+              <k.Ikon size={24} color={k.warna} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <strong style={{ display: 'block', fontSize: '1rem' }}>{k.judul}</strong>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ringkasan(k.id)}</span>
+              </span>
+              <ChevronRight size={20} aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Kepala kategori */}
+      {kategori !== null && (
+        <div className="glass-card animate-fade-in" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => pilihKategori(null)}>
+            <ArrowLeft size={16} aria-hidden="true" /> Semua pengaturan
+          </button>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, flex: 1 }}>{judulKategori}</h1>
+          {saveSuccess && (
+            <span className="badge badge-success" role="status" style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle size={16} aria-hidden="true" /> Tersimpan
+            </span>
+          )}
+        </div>
+      )}
+
+      {tampil('karyawan') && (
+        <>
       {/* SECTION 1: Manajemen Karyawan & Komponen Gaji (NEW USER REQUEST) */}
       <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-green-strong)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
@@ -540,6 +629,11 @@ export default function AdminPengaturanPage() {
 
       </div>
 
+        </>
+      )}
+
+      {tampil('operasional') && (
+        <>
       {/* SECTION STOK OPNAME DEPO & ASSET CONTROL (Khusus Owner) */}
       <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-sky)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
@@ -699,16 +793,21 @@ export default function AdminPengaturanPage() {
         </div>
       </div>
 
+        </>
+      )}
+
       {/* Main Settings Form */}
       <form onSubmit={handleSubmitMain} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         
+      {tampil('toko') && (
+        <>
         {/* SECTION 2: Logo & Nama Toko */}
         <div className="glass-card animate-fade-in" style={{ padding: '24px' }}>
           <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ImageIcon size={22} color="#0284c7" /> Logo & Nama Resmi Depo/Toko
           </h3>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '24px', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'flex-start' }}>
             
             {/* Logo Preview & Uploader */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
@@ -744,7 +843,7 @@ export default function AdminPengaturanPage() {
             </div>
 
             {/* Nama & Tagline Form */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: '1 1 240px', minWidth: 0 }}>
               <div className="form-group">
                 <label className="form-label">Nama Depo / Toko</label>
                 <input 
@@ -798,6 +897,11 @@ export default function AdminPengaturanPage() {
           </div>
         </div>
 
+        </>
+      )}
+
+      {tampil('target') && (
+        <>
         {/* SECTION Target Penjualan Harian & Periode */}
         <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-green-strong)' }}>
           <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -833,6 +937,11 @@ export default function AdminPengaturanPage() {
           </div>
         </div>
 
+        </>
+      )}
+
+      {tampil('operasional') && (
+        <>
         {/* SECTION Foto Meteran Air Depo */}
         <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-sky)' }}>
           <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -863,10 +972,15 @@ export default function AdminPengaturanPage() {
             {(pengaturan.foto_meter_mode || 'opsional') === 'wajib' && 'Kasir tidak bisa membuka atau menutup shift sebelum memfoto meteran.'}
             {(pengaturan.foto_meter_mode || 'opsional') === 'opsional' && 'Kolom foto tampil, tapi kasir boleh melewatinya.'}
             {(pengaturan.foto_meter_mode || 'opsional') === 'nonaktif' && 'Kolom foto tidak tampil di buka dan tutup shift.'}
-            {' '}Ingat tekan Simpan Seluruh Pengaturan di bawah setelah memilih.
+            {' '}Setelah memilih, tekan Simpan pengaturan di bagian bawah layar.
           </p>
         </div>
 
+        </>
+      )}
+
+      {tampil('printer') && (
+        <>
         {/* SECTION Printer Struk */}
         <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-primary)' }}>
           <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -951,7 +1065,7 @@ export default function AdminPengaturanPage() {
               <li>Nyalakan printer, lalu di Pengaturan HP buka Bluetooth dan sambungkan (pairing) printernya. Kodenya biasanya 0000 atau 1234.</li>
               <li>Pasang aplikasi <strong>RawBT</strong> dari Play Store (gratis).</li>
               <li>Buka RawBT, pilih printer yang tadi disambungkan, dan atur lebar kertas 58 mm di dalam RawBT.</li>
-              <li>Di sini pilih <strong>Aplikasi RawBT</strong>, tekan Simpan Seluruh Pengaturan di bawah, lalu tekan <strong>Uji cetak</strong>. Pertama kali, Android bisa bertanya aplikasi mana yang dipakai: pilih RawBT.</li>
+              <li>Di sini pilih <strong>Aplikasi RawBT</strong>, tekan Simpan pengaturan di bagian bawah layar, lalu tekan <strong>Uji cetak</strong>. Pertama kali, Android bisa bertanya aplikasi mana yang dipakai: pilih RawBT.</li>
               <li>Kalau uji cetak rapi, coba satu transaksi. Struk keluar dari tombol Cetak Thermal di struk, atau otomatis bila pilihan di atas diaktifkan.</li>
             </ol>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>
@@ -960,6 +1074,11 @@ export default function AdminPengaturanPage() {
           </details>
         </div>
 
+        </>
+      )}
+
+      {tampil('operasional') && (
+        <>
         {/* SECTION Notifikasi & Alarm Keterlambatan Pengiriman */}
         <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-red-strong)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
@@ -1068,6 +1187,11 @@ export default function AdminPengaturanPage() {
           </div>
         </div>
 
+        </>
+      )}
+
+      {tampil('operasional') && (
+        <>
         {/* SECTION 3: Notifikasi Stok Air Baku */}
         <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-primary)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
@@ -1141,6 +1265,11 @@ export default function AdminPengaturanPage() {
           </div>
         </div>
 
+        </>
+      )}
+
+      {tampil('operasional') && (
+        <>
         {/* SECTION 4: Komponen Mesin & Jadwal Servis (Satuan Liter) */}
         <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-amber-strong)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
@@ -1249,6 +1378,11 @@ export default function AdminPengaturanPage() {
           </div>
         </div>
 
+        </>
+      )}
+
+      {tampil('toko') && (
+        <>
         {/* SECTION 5: Kontak & Alamat Depo */}
         <div className="glass-card animate-fade-in" style={{ padding: '24px' }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '16px' }}>
@@ -1301,7 +1435,7 @@ export default function AdminPengaturanPage() {
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
               Dipakai untuk menghitung jarak pelanggan ke depo (peta sebaran dan validasi zona ongkir).
               Batas jarak tiap zona diatur di menu <a href="/admin/zona" style={{ color: 'var(--c-sky)', fontWeight: 600 }}>Zona Ongkir</a>.
-              Tekan <strong>Simpan Pengaturan</strong> di bagian bawah setelah memilih lokasi.
+              Tekan <strong>Simpan pengaturan</strong> di bagian bawah layar setelah memilih lokasi.
             </p>
             <LokasiField
               idDasar="lokasi-depo"
@@ -1311,6 +1445,21 @@ export default function AdminPengaturanPage() {
             />
           </div>
 
+        </div>
+
+        </>
+      )}
+
+      {tampil('printer') && (
+        <>
+        {/* Header dan footer struk */}
+        <div className="glass-card animate-fade-in" style={{ padding: '24px' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
+            Header dan Footer Struk
+          </h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
+            Baris pertama header menjadi nama toko di struk, pesan WhatsApp, bar atas aplikasi, dan halaman login. Kalau header dikosongkan, dipakai Nama Depo.
+          </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div className="form-group">
               <label className="form-label">Header Struk Cetak</label>
@@ -1334,6 +1483,11 @@ export default function AdminPengaturanPage() {
           </div>
         </div>
 
+        </>
+      )}
+
+      {tampil('data') && (
+        <>
         {/* SECTION 6: DANGER ZONE - Reset Database (Pilihan Data) */}
         <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-red-strong)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
@@ -1514,10 +1668,25 @@ export default function AdminPengaturanPage() {
           </div>
         </div>
 
-        {/* Save Button */}
-        <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%' }}>
-          <Save size={20} /> Simpan Seluruh Pengaturan Depo & Karyawan
-        </button>
+        </>
+      )}
+
+        {/* Bar simpan melayang */}
+        {(adaPerubahan || (kategori !== null && KATEGORI_FORM.includes(kategori))) && (
+          <div style={{ position: 'sticky', bottom: 'calc(10px + env(safe-area-inset-bottom, 0px))', zIndex: 30 }}>
+            <div className="glass-card" style={{
+              padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
+              border: adaPerubahan ? '1px solid var(--c-amber)' : '1px solid var(--glass-border)', background: 'var(--surface-solid)'
+            }}>
+              <span role="status" style={{ fontSize: '0.88rem', fontWeight: 600, color: adaPerubahan ? 'var(--c-amber)' : 'var(--text-muted)' }}>
+                {adaPerubahan ? 'Ada perubahan yang belum disimpan' : 'Semua sudah tersimpan'}
+              </span>
+              <button type="submit" className="btn btn-primary" style={{ minHeight: '44px' }}>
+                <Save size={18} aria-hidden="true" /> Simpan pengaturan
+              </button>
+            </div>
+          </div>
+        )}
 
       </form>
 

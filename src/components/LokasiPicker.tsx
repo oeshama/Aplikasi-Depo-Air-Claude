@@ -87,7 +87,7 @@ export default function LokasiPicker({ lat, lng, depoLat, depoLng, onChange, tin
 
       petaRef.current = peta;
       // Peta di dalam popup: hitung ulang ukuran setelah tampil
-      setTimeout(() => peta.invalidateSize(), 250);
+      setTimeout(() => { if (petaRef.current === peta) peta.invalidateSize(); }, 250);
     });
 
     return () => {
