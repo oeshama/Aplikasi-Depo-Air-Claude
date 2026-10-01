@@ -6,7 +6,7 @@ import ZonaSelect from '@/components/ZonaSelect';
 import LokasiField from '@/components/LokasiField';
 import { koordinatValid, urlGoogleMaps } from '@/lib/geo';
 import { AppStore } from '@/lib/store';
-import { Users, UserPlus, Phone, MapPin, Search, Edit3, Trash2, Shield, X, Check, ChevronDown, ChevronUp, Target } from 'lucide-react';
+import { Users, UserPlus, Phone, MapPin, Search, Edit3, Trash2, Shield, X, Check, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function AdminKontakPage() {
   const [kontakList, setKontakList] = useState<Kontak[]>([]);
@@ -172,22 +172,6 @@ export default function AdminKontakPage() {
     k.alamat.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Target Penjualan Harian Calculations for Admin Widget
-  const todayPesanan = pesananList.filter(p => new Date(p.created_at).toDateString() === new Date().toDateString());
-  const totalOmzetHarian = todayPesanan.reduce((acc, p) => acc + p.total_akhir, 0);
-  const totalGalonHarian = todayPesanan.reduce((acc, p) => {
-    const galonQty = p.items
-      .filter(item => item.nama_produk.includes('Galon'))
-      .reduce((sum, item) => sum + item.jumlah, 0);
-    return acc + galonQty;
-  }, 0);
-
-  const targetOmzetHarian = pengaturan.target_omzet_harian ?? 500000;
-  const targetGalonHarian = pengaturan.target_galon_harian ?? 50;
-
-  const persenOmzet = Math.min(100, Math.round((totalOmzetHarian / targetOmzetHarian) * 100));
-  const persenGalon = Math.min(100, Math.round((totalGalonHarian / targetGalonHarian) * 100));
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
@@ -204,82 +188,6 @@ export default function AdminKontakPage() {
         <button onClick={openAddModal} className="btn btn-primary">
           <UserPlus size={18} /> Tambah Kontak Baru
         </button>
-      </div>
-
-      {/* Target Penjualan & Capaian (HARIAN) Widget */}
-      <div className="glass-card animate-fade-in" style={{ padding: '20px', borderLeft: '4px solid var(--c-green-strong)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Target size={20} color="#10b981" /> Target Penjualan & Capaian (HARIAN)
-          </h3>
-          <a href="/owner/dashboard" className="btn btn-secondary btn-sm" style={{ fontSize: '0.78rem', color: 'var(--c-green)', borderColor: 'rgba(16, 185, 129, 0.4)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            Edit Target & Lihat Dashboard Detail
-          </a>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
-          
-          {/* Target Omzet */}
-          <div style={{ background: 'var(--inset-70)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Target Pendapatan / Omzet</span>
-              <span className={`badge ${persenOmzet >= 100 ? 'badge-success' : 'badge-warning'}`}>
-                {persenOmzet >= 100 ? 'TERCAPAI' : 'DALAM PROSES'}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
-              <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--c-green)' }}>
-                {AppStore.formatRupiah(totalOmzetHarian)}
-              </h4>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Target: {AppStore.formatRupiah(targetOmzetHarian)}
-              </span>
-            </div>
-
-            <div style={{ width: '100%', height: '8px', background: 'var(--w-10)', borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{
-                width: `${persenOmzet}%`, height: '100%',
-                background: 'linear-gradient(90deg, var(--c-green-strong) 0%, var(--c-green) 100%)',
-                transition: 'width 0.4s ease'
-              }} />
-            </div>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
-              Capaian: {persenOmzet}% dari target harian
-            </span>
-          </div>
-
-          {/* Target Galon */}
-          <div style={{ background: 'var(--inset-70)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Target Volume Penjualan Galon</span>
-              <span className={`badge ${persenGalon >= 100 ? 'badge-success' : 'badge-primary'}`}>
-                {persenGalon >= 100 ? 'TERCAPAI' : 'BERJALAN'}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
-              <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--c-sky)' }}>
-                {totalGalonHarian} Galon
-              </h4>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Target: {targetGalonHarian} Galon
-              </span>
-            </div>
-
-            <div style={{ width: '100%', height: '8px', background: 'var(--w-10)', borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{
-                width: `${persenGalon}%`, height: '100%',
-                background: 'linear-gradient(90deg, var(--c-primary) 0%, var(--c-sky) 100%)',
-                transition: 'width 0.4s ease'
-              }} />
-            </div>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
-              Capaian: {persenGalon}% dari target harian ({totalGalonHarian * 19} Liter)
-            </span>
-          </div>
-
-        </div>
       </div>
 
       {/* Filter & Search */}
