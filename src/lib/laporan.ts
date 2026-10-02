@@ -109,7 +109,7 @@ export interface DataLaporan {
   marginPersen: number;
   uang: {
     tunaiLangsung: number; setoranKurir: number; nonTunai: number; hutangBaru: number;
-    pengeluaranLaci: number; diserahkanOwner: number;
+    pengeluaranLaci: number; pengeluaranKasOwner: number; pengeluaranPegangan: number; peganganDiKasir: number; diserahkanOwner: number;
     selisihKasir: { kasir: string; shift: number; selisihLaci: number; selisihSetoran: number }[];
     saldoAkhir: { nama: string; saldo: number }[] | null;
   };
@@ -269,7 +269,11 @@ export function hitungLaporan(rentang: RentangLaporan): DataLaporan {
     marginPersen: ini.omzet > 0 ? Math.round((ini.labaBersih / ini.omzet) * 100) : 0,
     uang: {
       tunaiLangsung: kas.tunaiLangsung, setoranKurir: kas.setoranKurir, nonTunai, hutangBaru,
-      pengeluaranLaci: kas.keluar, diserahkanOwner: kas.diserahkanOwner,
+      pengeluaranLaci: kas.keluar,
+      pengeluaranKasOwner: pengeluaranAll.filter(p => p && dalam(p.tanggal, rentang) && p.tipe_arus_kas !== 'masuk' && (p.sumber_kas === 'kas_besar' || p.sumber_kas === 'rekening')).reduce((a, p) => a + (p.nominal || 0), 0),
+      pengeluaranPegangan: pengeluaranAll.filter(p => p && dalam(p.tanggal, rentang) && p.tipe_arus_kas !== 'masuk' && p.sumber_kas === 'pegangan').reduce((a, p) => a + (p.nominal || 0), 0),
+      peganganDiKasir: AppStore.getUsers().filter(u => u.role === 'kasir').reduce((a, u) => a + Math.max(0, AppStore.getSaldoPegangan(u.id)), 0),
+      diserahkanOwner: kas.diserahkanOwner,
       selisihKasir: Array.from(kasirMap.values()), saldoAkhir
     },
     piutang, karyawan, pelanggan,

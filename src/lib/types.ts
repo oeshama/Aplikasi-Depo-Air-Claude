@@ -178,8 +178,23 @@ export interface SetoranOwner {
   catatan?: string;
 }
 
-// Asal uang pengeluaran: hanya 'laci' yang mengurangi kas laci kasir
-export type SumberKas = 'laci' | 'kas_besar' | 'rekening';
+// Uang pegangan: uang dari kas besar owner yang dipegang seorang kasir di luar laci (mis. untuk beli air baku).
+// 'beri' = owner memberi (kasir harus menerima dulu), 'kembali' = kasir mengembalikan sisa (owner harus menerima).
+export interface UangPegangan {
+  id: string;
+  waktu: string;
+  jenis: 'beri' | 'kembali';
+  kasir_id: string;
+  kasir_nama: string;
+  nominal: number;
+  tujuan?: string;
+  status: 'menunggu' | 'diterima' | 'dibatalkan';
+  diterima_at?: string;
+  oleh: string;
+}
+
+// Asal uang pengeluaran: hanya 'laci' yang mengurangi kas laci kasir; 'pegangan' memakai uang pegangan kasir
+export type SumberKas = 'laci' | 'kas_besar' | 'rekening' | 'pegangan';
 
 // Rekening bank / dompet digital milik usaha (saldo dihitung dari saldo awal + semua mutasi)
 export interface Rekening {

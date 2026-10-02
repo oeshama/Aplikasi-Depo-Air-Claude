@@ -15,6 +15,7 @@ import ZonaSelect from '@/components/ZonaSelect';
 import KonfirmasiTerkirimSheet from '@/components/KonfirmasiTerkirimSheet';
 import SetoranKurirSheet from '@/components/SetoranKurirSheet';
 import SerahOwnerSheet from '@/components/SerahOwnerSheet';
+import PeganganKasirCard from '@/components/PeganganKasirCard';
 import {
   ShoppingCart, Plus, Minus, User, Truck, Receipt,
   CreditCard, DollarSign, QrCode, Building, Clock, AlertTriangle, Check,
@@ -150,6 +151,7 @@ export default function KasirPage() {
   const [kategoriPengeluaran, setKategoriPengeluaran] = useState<string>('operasional');
   const [selectedKaryawanId, setSelectedKaryawanId] = useState<string>('');
   const [catatanPengeluaran, setCatatanPengeluaran] = useState<string>('');
+  const [sumberPengeluaran, setSumberPengeluaran] = useState<'laci' | 'pegangan'>('laci');
 
   // Additional state for Pembelian Air Baku Tangki
   const [vendorAirBaku, setVendorAirBaku] = useState<string>('Truk Tangki Tirta Jaya');
@@ -332,6 +334,14 @@ export default function KasirPage() {
 
     // pengembalian_kasbon adds money back into cash drawer (kas masuk)
     const isKasMasuk = kategoriPengeluaran === 'pengembalian_kasbon';
+    const pakaiPegangan = sumberPengeluaran === 'pegangan' && !isKasMasuk;
+    if (pakaiPegangan) {
+      const saldoPegangan = AppStore.getSaldoPegangan(currentUser.id);
+      if (finalNominal > saldoPegangan) {
+        alert('Uang pegangan Anda tinggal ' + AppStore.formatRupiah(saldoPegangan) + ', tidak cukup untuk ' + AppStore.formatRupiah(finalNominal) + '.');
+        return;
+      }
+    }
 
     const newPengeluaran: Pengeluaran = {
       id: `exp-${Date.now()}`,
@@ -342,7 +352,7 @@ export default function KasirPage() {
       karyawan_id: kary ? kary.id : undefined,
       karyawan_nama: kary ? kary.nama : undefined,
       tipe_arus_kas: isKasMasuk ? 'masuk' : 'keluar',
-      sumber_kas: 'laci', // dari layar kasir, uangnya selalu dari laci
+      sumber_kas: pakaiPegangan ? 'pegangan' : 'laci', // dari layar kasir: laci, atau uang pegangan dari owner
       kasir_id: currentUser.id,
       kasir_nama: currentUser.nama,
       catatan: catatanPengeluaran.trim() || undefined,
@@ -375,6 +385,7 @@ export default function KasirPage() {
     setKategoriPengeluaran('operasional');
     setSelectedKaryawanId('');
     setCatatanPengeluaran('');
+    setSumberPengeluaran('laci');
     setShowAddPengeluaranModal(false);
 
     // Open Expense Receipt modal for printable receipt and WhatsApp reporting to owner
@@ -499,6 +510,7 @@ export default function KasirPage() {
     window.addEventListener('depo_pengeluaran_updated', loadData);
     window.addEventListener('depo_setoran_kurir_updated', loadData);
     window.addEventListener('depo_setoran_owner_updated', loadData);
+    window.addEventListener('depo_uang_pegangan_updated', loadData);
 
     const interval = setInterval(() => setNowTick(Date.now()), 10000);
 
@@ -512,6 +524,7 @@ export default function KasirPage() {
       window.removeEventListener('depo_pengeluaran_updated', loadData);
       window.removeEventListener('depo_setoran_kurir_updated', loadData);
       window.removeEventListener('depo_setoran_owner_updated', loadData);
+      window.removeEventListener('depo_uang_pegangan_updated', loadData);
       clearInterval(interval);
     };
   }, []);
@@ -1048,6 +1061,8 @@ export default function KasirPage() {
           </button>
         </div>
       )}
+
+      <PeganganKasirCard />
 
       {/* RINGKAS: kas laci, antaran/peringatan, dan menu tugas jarang */}
       <div className="glass-card" style={{ padding: '12px 14px' }}>
@@ -1955,6 +1970,8 @@ export default function KasirPage() {
             }}>
               {kategoriPengeluaran === 'pengembalian_kasbon' ? (
                 <><strong>KAS MASUK (+):</strong> Uang pengembalian kasbon diterima dari karyawan dan masuk ke laci kasir (<strong>Menambah Saldo Kas Setoran</strong>).</>
+              ) : sumberPengeluaran === 'pegangan' ? (
+                <><strong>UANG PEGANGAN:</strong> Dipotong dari uang pegangan yang diberikan owner. <strong>Tidak</strong> mengurangi uang laci.</>
               ) : (
                 <>ℹ<strong>KAS KELUAR (-):</strong> Transaksi ini akan mengurangkan total <strong>Saldo Kas Fisik Kasir</strong> yang wajib disetor ke Owner.</>
               )}
@@ -1979,6 +1996,16 @@ export default function KasirPage() {
                   <option value="lain_lain">Pengeluaran Lain-Lain</option>
                 </select>
               </div>
+
+              {kategoriPengeluaran !== 'pengembalian_kasbon' && AppStore.getSaldoPegangan(AppStore.getCurrentUser().id) > 0 && (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="sumber-pengeluaran">Uang yang dipakai</label>
+                  <select id="sumber-pengeluaran" className="form-select" value={sumberPengeluaran} onChange={(e) => setSumberPengeluaran(e.target.value as 'laci' | 'pegangan')}>
+                    <option value="laci">Uang laci kasir</option>
+                    <option value="pegangan">Uang pegangan dari owner (sisa {AppStore.formatRupiah(AppStore.getSaldoPegangan(AppStore.getCurrentUser().id))})</option>
+                  </select>
+                </div>
+              )}
 
               {/* Seksi Khusus Detail Pembelian Air Baku Truk Tangki */}
               {kategoriPengeluaran === 'pembelian_air_baku' && (

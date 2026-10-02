@@ -1,7 +1,7 @@
 import {
   UserApp, Produk, ZoneOngkir, Kontak, Pesanan, TitipGalon,
-  PengaturanDepo, ShiftKasir, UserRole, Pengeluaran, HutangToko,
-  SetoranKurir, SetoranOwner, FotoMeter, ModeFotoMeter, Rekening, MutasiKeuangan, JenisMutasi, NotifikasiOwner, SaldoKurir, MetodePembayaran
+  PengaturanDepo, ShiftKasir, UserRole, Pengeluaran, HutangToko, SumberKas,
+  SetoranKurir, SetoranOwner, UangPegangan, FotoMeter, ModeFotoMeter, Rekening, MutasiKeuangan, JenisMutasi, NotifikasiOwner, SaldoKurir, MetodePembayaran
 } from './types';
 import { 
   DEMO_USERS, INITIAL_PRODUK, INITIAL_ZONA, INITIAL_KONTAK, 
@@ -372,6 +372,105 @@ export class AppStore {
     return s;
   }
 
+  // ===== Uang pegangan kasir: uang dari kas besar yang dipegang kasir di luar laci =====
+
+  static getUangPegangan(): UangPegangan[] {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem('depo_uang_pegangan');
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  static saveUangPegangan(data: UangPegangan[]) {
+    this.persist('depo_uang_pegangan', data);
+    window.dispatchEvent(new Event('depo_uang_pegangan_updated'));
+  }
+
+  // Saldo uang pegangan seorang kasir: yang sudah diterima, dikurangi yang dikembalikan dan yang sudah dibelanjakan
+  static getSaldoPegangan(kasirId: string): number {
+    const list = this.getUangPegangan().filter(x => x.kasir_id === kasirId && x.status !== 'dibatalkan');
+    const diterima = list.filter(x => x.jenis === 'beri' && x.status === 'diterima').reduce((a, x) => a + x.nominal, 0);
+    const kembali = list.filter(x => x.jenis === 'kembali').reduce((a, x) => a + x.nominal, 0);
+    const dipakai = this.getPengeluaran()
+      .filter(p => p.sumber_kas === 'pegangan' && p.kasir_id === kasirId && p.tipe_arus_kas !== 'masuk')
+      .reduce((a, p) => a + (p.nominal || 0), 0);
+    return diterima - kembali - dipakai;
+  }
+
+  // Owner memberi uang pegangan ke seorang kasir (boleh walau kasir belum buka shift). Kas besar langsung berkurang.
+  static beriUangPegangan(kasir: { id: string; nama: string }, nominal: number, tujuan?: string): UangPegangan {
+    if (!this.keuanganSudahMulai()) throw new Error('Mulai pencatatan Keuangan Owner dulu.');
+    const n = this.cekNominal(nominal);
+    this.cekSaldoCukup('kas_besar', n);
+    const x: UangPegangan = {
+      id: `pgg-${Date.now()}`, waktu: new Date().toISOString(), jenis: 'beri',
+      kasir_id: kasir.id, kasir_nama: kasir.nama, nominal: n, tujuan: tujuan?.trim() || undefined,
+      status: 'menunggu', oleh: this.getCurrentUser().nama
+    };
+    const list = this.getUangPegangan();
+    list.unshift(x);
+    this.saveUangPegangan(list);
+    return x;
+  }
+
+  // Kasir menerima uang pegangan dari owner
+  static terimaUangPegangan(id: string): UangPegangan {
+    const list = this.getUangPegangan();
+    const x = list.find(i => i.id === id);
+    if (!x) throw new Error('Data uang pegangan tidak ditemukan!');
+    if (x.jenis !== 'beri' || x.status !== 'menunggu') throw new Error('Uang pegangan ini sudah diproses.');
+    const user = this.getCurrentUser();
+    if (user.id !== x.kasir_id && user.role !== 'owner') throw new Error('Uang pegangan ini untuk kasir lain.');
+    x.status = 'diterima';
+    x.diterima_at = new Date().toISOString();
+    this.saveUangPegangan(list);
+    return x;
+  }
+
+  // Kasir mengembalikan sisa uang pegangan ke owner (menunggu diterima owner)
+  static kembalikanUangPegangan(nominal: number, kasir?: { id: string; nama: string }): UangPegangan {
+    const user = this.getCurrentUser();
+    const pemegang = kasir || { id: user.id, nama: user.nama };
+    const n = this.cekNominal(nominal);
+    const saldo = this.getSaldoPegangan(pemegang.id);
+    if (n > saldo) throw new Error(`Uang pegangan yang tersisa hanya ${this.formatRupiah(saldo)}.`);
+    const x: UangPegangan = {
+      id: `pgg-${Date.now()}`, waktu: new Date().toISOString(), jenis: 'kembali',
+      kasir_id: pemegang.id, kasir_nama: pemegang.nama, nominal: n, status: 'menunggu', oleh: user.nama
+    };
+    const list = this.getUangPegangan();
+    list.unshift(x);
+    this.saveUangPegangan(list);
+    this.addNotifikasi({
+      jenis: 'setoran_owner', judul: 'Sisa uang pegangan menunggu diterima',
+      pesan: `${pemegang.nama} mengembalikan sisa uang pegangan ${this.formatRupiah(n)}. Buka Keuangan Owner untuk menerimanya.`,
+      dibuat_oleh: user.nama
+    });
+    return x;
+  }
+
+  // Owner menerima sisa uang pegangan: uangnya masuk kembali ke kas besar
+  static terimaPengembalianPegangan(id: string): UangPegangan {
+    const list = this.getUangPegangan();
+    const x = list.find(i => i.id === id);
+    if (!x) throw new Error('Data uang pegangan tidak ditemukan!');
+    if (x.jenis !== 'kembali' || x.status !== 'menunggu') throw new Error('Pengembalian ini sudah diproses.');
+    x.status = 'diterima';
+    x.diterima_at = new Date().toISOString();
+    this.saveUangPegangan(list);
+    return x;
+  }
+
+  // Yang masih menunggu boleh dibatalkan (mis. salah ketik): uangnya kembali ke posisi semula
+  static batalkanUangPegangan(id: string): UangPegangan {
+    const list = this.getUangPegangan();
+    const x = list.find(i => i.id === id);
+    if (!x) throw new Error('Data uang pegangan tidak ditemukan!');
+    if (x.status !== 'menunggu') throw new Error('Hanya yang masih menunggu yang bisa dibatalkan.');
+    x.status = 'dibatalkan';
+    this.saveUangPegangan(list);
+    return x;
+  }
+
   // ===== Keuangan Owner: kas besar (tunai) dan rekening =====
 
   static getRekening(): Rekening[] {
@@ -434,6 +533,14 @@ export class AppStore {
     });
 
     if (akun === 'kas_besar') {
+      this.getUangPegangan().forEach(x => {
+        if (x.status === 'dibatalkan') return;
+        if (x.jenis === 'beri' && new Date(x.waktu).getTime() >= mulai) {
+          baris.push({ id: x.id, waktu: x.waktu, keterangan: `Uang pegangan ke ${x.kasir_nama}` + (x.tujuan ? ` - ${x.tujuan}` : '') + (x.status === 'menunggu' ? ' (belum diterima kasir)' : ''), masuk: 0, keluar: x.nominal });
+        } else if (x.jenis === 'kembali' && x.status === 'diterima' && x.diterima_at && new Date(x.diterima_at).getTime() >= mulai) {
+          baris.push({ id: x.id, waktu: x.diterima_at, keterangan: `Sisa uang pegangan dari ${x.kasir_nama}`, masuk: x.nominal, keluar: 0 });
+        }
+      });
       this.getSetoranOwner().filter(s => s.status === 'diterima' && s.diterima_at && new Date(s.diterima_at).getTime() >= mulai).forEach(s => {
         baris.push({
           id: s.id, waktu: s.diterima_at as string,
@@ -1047,7 +1154,8 @@ export class AppStore {
     this.saveHutangToko(list);
   }
 
-  static bayarHutangToko(id: string, jumlahBayar: number, catatan?: string) {
+  // sumber: bawaan laci (dari layar kasir); owner bisa membayar dari kas besar atau rekening
+  static bayarHutangToko(id: string, jumlahBayar: number, catatan?: string, sumber?: { sumber_kas: SumberKas; rekening_id?: string }): Pengeluaran {
     const list = this.getHutangToko();
     const idx = list.findIndex(h => h.id === id);
     if (idx === -1) throw new Error('Catatan hutang toko tidak ditemukan!');
@@ -1057,6 +1165,11 @@ export class AppStore {
     if (sisa <= 0) throw new Error('Hutang toko ini sudah lunas!');
 
     const bayar = Math.min(sisa, jumlahBayar);
+    if (sumber && (sumber.sumber_kas === 'kas_besar' || sumber.sumber_kas === 'rekening')) {
+      const akun = sumber.sumber_kas === 'kas_besar' ? 'kas_besar' : (sumber.rekening_id || '');
+      if (!akun) throw new Error('Pilih rekening yang dipakai membayar.');
+      this.cekSaldoCukup(akun, bayar);
+    }
     target.total_dibayar = (target.total_dibayar || 0) + bayar;
     target.sisa_hutang = Math.max(0, sisa - bayar);
     if (target.sisa_hutang === 0) {
@@ -1076,11 +1189,60 @@ export class AppStore {
       karyawan_id: target.karyawan_id,
       karyawan_nama: target.tipe_pihak === 'karyawan' ? target.nama_pihak : undefined,
       tipe_arus_kas: 'keluar',
+      ...(sumber ? { sumber_kas: sumber.sumber_kas, rekening_id: sumber.sumber_kas === 'rekening' ? sumber.rekening_id : undefined } : {}),
       kasir_id: currentUser.id,
       kasir_nama: currentUser.nama,
       catatan: catatan || `Pembayaran hutang toko ke ${target.nama_pihak}`
     };
     this.addPengeluaran(newExpense);
+    return newExpense;
+  }
+
+  // Owner mencatat pengeluaran yang dibayar dari kas besar atau rekening (mis. kasir sedang tidak ada).
+  // Pembelian air baku ikut menambah stok air baku, sama seperti saat dicatat dari layar kasir.
+  static catatPengeluaranOwner(i: {
+    sumber: 'kas_besar' | 'rekening'; rekening_id?: string; kategori: string; peruntukan: string; nominal: number; catatan?: string;
+    karyawan?: { id: string; nama: string };
+    air?: { vendor: string; volume: number; harga: number; tips: number };
+  }): Pengeluaran {
+    if (!this.keuanganSudahMulai()) throw new Error('Mulai pencatatan Keuangan Owner dulu.');
+    const akun = i.sumber === 'kas_besar' ? 'kas_besar' : (i.rekening_id || '');
+    if (!akun) throw new Error('Pilih rekening yang dipakai membayar.');
+    let nominal = Math.round(i.nominal);
+    let peruntukan = i.peruntukan.trim();
+    if (i.kategori === 'pembelian_air_baku') {
+      if (!i.air || !i.air.vendor.trim()) throw new Error('Nama vendor/sopir pengirim wajib diisi!');
+      if (!(i.air.volume > 0)) throw new Error('Volume air masuk harus lebih besar dari 0 Liter!');
+      nominal = Math.round((i.air.harga || 0) + (i.air.tips || 0));
+      if (!peruntukan) peruntukan = `Pembelian Air Baku Tangki ${i.air.volume} Liter - ${i.air.vendor.trim()}`;
+    }
+    if (!(nominal > 0)) throw new Error('Nominal pengeluaran harus lebih besar dari Rp 0!');
+    if (!peruntukan) throw new Error('Isi dulu untuk apa uang ini dipakai.');
+    if (i.kategori === 'ongkir' && !i.karyawan) throw new Error('Pilih kurir yang dibayar ongkirnya.');
+    this.cekSaldoCukup(akun, nominal);
+    const user = this.getCurrentUser();
+    const p: Pengeluaran = {
+      id: `exp-${Date.now()}`, tanggal: new Date().toISOString(), nominal, peruntukan,
+      kategori: i.kategori,
+      karyawan_id: i.karyawan?.id, karyawan_nama: i.karyawan?.nama,
+      tipe_arus_kas: 'keluar', sumber_kas: i.sumber, rekening_id: i.sumber === 'rekening' ? i.rekening_id : undefined,
+      kasir_id: user.id, kasir_nama: user.nama, catatan: i.catatan?.trim() || undefined,
+      nama_vendor_pengirim: i.air ? i.air.vendor.trim() : undefined,
+      volume_air_masuk_liter: i.air ? Number(i.air.volume) : undefined,
+      harga_perolehan_air: i.air ? Number(i.air.harga) : undefined,
+      tips_sopir_pengirim: i.air ? Number(i.air.tips) : undefined
+    };
+    this.addPengeluaran(p);
+    if (i.kategori === 'pembelian_air_baku' && i.air) {
+      const peng = this.getPengaturan();
+      this.savePengaturan({
+        ...peng,
+        stok_air_baku_saat_ini: (peng.stok_air_baku_saat_ini || 0) + Number(i.air.volume),
+        meteran_air_awal_liter: (peng.meteran_air_awal_liter ?? 0) + Number(i.air.volume)
+      });
+      window.dispatchEvent(new Event('depo_pengaturan_updated'));
+    }
+    return p;
   }
 
   static deleteHutangToko(id: string) {

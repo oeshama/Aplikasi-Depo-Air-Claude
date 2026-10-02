@@ -176,6 +176,9 @@ export async function buatPdfLaporan(d: DataLaporan): Promise<{ blob: Blob; nama
     ['Penjualan non-tunai (transfer, QRIS, dll)', rp(u.nonTunai)],
     ['Penjualan dicatat hutang', rp(u.hutangBaru)],
     ['Pengeluaran dari laci kasir', '- ' + rp(u.pengeluaranLaci)],
+    ['Pengeluaran dari kas besar / rekening owner', '- ' + rp(u.pengeluaranKasOwner)],
+    ['Pengeluaran dari uang pegangan kasir', '- ' + rp(u.pengeluaranPegangan)],
+    ['Uang pegangan yang masih dipegang kasir (saat ini)', rp(u.peganganDiKasir)],
     ['Uang laci diserahkan ke owner', rp(u.diserahkanOwner)]
   ]);
   if (u.selisihKasir.length) {

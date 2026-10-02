@@ -2,13 +2,17 @@
 
 import React, { useEffect, useState } from 'react';
 import { AppStore } from '@/lib/store';
-import { SetoranOwner } from '@/lib/types';
+import { SetoranOwner, Pengeluaran } from '@/lib/types';
+import PeganganOwnerSection from '@/components/PeganganOwnerSection';
+import PengeluaranOwnerSheet from '@/components/PengeluaranOwnerSheet';
+import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
 import LaporanSelisihKasir from '@/components/LaporanSelisihKasir';
-import { Wallet, HandCoins, Check, Truck, Store, Landmark, X, Plus, ArrowLeftRight } from 'lucide-react';
+import { Wallet, Receipt, HandCoins, Check, Truck, Store, Landmark, X, Plus, ArrowLeftRight } from 'lucide-react';
 
 const EVENTS = [
   'depo_setoran_owner_updated', 'depo_pesanan_updated', 'depo_pengeluaran_updated', 'depo_setoran_kurir_updated',
-  'depo_shift_updated', 'depo_rekening_updated', 'depo_mutasi_keuangan_updated', 'depo_pengaturan_updated'
+  'depo_shift_updated', 'depo_rekening_updated', 'depo_mutasi_keuangan_updated', 'depo_pengaturan_updated',
+  'depo_uang_pegangan_updated', 'depo_hutang_toko_updated'
 ];
 
 type JenisAksi = 'tambah_modal' | 'prive' | 'setor_bank' | 'tarik_bank' | 'transfer' | 'modal_laci' | 'koreksi';
@@ -43,6 +47,8 @@ export default function KeuanganOwnerPage() {
   const [ket, setKet] = useState<string>('');
   const [showMenuAksi, setShowMenuAksi] = useState<boolean>(false);
   const [konfirmasiReset, setKonfirmasiReset] = useState<boolean>(false);
+  const [showPengeluaran, setShowPengeluaran] = useState<boolean>(false);
+  const [struk, setStruk] = useState<Pengeluaran | null>(null);
 
   const [bukuAkun, setBukuAkun] = useState<string>('kas_besar');
   const [namaRekBaru, setNamaRekBaru] = useState<string>('');
@@ -264,6 +270,20 @@ export default function KeuanganOwnerPage() {
 
       {mulai && (
         <>
+          <PeganganOwnerSection />
+
+          <section aria-labelledby="judul-peng-owner-bagian" style={{ marginBottom: '24px' }}>
+            {judulBagian('judul-peng-owner-bagian', 'Pengeluaran dari kas owner')}
+            <div className="glass-card" style={{ padding: '14px' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 10px' }}>
+                Bayar air baku, hutang toko, ongkir kurir, atau biaya lain langsung dari kas besar atau rekening, mis. kalau kiriman datang malam dan kasir sudah pulang.
+              </p>
+              <button type="button" className="btn btn-primary btn-lg" onClick={() => setShowPengeluaran(true)} aria-haspopup="dialog" style={{ width: '100%' }}>
+                <Receipt size={20} aria-hidden="true" /> Catat pengeluaran
+              </button>
+            </div>
+          </section>
+
           <section aria-labelledby="judul-transaksi" style={{ marginBottom: '24px' }}>
             {judulBagian('judul-transaksi', 'Catat transaksi')}
             <button type="button" className="btn btn-primary btn-lg" onClick={() => setShowMenuAksi(true)} aria-haspopup="dialog" style={{ width: '100%' }}>
@@ -402,6 +422,9 @@ export default function KeuanganOwnerPage() {
           )}
         </section>
       )}
+
+      <PengeluaranOwnerSheet isOpen={showPengeluaran} onClose={() => setShowPengeluaran(false)} onSaved={(p) => setStruk(p)} />
+      <ExpenseReceiptModal pengeluaran={struk} onClose={() => setStruk(null)} />
 
       {showMenuAksi && (
         <div className="sheet-overlay" onClick={() => setShowMenuAksi(false)}>

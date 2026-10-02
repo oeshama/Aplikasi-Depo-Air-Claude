@@ -326,7 +326,7 @@ export function susunBuktiKas(x: Pengeluaran, peng: PengaturanDepo, telpOwner: s
   s.kiri(`Kat  : ${x.kategori ? x.kategori.toUpperCase().replace(/_/g, ' ') : '-'}`);
   s.kiri(`Terima: ${x.karyawan_nama || '-'}`);
   s.kiri(`Kasir: ${x.kasir_nama}`);
-  const sumber = x.sumber_kas === 'kas_besar' ? 'Kas besar' : x.sumber_kas === 'rekening' ? 'Rekening' : 'Laci kasir';
+  const sumber = x.sumber_kas === 'kas_besar' ? 'Kas besar' : x.sumber_kas === 'rekening' ? 'Rekening' : x.sumber_kas === 'pegangan' ? 'Uang pegangan' : 'Laci kasir';
   s.kiri(`Dari : ${sumber}`);
   s.garisStrip();
   s.kiri('Peruntukan:');

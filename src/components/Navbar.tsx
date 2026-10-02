@@ -45,7 +45,7 @@ export default function Navbar() {
 
     setKasDiTanganNav(Math.max(0, kas.ekspektasi));
     setNotifCount(AppStore.jumlahNotifikasiBelumDibaca());
-    setMenungguSetoran(AppStore.getSetoranOwner().filter(s => s.status === 'menunggu').length);
+    setMenungguSetoran(AppStore.getSetoranOwner().filter(s => s.status === 'menunggu').length + AppStore.getUangPegangan().filter(x => x.jenis === 'kembali' && x.status === 'menunggu').length);
   };
 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ mode: 'local', pending: 0 });
@@ -89,6 +89,7 @@ export default function Navbar() {
     window.addEventListener('depo_shift_updated', handleUpdate);
     window.addEventListener('depo_setoran_kurir_updated', handleUpdate);
     window.addEventListener('depo_setoran_owner_updated', handleUpdate);
+    window.addEventListener('depo_uang_pegangan_updated', handleUpdate);
     window.addEventListener('depo_notifikasi_updated', handleUpdate);
 
     return () => {
@@ -99,6 +100,7 @@ export default function Navbar() {
       window.removeEventListener('depo_shift_updated', handleUpdate);
       window.removeEventListener('depo_setoran_kurir_updated', handleUpdate);
       window.removeEventListener('depo_setoran_owner_updated', handleUpdate);
+      window.removeEventListener('depo_uang_pegangan_updated', handleUpdate);
       window.removeEventListener('depo_notifikasi_updated', handleUpdate);
     };
   }, []);
