@@ -9,7 +9,7 @@ import { UserApp, UserRole, ShiftKasir } from '@/lib/types';
 import { bunyiNotifikasi } from '@/lib/audioAndTimer';
 import { 
   Droplets, ShoppingCart, Users, Package, MapPin, 
-  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet, Map, FileText, Inbox
+  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet, Map, FileText, Inbox, BookOpen
 } from 'lucide-react';
 import { getTheme, setTheme, Theme } from '@/lib/theme';
 
@@ -343,6 +343,10 @@ export default function Navbar() {
               <Truck size={16} aria-hidden="true" /> Antaran Lapangan
             </Link>
           )}
+
+          <Link href="/panduan" aria-current={pathname === '/panduan' ? 'page' : undefined} className={linkClass(pathname === '/panduan')}>
+            <BookOpen size={16} aria-hidden="true" /> Panduan
+          </Link>
         </div>
 
         <div className="nav-user">
