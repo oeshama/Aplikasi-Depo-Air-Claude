@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AppStore } from '@/lib/store';
 import { UserRole } from '@/lib/types';
 import { TOPIK, URUTAN_KELOMPOK, URUTAN_BELAJAR, Topik } from '@/lib/panduan';
-import { BookOpen, Search, ChevronRight, ExternalLink, Lightbulb, AlertTriangle } from 'lucide-react';
+import { BookOpen, Search, ChevronRight, ExternalLink, Lightbulb, AlertTriangle, Download, Printer } from 'lucide-react';
 
 const NAMA_PERAN: Record<UserRole, string> = { owner: 'Owner', admin: 'Admin', kasir: 'Kasir', pengantar: 'Pengantar' };
 
@@ -15,6 +15,8 @@ export default function PanduanPage() {
   const [lihatSebagai, setLihatSebagai] = useState<UserRole | null>(null);
   const [cari, setCari] = useState('');
   const [terbuka, setTerbuka] = useState<string>('');
+  const [sibuk, setSibuk] = useState<'unduh' | 'cetak' | null>(null);
+  const [pesan, setPesan] = useState('');
 
   useEffect(() => {
     const p = AppStore.getCurrentUser().role;
@@ -39,6 +41,30 @@ export default function PanduanPage() {
 
   const kelompokTampil = URUTAN_KELOMPOK.filter(k => tampil.some(t => t.kelompok === k));
   const belajar = (URUTAN_BELAJAR[peran] || []).map(id => semuaUntukPeran.find(t => t.id === id)).filter(Boolean) as Topik[];
+
+  // PDF mengikuti peran yang sedang dipilih (owner boleh membuat PDF untuk peran lain, mis. untuk dibagikan ke karyawan)
+  const buatPdf = async (mode: 'unduh' | 'cetak') => {
+    setSibuk(mode); setPesan('');
+    // Jendela cetak dibuka lebih dulu (saat ketukan), supaya tidak diblokir peramban
+    const jendela = mode === 'cetak' ? window.open('', '_blank') : null;
+    try {
+      const { buatPdfPanduan } = await import('@/lib/panduanPdf');
+      const { blob, namaFile } = await buatPdfPanduan(peran);
+      const url = URL.createObjectURL(blob);
+      if (mode === 'cetak' && jendela) {
+        jendela.location.href = url;
+        setPesan('PDF dibuka di tab baru. Tekan tombol cetak di sana (atau Ctrl+P).');
+      } else {
+        const a = document.createElement('a'); a.href = url; a.download = namaFile; document.body.appendChild(a); a.click(); a.remove();
+        setPesan(mode === 'cetak' ? 'Tab baru diblokir peramban, jadi PDF diunduh. Buka file-nya lalu cetak.' : `Tersimpan: ${namaFile}`);
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch {
+      if (jendela) jendela.close();
+      setPesan('Gagal membuat PDF. Coba lagi.');
+    }
+    setSibuk(null);
+  };
 
   const bukaTopik = (id: string) => {
     setTerbuka(id);
@@ -68,6 +94,16 @@ export default function PanduanPage() {
           ))}
         </div>
       )}
+
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
+        <button type="button" className="btn btn-primary" onClick={() => buatPdf('unduh')} disabled={sibuk !== null} style={{ flex: '1 1 160px' }}>
+          <Download size={18} aria-hidden="true" /> {sibuk === 'unduh' ? 'Membuat PDF...' : `Unduh PDF (${NAMA_PERAN[peran]})`}
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={() => buatPdf('cetak')} disabled={sibuk !== null} style={{ flex: '1 1 120px' }}>
+          <Printer size={18} aria-hidden="true" /> {sibuk === 'cetak' ? 'Membuat PDF...' : 'Cetak'}
+        </button>
+        {pesan && <p role="status" style={{ flexBasis: '100%', margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{pesan}</p>}
+      </div>
 
       <div style={{ position: 'relative', marginBottom: '14px' }}>
         <label htmlFor="cari-panduan" className="form-label">Cari di panduan</label>

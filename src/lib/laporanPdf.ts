@@ -21,7 +21,7 @@ function teksPerubahan(sekarang: number, sebelum: number): string {
 }
 const HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
-function muatGambar(src: string): Promise<{ data: string; w: number; h: number } | null> {
+export function muatGambar(src: string): Promise<{ data: string; w: number; h: number } | null> {
   return new Promise(resolve => {
     try {
       const img = new Image();
