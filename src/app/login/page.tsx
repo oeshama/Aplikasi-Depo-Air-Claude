@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AppStore } from '@/lib/store';
 import { namaCetak } from '@/lib/cetak';
 import { UserRole, UserApp } from '@/lib/types';
+import { AUTH_AKTIF, masukDenganAkun, DOMAIN_LOGIN } from '@/lib/auth';
 import { Droplets, User, ArrowRight, KeyRound } from 'lucide-react';
 
 export default function LoginPage() {
@@ -30,6 +31,31 @@ export default function LoginPage() {
   useEffect(() => {
     if (sesiBerakhir) localStorage.removeItem('depo_session_expired');
   }, [sesiBerakhir]);
+
+  // Mode login akun: email atau nama pengguna + password, diperiksa oleh Supabase
+  const [masukan, setMasukan] = useState('');
+  const [sibuk, setSibuk] = useState(false);
+  const [galat, setGalat] = useState('');
+
+  useEffect(() => {
+    // Sudah punya sesi akun yang masih berlaku: langsung ke halaman utama
+    if (AUTH_AKTIF) {
+      const u = AppStore.getSessionUser();
+      if (u) redirectUser(u.role);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleLoginAkun = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGalat('');
+    setSibuk(true);
+    const hasil = await masukDenganAkun(masukan, password);
+    if (!hasil.ok) { setGalat(hasil.pesan); setSibuk(false); return; }
+    AppStore.setCurrentUser(hasil.user);
+    AppStore.startSession();
+    redirectUser(hasil.user.role);
+  };
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,6 +139,48 @@ export default function LoginPage() {
           </div>
         )}
 
+        {AUTH_AKTIF ? (
+          <form onSubmit={handleLoginAkun}>
+            <div className="form-group" style={{ marginBottom: '16px' }}>
+              <label className="form-label" htmlFor="login-akun">
+                <User size={14} style={{ display: 'inline', marginRight: '4px' }} aria-hidden="true" /> Email atau nama pengguna
+              </label>
+              <input
+                id="login-akun"
+                type="text"
+                className="form-input"
+                autoComplete="username"
+                autoCapitalize="none"
+                value={masukan}
+                onChange={(e) => setMasukan(e.target.value)}
+                placeholder="nama@email.com atau nama pengguna"
+                required
+              />
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                Tanpa email? Cukup ketik nama pengguna dari owner. Aplikasi menambahkan @{DOMAIN_LOGIN} sendiri.
+              </div>
+            </div>
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label" htmlFor="login-password-input">
+                <KeyRound size={14} style={{ display: 'inline', marginRight: '4px' }} aria-hidden="true" /> Password
+              </label>
+              <input
+                id="login-password-input"
+                type="password"
+                className="form-input"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Masukkan password"
+                required
+              />
+            </div>
+            {galat && <p role="alert" style={{ color: 'var(--c-red)', fontWeight: 600, margin: '0 0 10px' }}>{galat}</p>}
+            <button type="submit" disabled={sibuk} className="btn btn-primary" style={{ width: '100%', marginTop: '8px', padding: '14px', fontWeight: 800 }}>
+              {sibuk ? 'MEMERIKSA...' : 'MASUK KE SISTEM'} <ArrowRight size={18} aria-hidden="true" />
+            </button>
+          </form>
+        ) : (
         <form onSubmit={handleLogin}>
           {/* User / Karyawan Selection */}
           <div className="form-group" style={{ marginBottom: '16px' }}>
@@ -174,6 +242,7 @@ export default function LoginPage() {
             MASUK KE SISTEM <ArrowRight size={18} />
           </button>
         </form>
+        )}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { ShiftKasir, UserApp } from '@/lib/types';
 import FotoMeterField from '@/components/FotoMeterField';
 import KepalaStruk from '@/components/KepalaStruk';
 import { cetakStrukBaris, namaCetak, susunStrukBukaShift } from '@/lib/cetak';
+import { AUTH_AKTIF } from '@/lib/auth';
 import { Lock, Droplets, Banknote, ShieldCheck, User, KeyRound, Printer, Share2, CheckCircle2, X } from 'lucide-react';
 
 interface BukaShiftModalProps {
@@ -77,7 +78,8 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
       return;
     }
 
-    if (!password || password.trim() === '') {
+    // Mode akun: pengguna sudah login dengan akunnya sendiri, jadi tidak ada password kedua
+    if (!AUTH_AKTIF && (!password || password.trim() === '')) {
       alert('Password / PIN wajib diisi!');
       return;
     }
@@ -107,8 +109,14 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
     };
 
     const expectedPassword = targetUser.password || '123456';
-    if (password.trim() !== expectedPassword.trim()) {
+    if (!AUTH_AKTIF && password.trim() !== expectedPassword.trim()) {
       alert(`Password / PIN untuk "${targetUser.nama}" salah! Silakan periksa kembali.`);
+      return;
+    }
+    // Mode akun: kasir hanya boleh membuka shift atas namanya sendiri
+    const penggunaMasuk = AppStore.getCurrentUser();
+    if (AUTH_AKTIF && penggunaMasuk.role !== 'owner' && penggunaMasuk.role !== 'admin' && targetUser.id !== penggunaMasuk.id) {
+      alert('Anda hanya bisa membuka shift atas nama sendiri.');
       return;
     }
 
@@ -121,8 +129,10 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
       password: expectedPassword,
       aktif: true
     };
-    AppStore.setCurrentUser(fullUser);
-    AppStore.startSession(); // password sudah diverifikasi: masa login 12 jam dihitung ulang
+    if (!AUTH_AKTIF) {
+      AppStore.setCurrentUser(fullUser);
+      AppStore.startSession(); // password sudah diverifikasi: masa login 12 jam dihitung ulang
+    }
 
     onSubmitted?.();
     const newShift = AppStore.bukaShift(Number(kasAwal), Number(meterAwal), fullUser.id, fullUser.nama);
@@ -252,6 +262,9 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
             </div>
 
             {/* 1. Nama User / Karyawan Dropdown */}
+            {AUTH_AKTIF && AppStore.getCurrentUser().role !== 'owner' && AppStore.getCurrentUser().role !== 'admin' ? (
+              <p style={{ margin: '0 0 16px', fontWeight: 700 }}>Petugas shift: {AppStore.getCurrentUser().nama}</p>
+            ) : (
             <div className="form-group" style={{ marginBottom: '16px' }}>
               <label className="form-label" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <User size={16} color="#38bdf8" /> Nama User / Karyawan (Kasir Bertugas) <span style={{ color: 'var(--c-red)' }}>*</span>
@@ -270,8 +283,10 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
                 ))}
               </select>
             </div>
+            )}
 
-            {/* 2. Password / PIN Kasir */}
+            {/* 2. Password / PIN Kasir (hanya cara login lama) */}
+            {!AUTH_AKTIF && (
             <div className="form-group" style={{ marginBottom: '16px' }}>
               <label className="form-label" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <KeyRound size={16} color="#fbbf24" /> Password / PIN Kasir <span style={{ color: 'var(--c-red)' }}>*</span>
@@ -286,6 +301,7 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
                 style={{ fontSize: '1rem', fontWeight: 700, padding: '12px 14px' }}
               />
             </div>
+            )}
 
             {/* 3. Modal Kas Awal */}
             <div className="form-group" style={{ marginBottom: '16px' }}>

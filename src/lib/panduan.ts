@@ -1,4 +1,5 @@
 import { UserRole } from './types';
+import { AUTH_AKTIF } from './auth';
 
 // Isi halaman Panduan. Setiap topik punya daftar peran: owner melihat semuanya, peran lain hanya topik miliknya.
 // Nama tombol dan menu ditulis sama persis dengan yang tampil di aplikasi.
@@ -47,7 +48,12 @@ export const TOPIK: Topik[] = [
   {
     id: 'masuk', kelompok: 'Dasar', judul: 'Masuk ke aplikasi dan keluar', peran: SEMUA,
     ringkas: 'Cara membuka aplikasi, masuk, dan keluar dengan aman.',
-    langkah: [
+    langkah: AUTH_AKTIF ? [
+      'Buka alamat aplikasi di HP atau komputer. Disarankan memakai Chrome.',
+      'Isi "Email atau nama pengguna". Kalau Anda tidak punya email, ketik nama pengguna yang diberikan owner, tanpa tambahan apa pun.',
+      'Isi "Password", lalu tekan "Masuk ke sistem". Masuk butuh internet.',
+      'Untuk keluar, buka menu (tombol tiga garis di HP) lalu tekan "Keluar".',
+    ] : [
       'Buka alamat aplikasi di HP atau komputer. Disarankan memakai Chrome.',
       'Pilih atau ketik nama Anda di kolom "Nama User / Karyawan".',
       'Isi "Password / PIN", lalu tekan tombol masuk.',
@@ -56,6 +62,7 @@ export const TOPIK: Topik[] = [
     tips: [
       'Supaya terasa seperti aplikasi: di Chrome HP tekan titik tiga, lalu "Tambahkan ke layar utama".',
       'Masuk berlaku 12 jam. Setelah itu aplikasi meminta masuk lagi. Ini normal.',
+      ...(AUTH_AKTIF ? ['Ganti password Anda sendiri lewat tombol "Ganti password" di menu. Gunakan minimal 8 karakter dan jangan sama dengan password di tempat lain.'] : []),
     ],
     hati: ['Jangan memberitahukan password ke orang lain. Kalau HP dipakai bergantian, selalu tekan "Keluar" saat selesai.'],
   },
@@ -91,7 +98,7 @@ export const TOPIK: Topik[] = [
     buka: { href: '/kasir', label: 'Buka POS Kasir' },
     langkah: [
       'Buka "POS Kasir". Kalau shift belum dibuka, muncul "Entri Buka Shift Kasir" atau tombol "Buka shift".',
-      'Pilih nama Anda dan isi password.',
+      AUTH_AKTIF ? 'Nama Anda sudah terisi otomatis sebagai petugas shift, karena Anda sudah masuk dengan akun sendiri. Tidak perlu mengisi password lagi.' : 'Pilih nama Anda dan isi password.',
       'Isi "Modal Kas Awal di Laci": uang yang ada di laci saat Anda mulai. Hitung dulu uangnya.',
       'Isi "Meteran Air Awal Depo" sesuai angka di meteran air. Kalau diminta, foto meterannya.',
       'Tekan "Buka Shift Kasir & Cek Struk". Struk pembukaan bisa dicetak atau dikirim ke owner lewat WhatsApp.',
@@ -381,7 +388,26 @@ export const TOPIK: Topik[] = [
       '"Pengaturan Toko" > Target penjualan: isi target bila diperlukan.',
       'Masukkan data pelanggan di "Pelanggan & Reseller", lalu coba satu transaksi percobaan.',
     ],
-    tips: ['Ubah semua password awal (123456) menjadi password sendiri sebelum dipakai.'],
+    tips: [AUTH_AKTIF ? 'Buat akun login untuk semua orang di "Akun login dan keamanan" sebelum dipakai.' : 'Ubah semua password awal (123456) menjadi password sendiri sebelum dipakai. Lebih aman lagi, beralih ke login akun (lihat topik "Mengamankan data dengan login akun").'],
+  },
+  {
+    id: 'keamanan-akun', kelompok: 'Owner: persiapan toko', judul: 'Mengamankan data dengan login akun', peran: OWNER,
+    ringkas: 'Peralihan satu kali: setiap orang punya akun sendiri, dan data hanya terbuka untuk yang sudah login.',
+    buka: { href: '/admin/pengaturan', label: 'Buka Pengaturan Toko' },
+    langkah: [
+      'Siapkan alamat email untuk Anda dan karyawan yang punya email. Karyawan tanpa email cukup memakai nama pengguna (aplikasi menambahkan @depo.example.com).',
+      'Di Supabase buka Authentication, Users, lalu "Add user" dan "Create new user". Isi email dan password untuk setiap orang, dan centang "Auto Confirm User".',
+      'Di aplikasi buka Pengaturan Toko, kategori "Akun login dan keamanan". Isi email setiap orang, tekan "Salin SQL", lalu tempel dan jalankan di Supabase (SQL Editor, Run). Ini memberi tiap akun perannya.',
+      'Di Supabase buka Project Settings, API, lalu salin "service_role secret". Di Vercel buka Settings, Environment Variables, lalu tambahkan SUPABASE_SERVICE_ROLE_KEY (isi kunci itu) dan NEXT_PUBLIC_LOGIN_AKUN dengan nilai 1. Jangan menempel kunci rahasia ini di chat, grup, atau foto layar.',
+      'Deploy ulang di Vercel. Buka aplikasi, masuk dengan akun masing-masing, dan uji satu per satu: owner, kasir, dan kurir.',
+      'Kalau semuanya berjalan, jalankan berkas supabase/kunci-akses.sql di SQL Editor. Setelah itu kunci publik saja tidak lagi bisa membaca atau mengubah data.',
+      'Uji sekali lagi: masuk, buat transaksi, buka halaman pesan pelanggan. Kalau ada masalah, jalankan supabase/buka-kunci-darurat.sql.',
+    ],
+    tips: ['Lakukan peralihan saat depo sepi, dan jangan menekan "Run" untuk kunci-akses.sql sebelum semua orang berhasil masuk dengan akunnya.'],
+    hati: [
+      'Kalau NEXT_PUBLIC_LOGIN_AKUN sudah 1 tetapi akun belum dibuat atau perannya belum diberikan, tidak ada yang bisa masuk. Pulihkan dengan menghapus pengaturan itu di Vercel lalu deploy ulang.',
+      'Setelah beralih, password lama di data aplikasi dihapus otomatis saat owner masuk pertama kali.',
+    ],
   },
   {
     id: 'produk', kelompok: 'Owner: persiapan toko', judul: 'Produk dan harga', peran: OWNER,
@@ -414,6 +440,7 @@ export const TOPIK: Topik[] = [
     buka: { href: '/admin/pengaturan', label: 'Buka Pengaturan Toko' },
     langkah: [
       'Toko: nama depo, nama owner, password login owner, tagline, nomor WhatsApp, alamat, lokasi depo, serta "Header Struk Cetak" dan "Footer Struk Cetak". Baris pertama header dipakai sebagai nama di bar atas, struk, dan pesan WhatsApp.',
+      'Akun login dan keamanan: menyiapkan akun login karyawan di Supabase dan SQL pemberian peran.',
       'Pesanan online (WhatsApp): saklar dan nomor WhatsApp Business (lihat topik pesanan online).',
       'Karyawan dan gaji: daftar karyawan, gaji pokok, uang makan, dan tanggal gaji.',
       'Printer dan struk: cara mencetak, lebar kertas, uji cetak.',
@@ -432,7 +459,7 @@ export const TOPIK: Topik[] = [
       'Di "Pengaturan Toko" > "Karyawan dan gaji", tambah karyawan baru.',
       'Isi nama, jabatan, nomor HP, tanggal masuk, "Gaji Basic / Pokok Bulanan", "Uang Makan per Hari", dan "Tanggal Jatuh Tempo Gaji Bulanan".',
       'Perhatikan kolom "Jabatan", karena peran di aplikasi ditentukan dari kata di dalamnya: mengandung "admin", "owner", atau "pemilik" menjadi Admin; mengandung "pengantar", "driver", atau "kurir" menjadi Pengantar; selain itu menjadi Kasir. Contoh: "Kasir Pagi", "Pengantar", "Admin Gudang".',
-      'Isi password karyawan. Kalau dikosongkan, memakai 123456, sebaiknya segera diganti.',
+      AUTH_AKTIF ? 'Password tidak diisi di sini. Buat akun login karyawan di kategori "Akun login dan keamanan".' : 'Isi password karyawan. Kalau dikosongkan, memakai 123456, sebaiknya segera diganti.',
       'Simpan. Karyawan masuk dengan namanya dan password itu, lalu melihat menu sesuai perannya.',
     ],
   },
@@ -633,7 +660,10 @@ export const TOPIK: Topik[] = [
   {
     id: 'lupa-password', kelompok: 'Bantuan', judul: 'Lupa password', peran: SEMUA,
     ringkas: 'Password bisa diganti owner.',
-    langkah: [
+    langkah: AUTH_AKTIF ? [
+      'Karyawan: minta owner mengatur ulang password Anda di Supabase (Authentication, Users, pilih nama Anda, lalu ubah password).',
+      'Owner: ubah password di dashboard Supabase dengan cara yang sama. Kalau Anda masih bisa masuk, pakai tombol "Ganti password" di menu.',
+    ] : [
       'Karyawan: minta owner mengubah password di "Pengaturan Toko" > "Karyawan dan gaji" pada data karyawan Anda.',
       'Owner: password owner diubah di "Pengaturan Toko" > Toko, kolom "Password Login Owner". Kalau Anda tidak bisa masuk sama sekali, hubungi pembuat aplikasi.',
     ],

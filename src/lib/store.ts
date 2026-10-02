@@ -4,6 +4,7 @@ import {
   SetoranKurir, SetoranOwner, UangPegangan, PesananMasuk, Etalase, TautanPesan, PesananItem, FotoMeter, ModeFotoMeter, Rekening, MutasiKeuangan, JenisMutasi, NotifikasiOwner, SaldoKurir, MetodePembayaran
 } from './types';
 import { normalisasiHp, hpLokal } from './telepon';
+import { AUTH_AKTIF, adaSesiAkun, keluarAkun } from './auth';
 import { 
   DEMO_USERS, INITIAL_PRODUK, INITIAL_ZONA, INITIAL_KONTAK, 
   INITIAL_PESANAN, INITIAL_PENGATURAN 
@@ -25,7 +26,23 @@ export class AppStore {
     return stored ? JSON.parse(stored) : INITIAL_PENGATURAN;
   }
 
+  // Menghapus password lama (teks biasa) dari data pengaturan. Dipakai di mode login akun, karena password kini
+  // dikelola Supabase dan tidak boleh lagi tersimpan di data aplikasi.
+  static tanpaPasswordLama(data: PengaturanDepo): PengaturanDepo {
+    const bersih: PengaturanDepo = { ...data };
+    delete bersih.password_owner;
+    if (Array.isArray(bersih.karyawan_list)) {
+      bersih.karyawan_list = bersih.karyawan_list.map(k => { const { password, ...sisa } = k; void password; return sisa as typeof k; });
+    }
+    return bersih;
+  }
+
+  static adaPasswordLama(data: PengaturanDepo): boolean {
+    return !!data.password_owner || (data.karyawan_list || []).some(k => !!k.password);
+  }
+
   static savePengaturan(data: PengaturanDepo) {
+    if (AUTH_AKTIF) data = this.tanpaPasswordLama(data);
     this.persist('depo_pengaturan', data);
 
     if (data.nama_owner && typeof window !== 'undefined') {
@@ -1231,6 +1248,7 @@ export class AppStore {
 
     try {
       const parsed: UserApp = JSON.parse(stored);
+      if (AUTH_AKTIF) return parsed; // peran dan identitas berasal dari akun login
       const found = users.find(u => u.id === parsed.id || u.username === parsed.username || u.nama.toLowerCase() === parsed.nama.toLowerCase());
       if (found) {
         return found;
@@ -1254,6 +1272,7 @@ export class AppStore {
   static getSessionUser(): UserApp | null {
     if (typeof window === 'undefined') return null;
     if (!localStorage.getItem('depo_current_user')) return null;
+    if (AUTH_AKTIF && !adaSesiAkun()) return null;
 
     const startedAt = Number(localStorage.getItem('depo_session_at'));
     if (!startedAt) {
@@ -1263,6 +1282,7 @@ export class AppStore {
       localStorage.removeItem('depo_current_user');
       localStorage.removeItem('depo_session_at');
       localStorage.setItem('depo_session_expired', '1'); // supaya halaman login menjelaskan alasannya
+      keluarAkun();
       return null;
     }
 
@@ -1272,6 +1292,7 @@ export class AppStore {
   static logout() {
     localStorage.removeItem('depo_current_user');
     localStorage.removeItem('depo_session_at');
+    keluarAkun();
     window.dispatchEvent(new Event('depo_user_updated'));
   }
 
@@ -1371,6 +1392,7 @@ export class AppStore {
       });
     }
 
+    if (AUTH_AKTIF) return list.map(u => { const { password, ...sisa } = u; void password; return sisa as UserApp; });
     return list;
   }
 

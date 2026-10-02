@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AppStore } from '@/lib/store';
 import { initSync } from '@/lib/sync';
+import { AUTH_AKTIF, adaSesiAkun } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 import { watchFormLabels } from '@/lib/a11y';
 import { UserRole } from '@/lib/types';
 import Navbar from '@/components/Navbar';
@@ -35,7 +37,23 @@ export default function ClientShell({ children }: { children: React.ReactNode })
   // Ambil data terbaru dari Supabase sebelum halaman membaca localStorage
   useEffect(() => {
     if (publik) { setSynced(true); return; }
+    // Mode login akun: server hanya menjawab yang sudah login, jadi tanpa sesi akun tidak ada yang bisa disinkronkan
+    if (AUTH_AKTIF && (pathname === '/login' || !adaSesiAkun())) { setSynced(true); return; }
     initSync().finally(() => setSynced(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publik]);
+
+  // Sesi akun dicabut (mis. akun dihapus atau token tidak berlaku lagi): kembali ke halaman login
+  useEffect(() => {
+    if (!AUTH_AKTIF || !supabase || publik) return;
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT' && window.location.pathname !== '/login') {
+        localStorage.removeItem('depo_current_user');
+        localStorage.removeItem('depo_session_at');
+        window.location.replace('/login');
+      }
+    });
+    return () => data.subscription.unsubscribe();
   }, [publik]);
 
   useEffect(() => watchFormLabels(), []);
@@ -67,6 +85,12 @@ export default function ClientShell({ children }: { children: React.ReactNode })
     }
 
     setAllowed(true);
+
+    // Mode akun: password lama (teks biasa) yang masih tersimpan di data dihapus oleh owner begitu masuk
+    if (AUTH_AKTIF && user.role === 'owner') {
+      const p = AppStore.getPengaturan();
+      if (AppStore.adaPasswordLama(p)) AppStore.savePengaturan(p);
+    }
   }, [pathname, synced, publik]);
 
   // Sesi login berakhir setelah 12 jam: cek berkala dan saat aplikasi dibuka kembali

@@ -7,9 +7,11 @@ import { AppStore } from '@/lib/store';
 import { namaCetak } from '@/lib/cetak';
 import { UserApp, UserRole, ShiftKasir } from '@/lib/types';
 import { bunyiNotifikasi } from '@/lib/audioAndTimer';
+import { AUTH_AKTIF } from '@/lib/auth';
+import GantiPasswordModal from '@/components/GantiPasswordModal';
 import { 
   Droplets, ShoppingCart, Users, Package, MapPin, 
-  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet, Map, FileText, Inbox, BookOpen
+  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet, Map, FileText, Inbox, BookOpen, KeyRound
 } from 'lucide-react';
 import { getTheme, setTheme, Theme } from '@/lib/theme';
 
@@ -36,6 +38,7 @@ export default function Navbar() {
   const [kasDiTanganNav, setKasDiTanganNav] = useState<number>(0);
   const [notifCount, setNotifCount] = useState<number>(0);
   const [menungguSetoran, setMenungguSetoran] = useState<number>(0);
+  const [showGantiPassword, setShowGantiPassword] = useState<boolean>(false);
   const [pesananMasukBaru, setPesananMasukBaru] = useState<number>(0);
   const [tampilPesananMasuk, setTampilPesananMasuk] = useState<boolean>(false);
   const pesananMasukSebelumnya = React.useRef<number | null>(null);
@@ -382,11 +385,19 @@ export default function Navbar() {
             {theme === 'light' ? 'Mode gelap' : 'Mode terang'}
           </button>
 
+          {AUTH_AKTIF && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowGantiPassword(true)}>
+              <KeyRound size={16} aria-hidden="true" /> Ganti password
+            </button>
+          )}
+
           <button onClick={handleLogoutClick} className="btn btn-secondary btn-sm" type="button">
             <LogOut size={16} aria-hidden="true" /> Keluar
           </button>
         </div>
       </div>
+
+      <GantiPasswordModal isOpen={showGantiPassword} onClose={() => setShowGantiPassword(false)} />
 
       <TutupShiftModal
         isOpen={showTutupShiftModal}

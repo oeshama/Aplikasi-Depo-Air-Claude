@@ -1,10 +1,12 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Etalase, TautanPesan } from './types';
 
-// Pembantu untuk jalur server halaman publik (/api/etalase, /api/pesan, /api/tautan, /api/status)
+// Pembantu untuk jalur server halaman publik (/api/etalase, /api/pesan, /api/tautan, /api/status).
+// Memakai SUPABASE_SERVICE_ROLE_KEY (kunci rahasia, hanya ada di server, TIDAK dikirim ke browser) bila tersedia, supaya tetap
+// berfungsi setelah tabel dikunci hanya untuk akun login. Tanpa kunci itu, dipakai kunci publik (hanya jalan selagi tabel masih terbuka).
 export function dbPublik(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;
   return createClient(url, key, { auth: { persistSession: false } });
 }

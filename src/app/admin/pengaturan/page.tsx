@@ -8,6 +8,8 @@ import { PERIODE_TARGET, ambilTarget, aturTarget, LITER_PER_GALON } from '@/lib/
 import { cetakUji, namaCetak } from '@/lib/cetak';
 import { normalisasiHp } from '@/lib/telepon';
 import QRCode from 'qrcode';
+import AkunLoginPanel from '@/components/AkunLoginPanel';
+import { AUTH_AKTIF } from '@/lib/auth';
 import {
   Settings, Image as ImageIcon, Upload, Save, Droplets, 
   CheckCircle, Trash2, AlertTriangle, Wrench, Plus, Gauge,
@@ -15,10 +17,11 @@ import {
   Bell, BellOff, Volume2, Clock, Package, KeyRound, ChevronRight, ArrowLeft, Store, Globe, type LucideIcon
 } from 'lucide-react';
 
-type KategoriId = 'toko' | 'pesan_online' | 'karyawan' | 'printer' | 'target' | 'operasional' | 'data';
+type KategoriId = 'toko' | 'akun' | 'pesan_online' | 'karyawan' | 'printer' | 'target' | 'operasional' | 'data';
 
 const KATEGORI: { id: KategoriId; judul: string; Ikon: LucideIcon; warna: string }[] = [
   { id: 'toko', judul: 'Toko', Ikon: Store, warna: '#0284c7' },
+  { id: 'akun', judul: 'Akun login dan keamanan', Ikon: KeyRound, warna: '#f59e0b' },
   { id: 'pesan_online', judul: 'Pesanan online (WhatsApp)', Ikon: Globe, warna: '#10b981' },
   { id: 'karyawan', judul: 'Karyawan dan gaji', Ikon: Users, warna: '#10b981' },
   { id: 'printer', judul: 'Printer dan struk', Ikon: Printer, warna: '#0284c7' },
@@ -608,7 +611,7 @@ export default function AdminPengaturanPage() {
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '10px' }}>
                     <div><Phone size={13} style={{ display: 'inline', marginRight: '4px' }} /> {kary.no_hp || '-'}</div>
                     <div><Calendar size={13} style={{ display: 'inline', marginRight: '4px' }} /> Masuk: {kary.tanggal_masuk || '-'}</div>
-                    <div><KeyRound size={13} style={{ display: 'inline', marginRight: '4px', color: 'var(--c-amber-strong)' }} /> Password: <strong style={{ color: 'var(--c-amber-strong)' }}>{kary.password || '123456'}</strong></div>
+                    {!AUTH_AKTIF && <div><KeyRound size={13} style={{ display: 'inline', marginRight: '4px', color: 'var(--c-amber-strong)' }} /> Password: <strong style={{ color: 'var(--c-amber-strong)' }}>{kary.password || '123456'}</strong></div>}
                   </div>
 
                   {/* Salary Breakdown Box */}
@@ -890,7 +893,8 @@ export default function AdminPengaturanPage() {
                 />
               </div>
 
-              <div className="form-group">
+              {!AUTH_AKTIF && (
+<div className="form-group">
                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <KeyRound size={15} color="#f59e0b" /> Password Login Owner (Default: 123456)
                 </label>
@@ -903,6 +907,7 @@ export default function AdminPengaturanPage() {
                   required 
                 />
               </div>
+)}
 
               <div className="form-group">
                 <label className="form-label">Tagline / Slogan</label>
@@ -1000,6 +1005,8 @@ export default function AdminPengaturanPage() {
 
         </>
       )}
+
+      {tampil('akun') && <AkunLoginPanel />}
 
       {tampil('pesan_online') && (
         <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-green)' }}>
@@ -1910,7 +1917,8 @@ export default function AdminPengaturanPage() {
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>Default: Tanggal 25 setiap bulannya</span>
                 </div>
 
-                <div className="form-group" style={{ marginTop: '12px' }}>
+                {!AUTH_AKTIF && (
+<div className="form-group" style={{ marginTop: '12px' }}>
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <KeyRound size={15} color="#f59e0b" /> Password / PIN Login Akun (Default: 123456)
                   </label>
@@ -1923,6 +1931,7 @@ export default function AdminPengaturanPage() {
                     required 
                   />
                 </div>
+)}
               </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
