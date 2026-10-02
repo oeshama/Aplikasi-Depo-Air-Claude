@@ -1304,6 +1304,12 @@ export default function OwnerDashboardPage() {
                 butir.push(<li key="setoran">{setoranMenunggu.length} setoran kasir menunggu diterima ({AppStore.formatRupiah(totalMenunggu)}). <a href="/owner/keuangan" style={{ color: 'var(--c-sky)', fontWeight: 700 }}>Buka Keuangan Owner</a></li>);
               }
               if (delayedPending.length > 0) butir.push(<li key="antaran">{delayedPending.length} pesanan terlambat diantar (lebih dari {formatThresholdText(thresholdMins)})</li>);
+              if (currentUser?.role === 'owner' || currentUser?.role === 'admin') {
+                const baruOnline = AppStore.jumlahPesananMasukBaru();
+                const telatOnline = AppStore.pesananMasukTerlambat().length;
+                if (baruOnline > 0) butir.push(<li key="online-baru">{baruOnline} pesanan online menunggu konfirmasi. <a href="/kasir/pesanan-masuk" style={{ color: 'var(--c-sky)', fontWeight: 700 }}>Buka Pesanan Online</a></li>);
+                if (telatOnline > 0) butir.push(<li key="online-telat">{telatOnline} pesanan online melewati estimasi tiba. <a href="/kasir/pesanan-masuk" style={{ color: 'var(--c-sky)', fontWeight: 700 }}>Kabari pelanggan</a></li>);
+              }
               if (hasClosedShift && totalSelisihKasShift !== 0) butir.push(<li key="selisih">Selisih kas shift {AppStore.formatRupiah(totalSelisihKasShift)} pada periode ini</li>);
               if (currentUser?.role === 'owner') {
                 const sekarang = new Date();

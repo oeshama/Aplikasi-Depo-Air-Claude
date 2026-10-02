@@ -40,6 +40,7 @@ const SYNC_COLLECTIONS: CollectionDef[] = [
   { key: 'depo_foto_meter', collection: 'foto_meter', event: 'depo_foto_meter_updated', kind: 'list', newestFirst: true, initial: () => [] },
   { key: 'depo_rekening', collection: 'rekening', event: 'depo_rekening_updated', kind: 'list', initial: () => [] },
   { key: 'depo_pesanan_masuk', collection: 'pesanan_masuk', event: 'depo_pesanan_masuk_updated', kind: 'list', newestFirst: true, initial: () => [] },
+  { key: 'depo_tautan', collection: 'tautan', event: 'depo_tautan_updated', kind: 'list', initial: () => [] },
   { key: 'depo_etalase', collection: 'etalase', event: 'depo_etalase_updated', kind: 'object', initial: () => ({ aktif: false, nama: '', wa: '', produk: [] }) },
   { key: 'depo_uang_pegangan', collection: 'uang_pegangan', event: 'depo_uang_pegangan_updated', kind: 'list', newestFirst: true, initial: () => [] },
   { key: 'depo_mutasi_keuangan', collection: 'mutasi_keuangan', event: 'depo_mutasi_keuangan_updated', kind: 'list', newestFirst: true, initial: () => [] },

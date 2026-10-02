@@ -27,6 +27,7 @@ export interface Kontak {
   // Harga khusus pelanggan/reseller per produk (id produk -> harga satuan). Produk yang tidak ada di sini memakai harga umum.
   harga_khusus?: Record<string, number>;
   galon_per_minggu?: number;
+  token_pesan?: string;   // kode rahasia untuk tautan pesan pribadi (/pesan?p=...)
   qr_code?: string;
   pesanan_terakhir?: any;
   aktif: boolean;
@@ -201,6 +202,24 @@ export interface PesananMasuk {
   pesanan_id?: string;
   kontak_id?: string;
   alasan_tolak?: string;
+  // Pelacakan oleh pelanggan (/pesan/status?s=lacak)
+  lacak?: string;
+  tahap?: 'dikonfirmasi' | 'diantar' | 'terkirim' | 'batal';
+  terkirim_at?: string;
+  kontak_id_tautan?: string;     // pesanan dikirim lewat tautan pribadi pelanggan ini
+}
+
+// Data minimal yang dibutuhkan halaman publik untuk tautan pribadi pelanggan langganan. Kuncinya (id) adalah kode rahasia.
+export interface TautanPesan {
+  id: string;
+  kontak_id: string;
+  nama: string;
+  hp: string;                    // format 62812...
+  alamat: string;
+  lat?: number;
+  lng?: number;
+  items: { produk_id: string; jumlah: number }[];   // pesanan biasanya
+  aktif: boolean;
 }
 
 // Ringkasan toko yang boleh dilihat publik (tanpa harga khusus pelanggan), disinkronkan dari aplikasi

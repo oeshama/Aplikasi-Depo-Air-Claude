@@ -1,7 +1,7 @@
 import {
   UserApp, Produk, ZoneOngkir, Kontak, Pesanan, TitipGalon,
   PengaturanDepo, ShiftKasir, UserRole, Pengeluaran, HutangToko, SumberKas,
-  SetoranKurir, SetoranOwner, UangPegangan, PesananMasuk, Etalase, PesananItem, FotoMeter, ModeFotoMeter, Rekening, MutasiKeuangan, JenisMutasi, NotifikasiOwner, SaldoKurir, MetodePembayaran
+  SetoranKurir, SetoranOwner, UangPegangan, PesananMasuk, Etalase, TautanPesan, PesananItem, FotoMeter, ModeFotoMeter, Rekening, MutasiKeuangan, JenisMutasi, NotifikasiOwner, SaldoKurir, MetodePembayaran
 } from './types';
 import { normalisasiHp, hpLokal } from './telepon';
 import { 
@@ -93,6 +93,7 @@ export class AppStore {
     this.persist('depo_kontak', data);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('depo_kontak_updated'));
+      this.sinkronTautan();
     }
   }
 
@@ -160,6 +161,8 @@ export class AppStore {
     this.persist('depo_pesanan', data);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('depo_pesanan_updated'));
+      this.sinkronStatusPesananMasuk();
+      this.sinkronTautan();
     }
   }
 
@@ -519,6 +522,102 @@ export class AppStore {
     pm.diproses_at = new Date().toISOString();
     pm.diproses_oleh = this.getCurrentUser().nama;
     pm.alasan_tolak = alasan.trim() || undefined;
+    this.savePesananMasuk(daftar);
+    return pm;
+  }
+
+  // ===== Tautan pesan pribadi pelanggan langganan dan pelacakan pesanan online =====
+
+  static getTautan(): TautanPesan[] {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem('depo_tautan');
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  // Menyamakan data tautan publik dengan data pelanggan terbaru (hanya menulis kalau ada yang berubah)
+  static sinkronTautan() {
+    if (typeof window === 'undefined') return;
+    if (this.getCurrentUser().role === 'pengantar') return;
+    const pesanan = this.getPesanan();
+    const lama = this.getTautan();
+    const baru: TautanPesan[] = this.getKontak().filter(k => k.token_pesan && k.id !== 'kt-1').map(k => {
+      const hp = normalisasiHp(k.no_hp || '') || '';
+      const terakhir = pesanan.find(p => p && p.kontak_id === k.id && p.status_pesanan !== 'batal' && (p.items || []).some(i => i && !(i.nama_produk || '').startsWith('Pelunasan')));
+      const sebelumnya = lama.find(t => t.id === k.token_pesan);
+      return {
+        id: k.token_pesan as string, kontak_id: k.id, nama: k.nama, hp, alamat: k.alamat || '', lat: k.lat, lng: k.lng,
+        items: terakhir ? terakhir.items.filter(i => i && !(i.nama_produk || '').startsWith('Pelunasan')).map(i => ({ produk_id: i.produk_id, jumlah: i.jumlah })) : (sebelumnya?.items || []),
+        aktif: k.aktif !== false && (sebelumnya ? sebelumnya.aktif : true)
+      };
+    });
+    // Tautan yang sudah ada tetapi pelanggannya tidak lagi punya token dibiarkan (dinonaktifkan lewat matikanTautan)
+    const gabung = [...baru, ...lama.filter(t => !baru.some(b => b.id === t.id))];
+    if (JSON.stringify(gabung) === JSON.stringify(lama)) return;
+    this.persist('depo_tautan', gabung);
+    window.dispatchEvent(new Event('depo_tautan_updated'));
+  }
+
+  static buatTokenPesan(kontakId: string): string {
+    const list = this.getKontak();
+    const k = list.find(x => x.id === kontakId);
+    if (!k) throw new Error('Pelanggan tidak ditemukan!');
+    if (k.token_pesan) return k.token_pesan;
+    const huruf = 'abcdefghjkmnpqrstuvwxyz23456789';
+    let t = '';
+    for (let i = 0; i < 10; i++) t += huruf[Math.floor(Math.random() * huruf.length)];
+    k.token_pesan = t;
+    this.saveKontak(list);
+    return t;
+  }
+
+  static matikanTautan(kontakId: string) {
+    const k = this.getKontak().find(x => x.id === kontakId);
+    if (!k || !k.token_pesan) return;
+    const lama = this.getTautan();
+    const t = lama.find(x => x.id === k.token_pesan);
+    if (!t) return;
+    t.aktif = false;
+    this.persist('depo_tautan', lama);
+    window.dispatchEvent(new Event('depo_tautan_updated'));
+  }
+
+  // Mengikuti perkembangan pesanan antar supaya pelanggan bisa melihat statusnya di halaman lacak
+  static sinkronStatusPesananMasuk() {
+    if (typeof window === 'undefined') return;
+    const daftar = this.getPesananMasuk();
+    const berjalan = daftar.filter(pm => pm.status === 'dikonfirmasi' && pm.pesanan_id && pm.tahap !== 'terkirim' && pm.tahap !== 'batal');
+    if (berjalan.length === 0) return;
+    const pesanan = this.getPesanan();
+    let berubah = false;
+    berjalan.forEach(pm => {
+      const p = pesanan.find(x => x.id === pm.pesanan_id);
+      if (!p) return;
+      const tahap: NonNullable<PesananMasuk['tahap']> =
+        p.status_pesanan === 'batal' ? 'batal'
+          : (p.status_pesanan === 'terkirim' || p.status_pesanan === 'selesai') ? 'terkirim'
+            : p.status_pesanan === 'dalam_perjalanan' ? 'diantar' : 'dikonfirmasi';
+      if (tahap !== (pm.tahap || 'dikonfirmasi')) {
+        pm.tahap = tahap;
+        if (tahap === 'terkirim') pm.terkirim_at = p.terkirim_at || new Date().toISOString();
+        berubah = true;
+      }
+    });
+    if (berubah) this.savePesananMasuk(daftar);
+  }
+
+  // Pesanan masuk yang sudah dikonfirmasi tetapi melewati estimasi dan belum terkirim
+  static pesananMasukTerlambat(): PesananMasuk[] {
+    const sekarang = Date.now();
+    return this.getPesananMasuk().filter(pm => pm.status === 'dikonfirmasi' && pm.estimasi_tiba && pm.tahap !== 'terkirim' && pm.tahap !== 'batal' && new Date(pm.estimasi_tiba).getTime() < sekarang);
+  }
+
+  // Kasir mengabari pelanggan bahwa pesanan terlambat dan menetapkan perkiraan tiba yang baru
+  static perbaruiEstimasiPesananMasuk(id: string, menitDariSekarang: number, estimasiIso?: string): PesananMasuk {
+    const daftar = this.getPesananMasuk();
+    const pm = daftar.find(x => x.id === id);
+    if (!pm) throw new Error('Pesanan masuk tidak ditemukan!');
+    if (!(menitDariSekarang > 0)) throw new Error('Isi perkiraan waktu tiba yang baru.');
+    pm.estimasi_tiba = estimasiIso || new Date(Date.now() + menitDariSekarang * 60000).toISOString();
     this.savePesananMasuk(daftar);
     return pm;
   }
