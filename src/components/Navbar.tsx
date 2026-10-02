@@ -6,9 +6,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import { AppStore } from '@/lib/store';
 import { namaCetak } from '@/lib/cetak';
 import { UserApp, UserRole, ShiftKasir } from '@/lib/types';
+import { bunyiNotifikasi } from '@/lib/audioAndTimer';
 import { 
   Droplets, ShoppingCart, Users, Package, MapPin, 
-  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet, Map, FileText
+  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet, Map, FileText, Inbox
 } from 'lucide-react';
 import { getTheme, setTheme, Theme } from '@/lib/theme';
 
@@ -35,6 +36,9 @@ export default function Navbar() {
   const [kasDiTanganNav, setKasDiTanganNav] = useState<number>(0);
   const [notifCount, setNotifCount] = useState<number>(0);
   const [menungguSetoran, setMenungguSetoran] = useState<number>(0);
+  const [pesananMasukBaru, setPesananMasukBaru] = useState<number>(0);
+  const [tampilPesananMasuk, setTampilPesananMasuk] = useState<boolean>(false);
+  const pesananMasukSebelumnya = React.useRef<number | null>(null);
 
   const calculateKasDiTangan = () => {
     const activeShift = AppStore.getShiftAktif();
@@ -45,6 +49,11 @@ export default function Navbar() {
 
     setKasDiTanganNav(Math.max(0, kas.ekspektasi));
     setNotifCount(AppStore.jumlahNotifikasiBelumDibaca());
+    const baru = AppStore.jumlahPesananMasukBaru();
+    if (pesananMasukSebelumnya.current !== null && baru > pesananMasukSebelumnya.current) bunyiNotifikasi();
+    pesananMasukSebelumnya.current = baru;
+    setPesananMasukBaru(baru);
+    setTampilPesananMasuk(!!AppStore.getPengaturan().pesan_online_aktif || AppStore.getPesananMasuk().length > 0);
     setMenungguSetoran(AppStore.getSetoranOwner().filter(s => s.status === 'menunggu').length + AppStore.getUangPegangan().filter(x => x.jenis === 'kembali' && x.status === 'menunggu').length);
   };
 
@@ -90,6 +99,7 @@ export default function Navbar() {
     window.addEventListener('depo_setoran_kurir_updated', handleUpdate);
     window.addEventListener('depo_setoran_owner_updated', handleUpdate);
     window.addEventListener('depo_uang_pegangan_updated', handleUpdate);
+    window.addEventListener('depo_pesanan_masuk_updated', handleUpdate);
     window.addEventListener('depo_notifikasi_updated', handleUpdate);
 
     return () => {
@@ -101,6 +111,7 @@ export default function Navbar() {
       window.removeEventListener('depo_setoran_kurir_updated', handleUpdate);
       window.removeEventListener('depo_setoran_owner_updated', handleUpdate);
       window.removeEventListener('depo_uang_pegangan_updated', handleUpdate);
+      window.removeEventListener('depo_pesanan_masuk_updated', handleUpdate);
       window.removeEventListener('depo_notifikasi_updated', handleUpdate);
     };
   }, []);
@@ -263,6 +274,12 @@ export default function Navbar() {
               <Link href="/kasir" aria-current={pathname === '/kasir' ? 'page' : undefined} className={linkClass(pathname === '/kasir')}>
                 <ShoppingCart size={16} aria-hidden="true" /> POS Kasir
               </Link>
+              {tampilPesananMasuk && (
+                <Link href="/kasir/pesanan-masuk" aria-current={pathname === '/kasir/pesanan-masuk' ? 'page' : undefined} className={linkClass(pathname === '/kasir/pesanan-masuk')}>
+                  <Inbox size={16} aria-hidden="true" /> Pesanan Online
+                  {pesananMasukBaru > 0 && <span aria-label={`${pesananMasukBaru} pesanan baru`} style={{ marginLeft: '6px', minWidth: '20px', height: '20px', padding: '0 6px', borderRadius: '10px', background: '#dc2626', color: '#ffffff', fontSize: '0.72rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{pesananMasukBaru}</span>}
+                </Link>
+              )}
               <Link href="/kasir/shift" aria-current={pathname === '/kasir/shift' ? 'page' : undefined} className={linkClass(pathname === '/kasir/shift')}>
                 <Receipt size={16} aria-hidden="true" /> Rekap Shift
               </Link>
@@ -283,6 +300,12 @@ export default function Navbar() {
               {menungguSetoran > 0 && (
                 <span aria-label={`${menungguSetoran} setoran menunggu`} style={{ marginLeft: '6px', minWidth: '20px', height: '20px', padding: '0 6px', borderRadius: '10px', background: '#dc2626', color: '#ffffff', fontSize: '0.72rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{menungguSetoran}</span>
               )}
+            </Link>
+          )}
+          {role === 'owner' && tampilPesananMasuk && (
+            <Link href="/kasir/pesanan-masuk" aria-current={pathname === '/kasir/pesanan-masuk' ? 'page' : undefined} className={linkClass(pathname === '/kasir/pesanan-masuk')}>
+              <Inbox size={16} aria-hidden="true" /> Pesanan Online
+              {pesananMasukBaru > 0 && <span aria-label={`${pesananMasukBaru} pesanan baru`} style={{ marginLeft: '6px', minWidth: '20px', height: '20px', padding: '0 6px', borderRadius: '10px', background: '#dc2626', color: '#ffffff', fontSize: '0.72rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{pesananMasukBaru}</span>}
             </Link>
           )}
           {role === 'owner' && (

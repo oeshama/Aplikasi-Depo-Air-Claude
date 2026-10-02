@@ -27,19 +27,26 @@ export function homeForRole(role: UserRole): string {
 // (mencegah hydration error) dan dicek dulu sesi login-nya.
 export default function ClientShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  // Halaman untuk pelanggan: tanpa login, tanpa menu, dan TIDAK mengunduh data toko ke HP pelanggan
+  const publik = pathname === '/pesan' || (pathname || '').startsWith('/pesan/');
   const [synced, setSynced] = useState(false);
   const [allowed, setAllowed] = useState(false);
 
   // Ambil data terbaru dari Supabase sebelum halaman membaca localStorage
   useEffect(() => {
+    if (publik) { setSynced(true); return; }
     initSync().finally(() => setSynced(true));
-  }, []);
+  }, [publik]);
 
   useEffect(() => watchFormLabels(), []);
 
   useEffect(() => {
     if (!synced) return;
     setAllowed(false);
+    if (publik) {
+      setAllowed(true);
+      return;
+    }
     if (pathname === '/login') {
       setAllowed(true);
       return;
@@ -60,11 +67,11 @@ export default function ClientShell({ children }: { children: React.ReactNode })
     }
 
     setAllowed(true);
-  }, [pathname, synced]);
+  }, [pathname, synced, publik]);
 
   // Sesi login berakhir setelah 12 jam: cek berkala dan saat aplikasi dibuka kembali
   useEffect(() => {
-    if (!synced || pathname === '/login') return;
+    if (!synced || pathname === '/login' || publik) return;
 
     const check = () => {
       if (!AppStore.getSessionUser()) window.location.replace('/login');
@@ -81,7 +88,7 @@ export default function ClientShell({ children }: { children: React.ReactNode })
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', check);
     };
-  }, [synced, pathname]);
+  }, [synced, pathname, publik]);
 
   let content: React.ReactNode = null;
 
@@ -91,6 +98,8 @@ export default function ClientShell({ children }: { children: React.ReactNode })
         Menyinkronkan data...
       </div>
     );
+  } else if (allowed && publik) {
+    content = <main id="konten-utama" tabIndex={-1} style={{ outline: 'none' }}>{children}</main>;
   } else if (allowed) {
     content = (
       <>

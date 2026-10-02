@@ -1,8 +1,9 @@
 import {
   UserApp, Produk, ZoneOngkir, Kontak, Pesanan, TitipGalon,
   PengaturanDepo, ShiftKasir, UserRole, Pengeluaran, HutangToko, SumberKas,
-  SetoranKurir, SetoranOwner, UangPegangan, FotoMeter, ModeFotoMeter, Rekening, MutasiKeuangan, JenisMutasi, NotifikasiOwner, SaldoKurir, MetodePembayaran
+  SetoranKurir, SetoranOwner, UangPegangan, PesananMasuk, Etalase, PesananItem, FotoMeter, ModeFotoMeter, Rekening, MutasiKeuangan, JenisMutasi, NotifikasiOwner, SaldoKurir, MetodePembayaran
 } from './types';
+import { normalisasiHp, hpLokal } from './telepon';
 import { 
   DEMO_USERS, INITIAL_PRODUK, INITIAL_ZONA, INITIAL_KONTAK, 
   INITIAL_PESANAN, INITIAL_PENGATURAN 
@@ -44,6 +45,7 @@ export class AppStore {
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('depo_pengaturan_updated'));
+      this.perbaruiEtalase();
     }
   }
 
@@ -64,6 +66,7 @@ export class AppStore {
     this.persist('depo_produk', data);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('depo_produk_updated'));
+      this.perbaruiEtalase();
     }
   }
 
@@ -370,6 +373,154 @@ export class AppStore {
     s.status = 'dibatalkan';
     this.saveSetoranOwner(list);
     return s;
+  }
+
+  // ===== Pesanan online dari halaman publik /pesan =====
+
+  static getPesananMasuk(): PesananMasuk[] {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem('depo_pesanan_masuk');
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  static savePesananMasuk(data: PesananMasuk[]) {
+    this.persist('depo_pesanan_masuk', data);
+    window.dispatchEvent(new Event('depo_pesanan_masuk_updated'));
+  }
+
+  static jumlahPesananMasukBaru(): number {
+    return this.getPesananMasuk().filter(p => p.status === 'baru').length;
+  }
+
+  static getEtalase(): Etalase | null {
+    if (typeof window === 'undefined') return null;
+    const stored = localStorage.getItem('depo_etalase');
+    return stored ? JSON.parse(stored) : null;
+  }
+
+  // Ringkasan toko untuk halaman publik. Hanya perangkat owner/admin yang menulis, dan hanya kalau isinya berubah.
+  static perbaruiEtalase() {
+    if (typeof window === 'undefined') return;
+    const role = this.getCurrentUser().role;
+    if (role !== 'owner' && role !== 'admin') return;
+    const p = this.getPengaturan();
+    const wa = normalisasiHp(p.wa_business || '');
+    const baru: Etalase = {
+      aktif: !!p.pesan_online_aktif && !!wa,
+      nama: ((p.header_struk || '').split('\n').map(s => s.trim()).find(Boolean)) || p.nama_depo || 'Depo Air',
+      wa: wa || '',
+      produk: this.getProduk().filter(x => x && x.aktif).map(x => ({ id: x.id, nama: x.nama_produk, volume_liter: x.volume_liter, harga: x.harga_tempat }))
+    };
+    if (JSON.stringify(baru) === JSON.stringify(this.getEtalase())) return;
+    this.persist('depo_etalase', baru);
+    window.dispatchEvent(new Event('depo_etalase_updated'));
+  }
+
+  static cariKontakByHp(hp: string): Kontak | undefined {
+    return this.getKontak().find(k => k.id !== 'kt-1' && normalisasiHp(k.no_hp || '') === hp);
+  }
+
+  // Saran estimasi antar (menit) dari rata-rata pesanan antar terakhir yang sudah terkirim
+  static saranEstimasiMenit(): number {
+    const lama = this.getPesanan()
+      .filter(p => p && p.zone_ongkir_id && p.terkirim_at)
+      .slice(0, 30)
+      .map(p => (new Date(p.terkirim_at as string).getTime() - new Date(p.created_at).getTime()) / 60000)
+      .filter(m => m >= 5 && m <= 360);
+    if (lama.length < 3) return 45;
+    const rata = lama.reduce((a, b) => a + b, 0) / lama.length;
+    return Math.min(120, Math.max(20, Math.round(rata / 5) * 5));
+  }
+
+  // Rincian harga pesanan online: harga khusus pelanggan bila ada, selain itu harga umum; ongkir sesuai zona
+  static hitungPesananMasuk(pm: PesananMasuk, kontak?: Kontak, zonaId?: string) {
+    const produk = this.getProduk();
+    const items: PesananItem[] = pm.items.map(it => {
+      const prod = produk.find(x => x.id === it.produk_id);
+      const hk = kontak?.harga_khusus?.[it.produk_id];
+      const harga = prod ? (typeof hk === 'number' && hk > 0 ? hk : prod.harga_tempat) : 0;
+      return {
+        id: `item-${it.produk_id}`, produk_id: it.produk_id, nama_produk: prod?.nama_produk || it.nama_produk, jumlah: it.jumlah,
+        harga_satuan: harga, subtotal: harga * it.jumlah, dihitung_ongkir: !!prod?.kena_ongkir,
+        harga_khusus: prod && typeof hk === 'number' && hk > 0 && hk !== prod.harga_tempat ? true : undefined
+      };
+    });
+    const zona = this.getZona().find(z => z.id === zonaId);
+    const subtotal = items.reduce((a, i) => a + i.subtotal, 0);
+    const unit = items.filter(i => i.dihitung_ongkir).reduce((a, i) => a + i.jumlah, 0);
+    const tarif = zona ? zona.tarif_per_galon : 0;
+    return { items, subtotal, unitOngkir: unit, tarif, ongkir: unit * tarif, total: subtotal + unit * tarif };
+  }
+
+  // Kasir mengonfirmasi pesanan online: pelanggan dicocokkan/dibuat, lalu dibuatkan pesanan antar biasa
+  // (uang diterima kurir, cara bayar dicatat kurir saat sampai).
+  static konfirmasiPesananMasuk(id: string, opsi: { zonaId: string; estimasiMenit: number }): { pesanan: Pesanan; kontak: Kontak; pm: PesananMasuk } {
+    const daftar = this.getPesananMasuk();
+    const pm = daftar.find(x => x.id === id);
+    if (!pm) throw new Error('Pesanan masuk tidak ditemukan!');
+    if (pm.status !== 'baru') throw new Error('Pesanan ini sudah diproses.');
+    if (!opsi.zonaId) throw new Error('Pilih zona ongkir dulu.');
+    if (!(opsi.estimasiMenit > 0)) throw new Error('Isi estimasi waktu tiba.');
+
+    const kontakList = this.getKontak();
+    let kontak = kontakList.find(k => k.id !== 'kt-1' && normalisasiHp(k.no_hp || '') === pm.no_hp);
+    if (!kontak) {
+      kontak = {
+        id: `kt-${Date.now()}`, nama: pm.nama, tipe: 'pelanggan', no_hp: hpLokal(pm.no_hp), alamat: pm.alamat,
+        lat: pm.lat, lng: pm.lng, zona_id: opsi.zonaId, aktif: true, limit_hutang: 0, hutang_saat_ini: 0, galon_dipinjam: 0
+      };
+      kontakList.push(kontak);
+    } else {
+      const k = kontak;
+      if (!k.zona_id) k.zona_id = opsi.zonaId;
+      if (k.lat == null && pm.lat != null) { k.lat = pm.lat; k.lng = pm.lng; }
+      if (!k.alamat) k.alamat = pm.alamat;
+    }
+    this.saveKontak(kontakList);
+
+    const h = this.hitungPesananMasuk(pm, kontak, opsi.zonaId);
+    const user = this.getCurrentUser();
+    const sekarang = new Date();
+    const tgl = `${sekarang.getFullYear()}${String(sekarang.getMonth() + 1).padStart(2, '0')}${String(sekarang.getDate()).padStart(2, '0')}`;
+    const adaNota = new Set(this.getPesanan().map(p => p.no_nota));
+    let nota = '';
+    do { nota = `INV-${tgl}-${Math.floor(100 + Math.random() * 900)}`; } while (adaNota.has(nota));
+
+    const catatan = [
+      `Pesanan online ${pm.no}`, pm.waktu_antar && pm.waktu_antar !== 'secepatnya' ? `Antar: ${pm.waktu_antar}` : '',
+      `Pelanggan memilih bayar ${pm.bayar}`, pm.alamat, pm.catatan || ''
+    ].filter(Boolean).join(' | ');
+    const pesanan: Pesanan = {
+      id: `psn-${Date.now()}`, no_nota: nota, kontak_id: kontak.id, nama_pelanggan: kontak.nama, tipe_transaksi: 'isi_langsung',
+      items: h.items, subtotal_produk: h.subtotal, zone_ongkir_id: opsi.zonaId, tarif_ongkir_per_unit: h.tarif,
+      total_unit_ongkir: h.unitOngkir, total_ongkir: h.ongkir, diskon: 0, total_akhir: h.total,
+      status_pesanan: 'dijadwalkan', status_pembayaran: 'belum_bayar',
+      pembayaran_details: [{ metode: 'tunai', jumlah: h.total }], total_dibayar: 0, sisa_hutang: 0,
+      kasir_id: user.id, catatan, bayar_ke_kurir: true, created_at: sekarang.toISOString()
+    };
+    this.addPesanan(pesanan);
+
+    pm.status = 'dikonfirmasi';
+    pm.diproses_at = sekarang.toISOString();
+    pm.diproses_oleh = user.nama;
+    pm.estimasi_tiba = new Date(sekarang.getTime() + opsi.estimasiMenit * 60000).toISOString();
+    pm.pesanan_id = pesanan.id;
+    pm.kontak_id = kontak.id;
+    this.savePesananMasuk(daftar);
+    return { pesanan, kontak, pm };
+  }
+
+  static tolakPesananMasuk(id: string, alasan: string): PesananMasuk {
+    const daftar = this.getPesananMasuk();
+    const pm = daftar.find(x => x.id === id);
+    if (!pm) throw new Error('Pesanan masuk tidak ditemukan!');
+    if (pm.status !== 'baru') throw new Error('Pesanan ini sudah diproses.');
+    pm.status = 'ditolak';
+    pm.diproses_at = new Date().toISOString();
+    pm.diproses_oleh = this.getCurrentUser().nama;
+    pm.alasan_tolak = alasan.trim() || undefined;
+    this.savePesananMasuk(daftar);
+    return pm;
   }
 
   // ===== Uang pegangan kasir: uang dari kas besar yang dipegang kasir di luar laci =====

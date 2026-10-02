@@ -178,6 +178,39 @@ export interface SetoranOwner {
   catatan?: string;
 }
 
+// Pesanan yang dikirim pelanggan lewat halaman publik /pesan. Selalu menunggu konfirmasi kasir dulu;
+// setelah dikonfirmasi baru dibuatkan pesanan antar biasa (pesanan_id).
+export interface PesananMasuk {
+  id: string;
+  no: string;                    // kode pendek untuk pelanggan dan kasir, mis. K7M2
+  waktu: string;                 // ISO, waktu pesanan dikirim
+  nama: string;
+  no_hp: string;                 // format 62812...
+  alamat: string;
+  lat?: number;
+  lng?: number;
+  items: { produk_id: string; nama_produk: string; jumlah: number }[];
+  waktu_antar: string;           // 'secepatnya' atau teks jam
+  bayar: 'tunai' | 'transfer';   // pilihan pelanggan; cara bayar sebenarnya dicatat kurir saat sampai
+  catatan?: string;
+  status: 'baru' | 'dikonfirmasi' | 'ditolak';
+  // Diisi kasir
+  diproses_at?: string;
+  diproses_oleh?: string;
+  estimasi_tiba?: string;        // ISO
+  pesanan_id?: string;
+  kontak_id?: string;
+  alasan_tolak?: string;
+}
+
+// Ringkasan toko yang boleh dilihat publik (tanpa harga khusus pelanggan), disinkronkan dari aplikasi
+export interface Etalase {
+  aktif: boolean;
+  nama: string;
+  wa: string;
+  produk: { id: string; nama: string; volume_liter: number; harga: number }[];
+}
+
 // Uang pegangan: uang dari kas besar owner yang dipegang seorang kasir di luar laci (mis. untuk beli air baku).
 // 'beri' = owner memberi (kasir harus menerima dulu), 'kembali' = kasir mengembalikan sisa (owner harus menerima).
 export interface UangPegangan {
@@ -282,6 +315,8 @@ export interface PengaturanDepo {
   tagline: string;
   alamat: string;
   no_wa: string;
+  pesan_online_aktif?: boolean;   // halaman pesan online untuk pelanggan (/pesan) dibuka atau ditutup
+  wa_business?: string;           // nomor WhatsApp Business untuk pesanan online, format 62812...
   target_loyalitas_galon: number;
   target_omzet_harian?: number;
   target_galon_harian?: number;

@@ -150,3 +150,29 @@ class AlarmSoundManager {
 }
 
 export const alarmSound = new AlarmSoundManager();
+
+// Bunyi singkat dua nada untuk pemberitahuan (mis. pesanan online baru). Diam saja bila peramban belum mengizinkan suara.
+export function bunyiNotifikasi() {
+  if (typeof window === 'undefined') return;
+  try {
+    const Kelas = window.AudioContext || (window as any).webkitAudioContext;
+    if (!Kelas) return;
+    const ctx = new Kelas();
+    [660, 880].forEach((frek, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = frek;
+      const t0 = ctx.currentTime + i * 0.22;
+      gain.gain.setValueAtTime(0.25, t0);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.3);
+    });
+    setTimeout(() => ctx.close().catch(() => undefined), 900);
+  } catch {
+    // abaikan
+  }
+}

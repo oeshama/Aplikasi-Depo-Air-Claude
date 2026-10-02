@@ -6,17 +6,20 @@ import { AppStore } from '@/lib/store';
 import LokasiField from '@/components/LokasiField';
 import { PERIODE_TARGET, ambilTarget, aturTarget, LITER_PER_GALON } from '@/lib/target';
 import { cetakUji, namaCetak } from '@/lib/cetak';
+import { normalisasiHp } from '@/lib/telepon';
+import QRCode from 'qrcode';
 import {
   Settings, Image as ImageIcon, Upload, Save, Droplets, 
   CheckCircle, Trash2, AlertTriangle, Wrench, Plus, Gauge,
   Users, UserPlus, Phone, MapPin, DollarSign, Calendar, Edit3, X, UserCheck, Target, Camera, Printer,
-  Bell, BellOff, Volume2, Clock, Package, KeyRound, ChevronRight, ArrowLeft, Store, type LucideIcon
+  Bell, BellOff, Volume2, Clock, Package, KeyRound, ChevronRight, ArrowLeft, Store, Globe, type LucideIcon
 } from 'lucide-react';
 
-type KategoriId = 'toko' | 'karyawan' | 'printer' | 'target' | 'operasional' | 'data';
+type KategoriId = 'toko' | 'pesan_online' | 'karyawan' | 'printer' | 'target' | 'operasional' | 'data';
 
 const KATEGORI: { id: KategoriId; judul: string; Ikon: LucideIcon; warna: string }[] = [
   { id: 'toko', judul: 'Toko', Ikon: Store, warna: '#0284c7' },
+  { id: 'pesan_online', judul: 'Pesanan online (WhatsApp)', Ikon: Globe, warna: '#10b981' },
   { id: 'karyawan', judul: 'Karyawan dan gaji', Ikon: Users, warna: '#10b981' },
   { id: 'printer', judul: 'Printer dan struk', Ikon: Printer, warna: '#0284c7' },
   { id: 'target', judul: 'Target penjualan', Ikon: Target, warna: '#10b981' },
@@ -24,7 +27,7 @@ const KATEGORI: { id: KategoriId; judul: string; Ikon: LucideIcon; warna: string
   { id: 'data', judul: 'Data dan reset', Ikon: AlertTriangle, warna: '#ef4444' },
 ];
 
-const KATEGORI_FORM: KategoriId[] = ['toko', 'printer', 'target', 'operasional'];
+const KATEGORI_FORM: KategoriId[] = ['toko', 'pesan_online', 'printer', 'target', 'operasional'];
 
 export default function AdminPengaturanPage() {
   const [pengaturan, setPengaturan] = useState<PengaturanDepo>(AppStore.getPengaturan());
@@ -35,6 +38,14 @@ export default function AdminPengaturanPage() {
     setDisimpanJson(JSON.stringify(data));
   };
   const [kategori, setKategori] = useState<KategoriId | null>(null);
+  const [tautanPesan, setTautanPesan] = useState<string>('');
+  const [qrPesan, setQrPesan] = useState<string>('');
+  const [tautanDisalin, setTautanDisalin] = useState<boolean>(false);
+  useEffect(() => {
+    const t = window.location.origin + '/pesan';
+    setTautanPesan(t);
+    QRCode.toDataURL(t, { margin: 1, width: 360 }).then(setQrPesan).catch(() => setQrPesan(''));
+  }, []);
   const [disimpanJson, setDisimpanJson] = useState<string>('');
   const [logoPreview, setLogoPreview] = useState<string>('');
 
@@ -348,7 +359,18 @@ export default function AdminPengaturanPage() {
 
   const handleSubmitMain = (e: React.FormEvent) => {
     e.preventDefault();
-    simpanPengaturan(pengaturan);
+    const waNorm = normalisasiHp(pengaturan.wa_business || '');
+    if (pengaturan.wa_business && !waNorm) {
+      alert('Nomor WhatsApp Business belum benar. Contoh: 0812 3456 7890.');
+      return;
+    }
+    if (pengaturan.pesan_online_aktif && !waNorm) {
+      alert('Isi nomor WhatsApp Business dulu sebelum mengaktifkan pesanan online.');
+      return;
+    }
+    const final = { ...pengaturan, wa_business: waNorm || '' };
+    setPengaturan(final);
+    simpanPengaturan(final);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 4000);
   };
@@ -977,6 +999,66 @@ export default function AdminPengaturanPage() {
         </div>
 
         </>
+      )}
+
+      {tampil('pesan_online') && (
+        <div className="glass-card animate-fade-in" style={{ padding: '24px', borderLeft: '4px solid var(--c-green)' }}>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Globe size={22} aria-hidden="true" /> Pesanan online lewat tautan
+          </h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '14px' }}>
+            Pelanggan memesan lewat satu tautan tanpa mendaftar. Pesanan masuk ke menu Pesanan Online dan baru diproses setelah kasir mengonfirmasi.
+          </p>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', minHeight: '44px', fontWeight: 700, cursor: 'pointer', marginBottom: '12px' }}>
+            <input
+              type="checkbox"
+              checked={!!pengaturan.pesan_online_aktif}
+              onChange={(e) => setPengaturan(prev => ({ ...prev, pesan_online_aktif: e.target.checked }))}
+              style={{ width: 22, height: 22 }}
+            />
+            Aktifkan pesanan online
+          </label>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="wa-business">Nomor WhatsApp Business</label>
+            <input
+              id="wa-business"
+              type="tel"
+              inputMode="tel"
+              className="form-input"
+              value={pengaturan.wa_business || ''}
+              onChange={(e) => setPengaturan(prev => ({ ...prev, wa_business: e.target.value }))}
+              placeholder="0812 3456 7890"
+              aria-describedby="wa-business-info"
+            />
+            <div id="wa-business-info" style={{ fontSize: '0.8rem', marginTop: '4px', color: pengaturan.wa_business && !normalisasiHp(pengaturan.wa_business) ? 'var(--c-red)' : 'var(--text-muted)' }}>
+              {pengaturan.wa_business
+                ? (normalisasiHp(pengaturan.wa_business) ? `Dipakai sebagai +${normalisasiHp(pengaturan.wa_business)}. Tombol WhatsApp di halaman pesan membuka chat ke nomor ini.` : 'Nomor belum benar. Contoh: 0812 3456 7890.')
+                : 'Nomor ini dipakai untuk tombol "Kabari lewat WhatsApp" milik pelanggan. Wajib diisi sebelum diaktifkan.'}
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="tautan-pesan">Tautan untuk pelanggan</label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <input id="tautan-pesan" readOnly className="form-input" value={tautanPesan} style={{ flex: '1 1 220px' }} />
+              <button type="button" className="btn btn-secondary" onClick={async () => { try { await navigator.clipboard.writeText(tautanPesan); setTautanDisalin(true); setTimeout(() => setTautanDisalin(false), 2500); } catch { alert('Salin manual tautan di kolom ini.'); } }}>
+                {tautanDisalin ? 'Tersalin' : 'Salin'}
+              </button>
+            </div>
+            <div style={{ fontSize: '0.8rem', marginTop: '4px', color: 'var(--text-muted)' }}>
+              Simpan pengaturan dulu supaya saklar dan nomor di atas berlaku untuk pelanggan.
+            </div>
+          </div>
+
+          {qrPesan && (
+            <div style={{ textAlign: 'center' }}>
+              <img src={qrPesan} alt={`Kode QR tautan pesan: ${tautanPesan}`} width={180} height={180} style={{ background: '#fff', padding: 8, borderRadius: 12 }} />
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>Cetak kode QR ini untuk stiker galon atau dinding depo.</div>
+            </div>
+          )}
+        </div>
       )}
 
       {tampil('printer') && (
