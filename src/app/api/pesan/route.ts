@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { normalisasiHp } from '@/lib/telepon';
 import { dbPublik, ambilEtalase, ambilTautan, tokenValid } from '@/lib/apiPublik';
+import { kirimKePeran } from '@/lib/pushServer';
 import type { PesananMasuk } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -102,6 +103,16 @@ export async function POST(req: Request) {
   };
   const { error } = await db.from('depo_records').insert({ collection: 'pesanan_masuk', id: pm.id, data: pm, device_id: 'publik' });
   if (error) return galat('Pesanan belum berhasil dikirim. Coba lagi sebentar.', 502);
+
+  // Beri tahu HP kasir, owner, dan admin yang sudah mengaktifkan notifikasi. Kegagalan di sini tidak boleh menggagalkan pesanan.
+  try {
+    await kirimKePeran(db, ['owner', 'admin', 'kasir'], {
+      title: 'Pesanan online baru',
+      body: `${nama}: ${items.map(i => `${i.jumlah} ${i.nama_produk}`).join(', ')} (${no})`,
+      url: '/kasir/pesanan-masuk',
+      tag: `pm-${no}`
+    }, 4000);
+  } catch { /* abaikan */ }
 
   return NextResponse.json({ ok: true, no, lacak, wa: etalase.wa });
 }

@@ -6,6 +6,7 @@ import { AppStore } from '@/lib/store';
 import { initSync } from '@/lib/sync';
 import { AUTH_AKTIF, adaSesiAkun } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { segarkanPush } from '@/lib/push';
 import { watchFormLabels } from '@/lib/a11y';
 import { UserRole } from '@/lib/types';
 import Navbar from '@/components/Navbar';
@@ -85,6 +86,9 @@ export default function ClientShell({ children }: { children: React.ReactNode })
     }
 
     setAllowed(true);
+
+    // Notifikasi push: bila izin sudah diberikan, HP ini didaftarkan ulang dengan akun yang sedang masuk
+    if (AUTH_AKTIF) segarkanPush();
 
     // Owner/admin: ringkasan toko untuk halaman pesan pelanggan disamakan dengan pengaturan terbaru (hanya menulis kalau berbeda)
     if (user.role === 'owner' || user.role === 'admin') AppStore.perbaruiEtalase();

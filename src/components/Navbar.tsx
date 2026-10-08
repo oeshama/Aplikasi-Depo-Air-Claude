@@ -9,6 +9,7 @@ import { UserApp, UserRole, ShiftKasir } from '@/lib/types';
 import { bunyiNotifikasi } from '@/lib/audioAndTimer';
 import { AUTH_AKTIF } from '@/lib/auth';
 import GantiPasswordModal from '@/components/GantiPasswordModal';
+import NotifikasiPushTombol from '@/components/NotifikasiPushTombol';
 import { 
   Droplets, ShoppingCart, Users, Package, MapPin, 
   LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet, Map, FileText, Inbox, BookOpen, KeyRound
@@ -392,6 +393,8 @@ export default function Navbar() {
             {theme === 'light' ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />}
             {theme === 'light' ? 'Mode gelap' : 'Mode terang'}
           </button>
+
+          {AUTH_AKTIF && <NotifikasiPushTombol />}
 
           {AUTH_AKTIF && (
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowGantiPassword(true)}>

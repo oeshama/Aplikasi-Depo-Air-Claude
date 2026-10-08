@@ -91,6 +91,24 @@ export const TOPIK: Topik[] = [
     hati: ['Selama masih ada antrean, jangan menghapus data browser dan jangan memakai mode penyamaran (incognito). Data yang belum terkirim bisa hilang.'],
   },
 
+  {
+    id: 'notifikasi-hp', kelompok: 'Dasar', judul: 'Notifikasi di HP (walau aplikasi tertutup)', peran: SEMUA,
+    ringkas: 'HP berbunyi saat ada pesanan online, tanpa harus membuka aplikasi.',
+    langkah: [
+      'Masuk dengan akun Anda. Notifikasi hanya tersedia setelah masuk.',
+      'Buka menu (tombol tiga garis di HP), lalu tekan "Aktifkan notifikasi". Saat Chrome bertanya, pilih "Izinkan".',
+      'Tekan "Uji notifikasi". Dalam beberapa detik muncul notifikasi percobaan di layar. Kalau muncul, notifikasi sudah aktif.',
+      'Siapa mendapat apa: kasir, owner, dan admin diberi tahu saat ada pesanan online baru. Pengantar diberi tahu saat kasir mengonfirmasi pesanan untuk diantar.',
+      'Ketuk notifikasi untuk langsung membuka halaman yang tepat.',
+      'Untuk berhenti, tekan "Matikan" di menu. Keluar dari akun juga menghentikan notifikasi di HP itu.',
+    ],
+    tips: [
+      'Android: supaya tidak terlambat, izinkan Chrome berjalan di latar belakang dan jangan memakai penghemat baterai ketat untuk Chrome.',
+      'Jangan "tutup paksa" Chrome dari daftar aplikasi terbaru. Beberapa HP lalu menghentikan notifikasi.',
+    ],
+    hati: ['Notifikasi dipasang per HP. Kalau Anda masuk di HP lain, aktifkan lagi di HP itu.'],
+  },
+
   // ===================== KASIR: TRANSAKSI =====================
   {
     id: 'buka-shift', kelompok: 'Kasir: uang dan shift', judul: 'Buka shift', peran: KASIR,
@@ -423,6 +441,22 @@ export const TOPIK: Topik[] = [
     hati: [
       'Kalau NEXT_PUBLIC_LOGIN_AKUN sudah 1 tetapi akun belum dibuat atau perannya belum diberikan, tidak ada yang bisa masuk. Pulihkan dengan menghapus pengaturan itu di Vercel lalu deploy ulang.',
       'Setelah beralih, password lama di data aplikasi dihapus otomatis saat owner masuk pertama kali.',
+    ],
+  },
+  {
+    id: 'push-setup', kelompok: 'Owner: persiapan toko', judul: 'Menyiapkan notifikasi push', peran: OWNER,
+    ringkas: 'Langkah satu kali agar HP bisa menerima notifikasi pesanan online.',
+    buka: { href: '/admin/pengaturan', label: 'Buka Pengaturan Toko' },
+    langkah: [
+      'Di komputer, buka folder aplikasi (E:\\Depo Air Abi), klik kanan sambil menahan Shift, lalu pilih "Open PowerShell window here" (atau buka Terminal di folder itu).',
+      'Ketik perintah ini, lalu Enter: npx web-push generate-vapid-keys. Muncul dua baris: Public Key dan Private Key.',
+      'Di Vercel buka proyek, Environment Variables, lalu tambahkan tiga variabel: NEXT_PUBLIC_VAPID_PUBLIC_KEY (isi Public Key, tipe Config), VAPID_PRIVATE_KEY (isi Private Key, tipe Secret), dan VAPID_SUBJECT (isi mailto: diikuti email Anda, tipe Config).',
+      'Deploy ulang di Vercel.',
+      'Di setiap HP, masuk dengan akun, buka menu, dan tekan "Aktifkan notifikasi" lalu "Uji notifikasi".',
+    ],
+    hati: [
+      'Private Key adalah rahasia. Tempel langsung di Vercel, jangan dikirim ke chat atau difoto.',
+      'Kalau Private Key diganti, semua HP harus menekan "Aktifkan notifikasi" lagi.',
     ],
   },
   {

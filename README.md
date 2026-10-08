@@ -10,6 +10,9 @@ Aplikasi kasir dan manajemen depo air isi ulang (Next.js, Supabase, Vercel).
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (atau `..._ANON_KEY`) | ya | Kunci publik Supabase (memang terlihat di browser) |
 | `SUPABASE_SERVICE_ROLE_KEY` | untuk keamanan | Kunci RAHASIA, hanya dipakai server untuk halaman pesan pelanggan. Jangan pernah diawali `NEXT_PUBLIC_`, jangan dibagikan |
 | `NEXT_PUBLIC_LOGIN_AKUN` | untuk keamanan | Isi `1` untuk memakai login akun Supabase (email + password). Kosong = login lama |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | untuk notifikasi | Kunci publik notifikasi push (hasil `npx web-push generate-vapid-keys`) |
+| `VAPID_PRIVATE_KEY` | untuk notifikasi | Kunci RAHASIA notifikasi push, hanya di server |
+| `VAPID_SUBJECT` | untuk notifikasi | `mailto:` diikuti email pemilik, dipakai layanan push untuk menghubungi bila ada masalah |
 
 ## Mengamankan data (login akun)
 

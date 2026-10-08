@@ -6,6 +6,7 @@ import { PesananMasuk } from '@/lib/types';
 import { namaCetak } from '@/lib/cetak';
 import { linkBalas, teksKonfirmasi, teksTolak, teksTerlambat, teksTautanPribadi, jamLokal } from '@/lib/pesananMasuk';
 import { normalisasiHp, linkWa } from '@/lib/telepon';
+import { picuPushDikonfirmasi } from '@/lib/push';
 import { Inbox, Check, X, MessageCircle, MapPin, Phone, Clock, Link2, AlertTriangle } from 'lucide-react';
 
 const EVENTS = ['depo_tautan_updated', 'depo_pesanan_masuk_updated', 'depo_kontak_updated', 'depo_zona_updated', 'depo_produk_updated', 'depo_pesanan_updated', 'depo_pengaturan_updated'];
@@ -61,6 +62,7 @@ export default function PesananMasukPage() {
     try {
       const { pm, pesanan, kontak } = AppStore.konfirmasiPesananMasuk(pilih.id, { zonaId, estimasiMenit: menit });
       setPilih(null);
+      picuPushDikonfirmasi(pm); // beri tahu HP pengantar
       // Pelanggan yang dikonfirmasi otomatis mendapat tautan pribadi untuk pesanan berikutnya
       let pribadi: string | undefined;
       try { AppStore.buatTokenPesan(kontak.id); pribadi = urlPribadi(kontak.id); } catch { /* abaikan */ }

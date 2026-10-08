@@ -54,8 +54,27 @@ export async function masukDenganAkun(masukan: string, password: string): Promis
 }
 
 // Keluar dari akun (dijalankan di latar belakang; tidak menunggu internet)
+function tokenLokal(): string | null {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i) || '';
+      if (k.startsWith('sb-') && k.endsWith('-auth-token')) return JSON.parse(localStorage.getItem(k) || 'null')?.access_token || null;
+    }
+  } catch { /* abaikan */ }
+  return null;
+}
+
 export function keluarAkun(): void {
   if (!AUTH_AKTIF || !supabase) return;
+  // HP ini tidak lagi menerima notifikasi untuk akun yang keluar (keepalive: tetap terkirim walau halaman berpindah)
+  try {
+    const ep = localStorage.getItem('depo_push_endpoint');
+    const tok = tokenLokal();
+    if (ep && tok) {
+      fetch('/api/push/daftar', { method: 'DELETE', keepalive: true, headers: { 'content-type': 'application/json', authorization: `Bearer ${tok}` }, body: JSON.stringify({ endpoint: ep }) }).catch(() => undefined);
+      localStorage.removeItem('depo_push_endpoint');
+    }
+  } catch { /* abaikan */ }
   supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
 }
 
