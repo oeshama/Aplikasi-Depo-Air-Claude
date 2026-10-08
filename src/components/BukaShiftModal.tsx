@@ -68,6 +68,16 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, onClose, openedShiftResult]);
 
+  useEffect(() => {
+    if (!isOpen || !openedShiftResult) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onShiftOpened(openedShiftResult.shift);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, openedShiftResult]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -241,6 +251,17 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
               className="icon-btn"
               onClick={onClose}
               aria-label="Tutup, buka shift nanti"
+              style={{ marginLeft: 'auto', flexShrink: 0 }}
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
+          )}
+          {openedShiftResult && (
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={handleStartTransaction}
+              aria-label="Tutup struk dan mulai transaksi"
               style={{ marginLeft: 'auto', flexShrink: 0 }}
             >
               <X size={20} aria-hidden="true" />
