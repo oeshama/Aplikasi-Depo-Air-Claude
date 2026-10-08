@@ -413,6 +413,16 @@ export class AppStore {
     return this.getPesananMasuk().filter(p => p.status === 'baru').length;
   }
 
+  // Pesanan online yang sudah dikonfirmasi dan belum sampai (menjadi tugas antar kurir)
+  static pesananMasukDalamAntaran(): PesananMasuk[] {
+    const psn = this.getPesanan();
+    return this.getPesananMasuk().filter(pm => {
+      if (pm.status !== 'dikonfirmasi' || !pm.pesanan_id || pm.tahap === 'terkirim' || pm.tahap === 'batal') return false;
+      const p = psn.find(x => x.id === pm.pesanan_id);
+      return !p || (p.status_pesanan !== 'terkirim' && p.status_pesanan !== 'selesai' && p.status_pesanan !== 'batal');
+    });
+  }
+
   static getEtalase(): Etalase | null {
     if (typeof window === 'undefined') return null;
     const stored = localStorage.getItem('depo_etalase');

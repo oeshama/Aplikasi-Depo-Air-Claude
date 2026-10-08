@@ -40,6 +40,7 @@ export default function Navbar() {
   const [menungguSetoran, setMenungguSetoran] = useState<number>(0);
   const [showGantiPassword, setShowGantiPassword] = useState<boolean>(false);
   const [pesananMasukBaru, setPesananMasukBaru] = useState<number>(0);
+  const [onlineAntaran, setOnlineAntaran] = useState<number>(0);
   const [tampilPesananMasuk, setTampilPesananMasuk] = useState<boolean>(false);
   const pesananMasukSebelumnya = React.useRef<number | null>(null);
 
@@ -53,9 +54,14 @@ export default function Navbar() {
     setKasDiTanganNav(Math.max(0, kas.ekspektasi));
     setNotifCount(AppStore.jumlahNotifikasiBelumDibaca());
     const baru = AppStore.jumlahPesananMasukBaru();
-    if (pesananMasukSebelumnya.current !== null && baru > pesananMasukSebelumnya.current) bunyiNotifikasi();
-    pesananMasukSebelumnya.current = baru;
+    const antaran = AppStore.pesananMasukDalamAntaran().length;
+    // Kasir/owner/admin diberi tahu saat ada pesanan baru; pengantar saat ada pesanan online baru untuk diantar
+    const perana = AppStore.getCurrentUser().role;
+    const hitungBunyi = perana === 'pengantar' ? antaran : baru;
+    if (pesananMasukSebelumnya.current !== null && hitungBunyi > pesananMasukSebelumnya.current) bunyiNotifikasi();
+    pesananMasukSebelumnya.current = hitungBunyi;
     setPesananMasukBaru(baru);
+    setOnlineAntaran(antaran);
     setTampilPesananMasuk(!!AppStore.getPengaturan().pesan_online_aktif || AppStore.getPesananMasuk().length > 0);
     setMenungguSetoran(AppStore.getSetoranOwner().filter(s => s.status === 'menunggu').length + AppStore.getUangPegangan().filter(x => x.jenis === 'kembali' && x.status === 'menunggu').length);
   };
@@ -276,6 +282,7 @@ export default function Navbar() {
             <>
               <Link href="/kasir" aria-current={pathname === '/kasir' ? 'page' : undefined} className={linkClass(pathname === '/kasir')}>
                 <ShoppingCart size={16} aria-hidden="true" /> POS Kasir
+                {pesananMasukBaru > 0 && <span aria-label={`${pesananMasukBaru} pesanan online baru`} style={{ marginLeft: '6px', minWidth: '20px', height: '20px', padding: '0 6px', borderRadius: '10px', background: '#dc2626', color: '#ffffff', fontSize: '0.72rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{pesananMasukBaru}</span>}
               </Link>
               {tampilPesananMasuk && (
                 <Link href="/kasir/pesanan-masuk" aria-current={pathname === '/kasir/pesanan-masuk' ? 'page' : undefined} className={linkClass(pathname === '/kasir/pesanan-masuk')}>
@@ -344,6 +351,7 @@ export default function Navbar() {
           {role === 'pengantar' && (
             <Link href="/pengantar" aria-current={pathname === '/pengantar' ? 'page' : undefined} className={linkClass(pathname === '/pengantar')}>
               <Truck size={16} aria-hidden="true" /> Antaran Lapangan
+              {onlineAntaran > 0 && <span aria-label={`${onlineAntaran} pesanan online untuk diantar`} style={{ marginLeft: '6px', minWidth: '20px', height: '20px', padding: '0 6px', borderRadius: '10px', background: '#dc2626', color: '#ffffff', fontSize: '0.72rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{onlineAntaran}</span>}
             </Link>
           )}
 

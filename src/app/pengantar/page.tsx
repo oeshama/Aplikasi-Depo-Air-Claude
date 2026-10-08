@@ -5,6 +5,7 @@ import { Pesanan, PengaturanDepo, SaldoKurir, UserApp, Kontak } from '@/lib/type
 import { AppStore } from '@/lib/store';
 import KonfirmasiTerkirimSheet from '@/components/KonfirmasiTerkirimSheet';
 import RuteAntaran from '@/components/RuteAntaran';
+import PesananOnlinePanel from '@/components/PesananOnlinePanel';
 import { ambilLokasiSaatIni, koordinatValid, urlNavigasiGoogleMaps } from '@/lib/geo';
 import { calculateOrderDuration, alarmSound, formatThresholdText } from '@/lib/audioAndTimer';
 import { Truck, MapPin, Phone, CheckCircle, Navigation, Clock, BellOff, AlertTriangle, Volume2, Package } from 'lucide-react';
@@ -178,6 +179,8 @@ export default function PengantarPage() {
           <span className="badge badge-warning">{deliveryJobs.length} Antaran</span>
         </div>
       </div>
+
+      <PesananOnlinePanel mode="pengantar" />
 
       {/* Uang tunai yang sedang dibawa (belum disetor ke kasir) */}
       {(() => {

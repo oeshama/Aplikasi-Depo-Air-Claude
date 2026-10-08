@@ -290,6 +290,21 @@ export const TOPIK: Topik[] = [
     tips: ['Batas waktu dan jenis suara diatur owner di Pengaturan Toko, kategori Operasional depo.'],
   },
 
+  // ===================== PENGANTAR: PESANAN ONLINE =====================
+  {
+    id: 'online-pengantar', kelompok: 'Pengantar', judul: 'Pesanan online untuk diantar', peran: ['owner', 'pengantar'],
+    ringkas: 'Pesanan dari tautan pelanggan yang sudah dikonfirmasi kasir muncul sebagai tugas antar.',
+    buka: { href: '/pengantar', label: 'Buka Antaran Lapangan' },
+    langkah: [
+      'Saat kasir mengonfirmasi pesanan online, muncul bunyi singkat dan angka merah di menu "Antaran Lapangan".',
+      'Di bagian atas halaman Antaran Lapangan ada kotak "Pesanan online untuk diantar". Setiap pesanan menampilkan kode, barang, alamat (dengan tautan Peta bila pelanggan membagikan lokasi), nomor telepon, jam antar, catatan pelanggan, dan jumlah yang harus ditagih.',
+      'Ketuk nomor telepon untuk menelepon, atau "WhatsApp" untuk mengirim pesan ke pelanggan.',
+      'Pesanan yang sama juga ada di daftar antaran biasa. Setelah barang sampai, tekan "Konfirmasi Terkirim & Terima Bayar" dan catat cara pelanggan membayar.',
+      'Kalau ada tulisan "pesanan online lagi sedang menunggu konfirmasi kasir", itu belum menjadi tugas Anda. Tunggu sampai kasir mengonfirmasinya.',
+    ],
+    tips: ['Pelanggan bisa memantau pesanannya sendiri lewat tautan. Kalau terlambat, kabari lewat WhatsApp.'],
+  },
+
   // ===================== PELANGGAN DAN PETA =====================
   {
     id: 'dashboard-admin', kelompok: 'Pelanggan dan peta', judul: 'Dashboard dan target harian', peran: ['admin'],
@@ -334,7 +349,8 @@ export const TOPIK: Topik[] = [
     ringkas: 'Memeriksa, mengonfirmasi, atau menolak pesanan yang masuk lewat tautan.',
     buka: { href: '/kasir/pesanan-masuk', label: 'Buka Pesanan Online' },
     langkah: [
-      'Buka menu "Pesanan Online". Angka merah dan bunyi singkat menandakan ada pesanan baru.',
+      'Pesanan baru muncul dengan angka merah di menu "POS Kasir" dan "Pesanan Online", disertai bunyi singkat. Di halaman POS Kasir juga ada kotak "Pesanan online menunggu konfirmasi" berisi detail setiap pesanan: barang, alamat, nomor WhatsApp, jam antar, pilihan bayar, dan catatan.',
+      'Tekan "Proses pesanan" di kotak itu, atau buka menu "Pesanan Online".',
       'Periksa pesanan: barang, alamat, jam antar, dan apakah pelanggan sudah terdaftar.',
       'Tekan "Konfirmasi". Pilih "Zona ongkir" dan "Estimasi tiba" (aplikasi mengusulkan angka dari rata-rata antaran sebelumnya). Total dengan ongkir tampil sebelum dikonfirmasi.',
       'Tekan "Konfirmasi dan siapkan antar". Pesanan masuk ke daftar antar biasa, lalu muncul teks balasan WhatsApp yang sudah siap. Tekan "Balas lewat WhatsApp".',

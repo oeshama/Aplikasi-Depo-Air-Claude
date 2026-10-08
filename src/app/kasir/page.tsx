@@ -16,6 +16,7 @@ import KonfirmasiTerkirimSheet from '@/components/KonfirmasiTerkirimSheet';
 import SetoranKurirSheet from '@/components/SetoranKurirSheet';
 import SerahOwnerSheet from '@/components/SerahOwnerSheet';
 import PeganganKasirCard from '@/components/PeganganKasirCard';
+import PesananOnlinePanel from '@/components/PesananOnlinePanel';
 import {
   ShoppingCart, Plus, Minus, User, Truck, Receipt,
   CreditCard, DollarSign, QrCode, Building, Clock, AlertTriangle, Check,
@@ -1061,6 +1062,8 @@ export default function KasirPage() {
           </button>
         </div>
       )}
+
+      <PesananOnlinePanel mode="kasir" />
 
       <PeganganKasirCard />
 
