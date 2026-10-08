@@ -259,22 +259,23 @@ export default function PesanPage() {
       </section>
 
       <section aria-labelledby="judul-data" className="glass-card" style={{ padding: '14px', marginBottom: '12px' }}>
-        <h2 id="judul-data" style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '8px' }}>2. Diantar ke mana?</h2>
+        <h2 id="judul-data" style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '4px' }}>2. Diantar ke mana?</h2>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 8px' }}><span aria-hidden="true" style={{ color: 'var(--c-red)', fontWeight: 800 }}>*</span> wajib diisi</p>
         {!tautan && (
           <>
             <div className="form-group" style={{ marginBottom: '10px' }}>
-              <label className="form-label" htmlFor="ps-nama">Nama</label>
-              <input id="ps-nama" className="form-input" autoComplete="name" value={nama} onChange={e => setNama(e.target.value)} maxLength={60} />
+              <label className="form-label" htmlFor="ps-nama">Nama{' '}<span aria-hidden="true" style={{ color: 'var(--c-red)', fontWeight: 800 }}> *</span></label>
+              <input id="ps-nama" aria-required="true" className="form-input" autoComplete="name" value={nama} onChange={e => setNama(e.target.value)} maxLength={60} />
             </div>
             <div className="form-group" style={{ marginBottom: '10px' }}>
-              <label className="form-label" htmlFor="ps-hp">Nomor WhatsApp</label>
-              <input id="ps-hp" className="form-input" type="tel" inputMode="tel" autoComplete="tel" value={hp} onChange={e => setHp(e.target.value)} placeholder="0812 3456 7890" maxLength={20} />
+              <label className="form-label" htmlFor="ps-hp">Nomor WhatsApp{' '}<span aria-hidden="true" style={{ color: 'var(--c-red)', fontWeight: 800 }}> *</span></label>
+              <input id="ps-hp" aria-required="true" className="form-input" type="tel" inputMode="tel" autoComplete="tel" value={hp} onChange={e => setHp(e.target.value)} placeholder="Cth : 08123456789" maxLength={20} />
             </div>
           </>
         )}
         <div className="form-group" style={{ marginBottom: '10px' }}>
-          <label className="form-label" htmlFor="ps-alamat">Alamat lengkap</label>
-          <textarea id="ps-alamat" className="form-textarea" rows={3} autoComplete="street-address" value={alamat} onChange={e => setAlamat(e.target.value)} placeholder="Jalan, nomor rumah, patokan" maxLength={300} />
+          <label className="form-label" htmlFor="ps-alamat">Alamat lengkap{' '}<span aria-hidden="true" style={{ color: 'var(--c-red)', fontWeight: 800 }}> *</span></label>
+          <textarea id="ps-alamat" aria-required="true" className="form-textarea" rows={3} autoComplete="street-address" value={alamat} onChange={e => setAlamat(e.target.value)} placeholder="Jalan, nomor rumah, patokan" maxLength={300} />
         </div>
         <button type="button" className="btn btn-secondary" onClick={pakaiLokasi} style={{ width: '100%' }}>
           <MapPin size={18} aria-hidden="true" /> {lat != null ? 'Perbarui lokasi saya' : 'Pakai lokasi saya (opsional)'}
@@ -294,8 +295,8 @@ export default function PesanPage() {
         </div>
         {waktu === 'jam' && (
           <div className="form-group" style={{ marginBottom: '10px' }}>
-            <label className="form-label" htmlFor="ps-jam">Jam antar</label>
-            <input id="ps-jam" className="form-input" type="time" value={jam} onChange={e => setJam(e.target.value)} />
+            <label className="form-label" htmlFor="ps-jam">Jam antar{' '}<span aria-hidden="true" style={{ color: 'var(--c-red)', fontWeight: 800 }}> *</span></label>
+            <input id="ps-jam" aria-required="true" className="form-input" type="time" value={jam} onChange={e => setJam(e.target.value)} />
           </div>
         )}
         <div className="form-group" style={{ marginBottom: 0 }}>
