@@ -66,11 +66,6 @@ export default function PesanPage() {
         } else if (simpan) {
           setNama(simpan.nama || ''); setHp(simpan.hp || ''); setAlamat(simpan.alamat || '');
           if (typeof simpan.lat === 'number') { setLat(simpan.lat); setLng(simpan.lng); setInfoLokasi('Lokasi tersimpan dari pesanan sebelumnya'); }
-          if (simpan.keranjang) Object.entries(simpan.keranjang as Record<string, number>).forEach(([id, n]) => { if (ada(id) && n > 0) awal[id] = n; });
-        }
-        if (Object.keys(awal).length === 0) {
-          const galon = daftar.find(x => /galon/i.test(x.nama) && x.volume_liter === 19) || daftar.find(x => /galon/i.test(x.nama)) || daftar[0];
-          if (galon) awal[galon.id] = 1;
         }
         setKeranjang(awal);
         mulai.current = Date.now();
