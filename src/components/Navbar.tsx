@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AppStore } from '@/lib/store';
 import { namaCetak } from '@/lib/cetak';
-import { UserApp, UserRole, ShiftKasir } from '@/lib/types';
+import { UserApp, UserRole, ShiftKasir, NotifikasiOwner } from '@/lib/types';
 import { bunyiNotifikasi } from '@/lib/audioAndTimer';
 import { AUTH_AKTIF } from '@/lib/auth';
 import GantiPasswordModal from '@/components/GantiPasswordModal';
 import NotifikasiPushTombol from '@/components/NotifikasiPushTombol';
+import NotifikasiPanel from '@/components/NotifikasiPanel';
 import { 
   Droplets, ShoppingCart, Users, Package, MapPin, 
   LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet, Map, FileText, Inbox, BookOpen, KeyRound
@@ -38,6 +39,8 @@ export default function Navbar() {
 
   const [kasDiTanganNav, setKasDiTanganNav] = useState<number>(0);
   const [notifCount, setNotifCount] = useState<number>(0);
+  const [notifList, setNotifList] = useState<NotifikasiOwner[]>([]);
+  const [showNotif, setShowNotif] = useState<boolean>(false);
   const [menungguSetoran, setMenungguSetoran] = useState<number>(0);
   const [showGantiPassword, setShowGantiPassword] = useState<boolean>(false);
   const [pesananMasukBaru, setPesananMasukBaru] = useState<number>(0);
@@ -54,6 +57,7 @@ export default function Navbar() {
 
     setKasDiTanganNav(Math.max(0, kas.ekspektasi));
     setNotifCount(AppStore.jumlahNotifikasiBelumDibaca());
+    setNotifList(AppStore.getNotifikasi());
     const baru = AppStore.jumlahPesananMasukBaru();
     const antaran = AppStore.pesananMasukDalamAntaran().length;
     // Kasir/owner/admin diberi tahu saat ada pesanan baru; pengantar saat ada pesanan online baru untuk diantar
@@ -248,20 +252,24 @@ export default function Navbar() {
             </div>
           )}
 
-          {(role === 'owner' || role === 'admin') && notifCount > 0 && (
-            <Link
-              href="/owner/dashboard"
+          {(role === 'owner' || role === 'admin') && (
+            <button
+              type="button"
               className="icon-btn"
-              aria-label={`${notifCount} pemberitahuan baru, buka dashboard`}
+              onClick={() => setShowNotif(true)}
+              aria-haspopup="dialog"
+              aria-label={notifCount > 0 ? `${notifCount} pemberitahuan baru, buka daftar` : 'Pemberitahuan'}
               style={{ position: 'relative' }}
             >
               <Bell size={20} aria-hidden="true" />
-              <span aria-hidden="true" style={{
-                position: 'absolute', top: '2px', right: '2px', minWidth: '18px', height: '18px', padding: '0 4px',
-                borderRadius: '9px', background: '#dc2626', color: '#ffffff', fontSize: '0.7rem', fontWeight: 800,
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>{notifCount}</span>
-            </Link>
+              {notifCount > 0 && (
+                <span aria-hidden="true" style={{
+                  position: 'absolute', top: '2px', right: '2px', minWidth: '18px', height: '18px', padding: '0 4px',
+                  borderRadius: '9px', background: '#dc2626', color: '#ffffff', fontSize: '0.7rem', fontWeight: 800,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>{notifCount}</span>
+              )}
+            </button>
           )}
 
           <button
@@ -409,6 +417,7 @@ export default function Navbar() {
       </div>
 
       <GantiPasswordModal isOpen={showGantiPassword} onClose={() => setShowGantiPassword(false)} />
+      <NotifikasiPanel isOpen={showNotif} onClose={() => setShowNotif(false)} daftar={notifList} />
 
       <TutupShiftModal
         isOpen={showTutupShiftModal}
