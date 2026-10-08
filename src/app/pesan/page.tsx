@@ -291,8 +291,8 @@ export default function PesanPage() {
         </div>
       </section>
 
-      <section aria-labelledby="judul-opsi" className="glass-card" style={{ padding: '14px', marginBottom: '12px' }}>
-        <h2 id="judul-opsi" style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '8px' }}>3. Kapan dan bayar apa?</h2>
+      <section aria-labelledby="judul-waktu" className="glass-card" style={{ padding: '14px', marginBottom: '12px' }}>
+        <h2 id="judul-waktu" style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '8px' }}>3. Kapan diantar?</h2>
         <div className="seg-grid" role="radiogroup" aria-label="Waktu antar" style={{ marginBottom: '10px' }}>
           <button type="button" role="radio" aria-checked={waktu === 'secepatnya'} className="seg-btn" onClick={() => setWaktu('secepatnya')}>Secepatnya</button>
           <button type="button" role="radio" aria-checked={waktu === 'jam'} className="seg-btn" onClick={() => setWaktu('jam')}>Jam tertentu</button>
@@ -303,14 +303,21 @@ export default function PesanPage() {
             <input id="ps-jam" className="form-input" type="time" value={jam} onChange={e => setJam(e.target.value)} />
           </div>
         )}
-        <div className="seg-grid" role="radiogroup" aria-label="Cara bayar" style={{ marginBottom: '10px' }}>
-          <button type="button" role="radio" aria-checked={bayar === 'tunai'} className="seg-btn" onClick={() => setBayar('tunai')}>Tunai saat diantar</button>
-          <button type="button" role="radio" aria-checked={bayar === 'transfer'} className="seg-btn" onClick={() => setBayar('transfer')}>Transfer</button>
-        </div>
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label" htmlFor="ps-catatan">Catatan (opsional)</label>
           <input id="ps-catatan" className="form-input" value={catatan} onChange={e => setCatatan(e.target.value)} placeholder="Contoh: pagar hijau, taruh di teras" maxLength={200} />
         </div>
+      </section>
+
+      <section aria-labelledby="judul-bayar" className="glass-card" style={{ padding: '14px', marginBottom: '12px' }}>
+        <h2 id="judul-bayar" style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '8px' }}>4. Bayar pakai apa?</h2>
+        <div className="seg-grid" role="radiogroup" aria-label="Cara bayar" style={{ marginBottom: '8px' }}>
+          <button type="button" role="radio" aria-checked={bayar === 'tunai'} className="seg-btn" onClick={() => setBayar('tunai')}>Tunai saat diantar</button>
+          <button type="button" role="radio" aria-checked={bayar === 'transfer'} className="seg-btn" onClick={() => setBayar('transfer')}>Transfer</button>
+        </div>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
+          {bayar === 'tunai' ? 'Bayar langsung ke kurir saat air sampai.' : 'Kami kabari total dan cara transfernya lewat WhatsApp setelah pesanan dikonfirmasi.'}
+        </p>
       </section>
 
       {galat && <p role="alert" style={{ color: 'var(--c-red)', fontWeight: 600, margin: '0 0 10px' }}>{galat}</p>}
