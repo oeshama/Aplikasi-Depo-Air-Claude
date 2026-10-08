@@ -168,6 +168,7 @@ export class AppStore {
     if (typeof window === 'undefined') return INITIAL_PESANAN;
     const stored = localStorage.getItem('depo_pesanan');
     if (stored === null) {
+      if (AUTH_AKTIF) return []; // mode akun: tidak membuat pesanan contoh (bisa terunggah ke server asli)
       localStorage.setItem('depo_pesanan', JSON.stringify(INITIAL_PESANAN));
       return INITIAL_PESANAN;
     }

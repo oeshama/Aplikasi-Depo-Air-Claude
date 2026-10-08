@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabase';
+import { AUTH_AKTIF } from './auth';
 import {
   INITIAL_PENGATURAN, INITIAL_PRODUK, INITIAL_ZONA, INITIAL_KONTAK, INITIAL_PESANAN
 } from './mockData';
@@ -81,6 +82,31 @@ const PUSH_CHUNK = 500;
 const PULL_OVERLAP_MS = 15000;   // tarik ulang sedikit ke belakang supaya tidak ada perubahan yang terlewat
 const POLL_INTERVAL_MS = 30000;
 const INIT_TIMEOUT_MS = 15000;
+const VERIFIED_KEY = 'depo_sync_verified';
+
+// Mode akun: sebuah perangkat dianggap "terverifikasi" setelah pernah benar-benar membaca data toko dari server
+// (ada baris pengaturan). Sebelum itu, server yang tampak kosong bisa berarti "akun ini belum diberi izin baca",
+// sehingga perangkat tidak boleh mengunggah apa pun. Ini mencegah data contoh menimpa data asli.
+export function perangkatTerverifikasi(): boolean {
+  if (!AUTH_AKTIF) return true;
+  try { return localStorage.getItem(VERIFIED_KEY) === '1'; } catch { return false; }
+}
+
+// Antrean unggahan yang berisi data berisiko dari perangkat yang belum terverifikasi: pengaturan, etalase, dan pesanan contoh
+const ID_PESANAN_CONTOH = /^psn-(demo-|10[1-3]$)/;
+function bersihkanAntreanBerisiko() {
+  if (perangkatTerverifikasi()) return;
+  const queue = loadQueue();
+  let berubah = false;
+  for (const k of Object.keys(queue)) {
+    const q = queue[k];
+    if (q.collection === 'pengaturan' || q.collection === 'etalase' || (q.collection === 'pesanan' && ID_PESANAN_CONTOH.test(q.id))) {
+      delete queue[k];
+      berubah = true;
+    }
+  }
+  if (berubah) saveQueue(queue);
+}
 
 let initPromise: Promise<void> | null = null;
 let ready = false;
@@ -195,6 +221,7 @@ function queueDiff(def: CollectionDef, oldValue: any, newValue: any): boolean {
 // Dipanggil AppStore setiap kali menyimpan data
 export function recordLocalChange(key: string, oldRaw: string | null, newValue: any) {
   if (!isSupabaseConfigured || !ready) return;
+  if (AUTH_AKTIF && !perangkatTerverifikasi()) return;
   const def = byKey.get(key);
   if (!def) return;
 
@@ -313,6 +340,13 @@ function applyIncremental(rows: RemoteRow[]) {
 }
 
 function applyFull(rows: RemoteRow[], firstPull: boolean) {
+  if (AUTH_AKTIF) {
+    if (rows.some(r => r.collection === 'pengaturan' && !r.deleted)) {
+      try { localStorage.setItem(VERIFIED_KEY, '1'); } catch { /* abaikan */ }
+    } else {
+      bersihkanAntreanBerisiko();
+    }
+  }
   const queue = loadQueue();
   const grouped = new Map<string, RemoteRow[]>();
   for (const row of [...rows].sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0))) {
@@ -328,7 +362,13 @@ function applyFull(rows: RemoteRow[], firstPull: boolean) {
     if (remoteRows.length === 0) {
       const seed = localValue ?? def.initial();
       if (localValue == null) localStorage.setItem(def.key, JSON.stringify(seed));
-      queueDiff(def, null, seed);
+      // Mode akun: server kosong bisa berarti "akun ini belum diberi izin baca". Perangkat baru (tanpa data lokal)
+      // tidak boleh mengunggah data contoh, supaya data asli di server tidak tertimpa.
+      if (!(AUTH_AKTIF && (localValue == null || !perangkatTerverifikasi()))) {
+        // Mode akun: pesanan contoh tidak pernah diunggah ke server
+        const diunggah = AUTH_AKTIF && def.collection === 'pesanan' && Array.isArray(seed) ? seed.filter((p: any) => !ID_PESANAN_CONTOH.test(String(p?.id))) : seed;
+        queueDiff(def, null, diunggah);
+      }
       continue;
     }
 
@@ -400,6 +440,9 @@ async function pullFull(): Promise<void> {
 async function pullIncremental(): Promise<void> {
   const last = localStorage.getItem(LAST_PULL_KEY);
   if (!last) return pullFull();
+  // Mode akun: selama perangkat belum terverifikasi, tarik SEMUA data (bukan hanya yang baru). Perangkat yang tadinya
+  // tidak diizinkan membaca tidak boleh menganggap dirinya mutakhir setelah izin dibuka.
+  if (AUTH_AKTIF && !perangkatTerverifikasi()) return pullFull();
   const since = new Date(Date.parse(last) - PULL_OVERLAP_MS).toISOString();
   const rows = await fetchAll(since);
   applyIncremental(rows);

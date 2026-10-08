@@ -86,6 +86,9 @@ export default function ClientShell({ children }: { children: React.ReactNode })
 
     setAllowed(true);
 
+    // Owner/admin: ringkasan toko untuk halaman pesan pelanggan disamakan dengan pengaturan terbaru (hanya menulis kalau berbeda)
+    if (user.role === 'owner' || user.role === 'admin') AppStore.perbaruiEtalase();
+
     // Mode akun: password lama (teks biasa) yang masih tersimpan di data dihapus oleh owner begitu masuk
     if (AUTH_AKTIF && user.role === 'owner') {
       const p = AppStore.getPengaturan();

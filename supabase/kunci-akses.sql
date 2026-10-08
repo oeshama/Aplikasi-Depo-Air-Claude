@@ -2,11 +2,12 @@
 -- KUNCI AKSES: hanya pengguna yang sudah login (punya peran) yang boleh
 -- membaca dan menulis data. Kunci publik di browser tidak lagi cukup.
 --
--- JANGAN jalankan sebelum:
+-- Jalankan SETELAH:
 --   1. Semua akun sudah dibuat di Authentication > Users.
 --   2. SQL peran (dari Pengaturan Toko > Akun login dan keamanan) sudah dijalankan.
---   3. Aplikasi dengan NEXT_PUBLIC_LOGIN_AKUN=1 sudah dicoba dan semua orang bisa masuk.
---   4. SUPABASE_SERVICE_ROLE_KEY sudah dipasang di Vercel (untuk halaman pesan pelanggan).
+--   3. SUPABASE_SERVICE_ROLE_KEY dan NEXT_PUBLIC_LOGIN_AKUN=1 sudah dipasang di Vercel dan sudah di-redeploy.
+-- Dan jalankan SEGERA setelah itu: begitu mode akun menyala, akun login baru bisa membaca/menulis data
+-- setelah berkas ini dijalankan. Sebelumnya hanya kunci publik yang punya izin.
 --
 -- Kalau ada masalah setelah dijalankan: jalankan supabase/buka-kunci-darurat.sql
 -- Jalankan di: Supabase Dashboard > SQL Editor > New query > Run
