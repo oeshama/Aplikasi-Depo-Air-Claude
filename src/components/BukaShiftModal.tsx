@@ -99,24 +99,25 @@ export default function BukaShiftModal({ isOpen, onShiftOpened, onClose, onSubmi
       return;
     }
 
+    // Mode akun: kasir, pengantar, dan admin selalu membuka shift atas nama akun yang sedang masuk. Identitas diambil dari
+    // akun itu sendiri, bukan dicari di daftar karyawan, supaya tetap berfungsi walau daftar karyawan berubah atau belum tersinkron.
+    const penggunaMasuk = AppStore.getCurrentUser();
+    const bukanPemilih = AUTH_AKTIF && penggunaMasuk.role !== 'owner' && penggunaMasuk.role !== 'admin';
+
     // Find target user
-    const targetUser = userList.find(u => u.id === selectedUserId) || userList[0] || {
-      id: selectedUserId || 'usr-owner',
-      nama: 'Kasir',
-      role: 'kasir',
-      username: 'kasir',
-      password: '123456'
-    };
+    const targetUser = bukanPemilih
+      ? penggunaMasuk
+      : (userList.find(u => u.id === selectedUserId) || userList[0] || {
+          id: selectedUserId || 'usr-owner',
+          nama: 'Kasir',
+          role: 'kasir',
+          username: 'kasir',
+          password: '123456'
+        });
 
     const expectedPassword = targetUser.password || '123456';
     if (!AUTH_AKTIF && password.trim() !== expectedPassword.trim()) {
       alert(`Password / PIN untuk "${targetUser.nama}" salah! Silakan periksa kembali.`);
-      return;
-    }
-    // Mode akun: kasir hanya boleh membuka shift atas namanya sendiri
-    const penggunaMasuk = AppStore.getCurrentUser();
-    if (AUTH_AKTIF && penggunaMasuk.role !== 'owner' && penggunaMasuk.role !== 'admin' && targetUser.id !== penggunaMasuk.id) {
-      alert('Anda hanya bisa membuka shift atas nama sendiri.');
       return;
     }
 
