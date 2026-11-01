@@ -21,7 +21,7 @@ import {
   ShoppingCart, Plus, Minus, User, Truck, Receipt,
   CreditCard, DollarSign, QrCode, Building, Clock, AlertTriangle, Check,
   BellOff, Volume2, Package, UserPlus, X, TrendingDown, FileText, Banknote, UserCheck, BookOpen,
-  Bell, MoreHorizontal, ChevronDown, ChevronUp, HandCoins, type LucideIcon
+  Bell, MoreHorizontal, ChevronDown, ChevronUp, HandCoins, XCircle, type LucideIcon
 } from 'lucide-react';
 
 const TIPE_LABEL: Record<TipeTransaksi, string> = {
@@ -529,6 +529,21 @@ export default function KasirPage() {
       clearInterval(interval);
     };
   }, []);
+
+  const handleBatalkanPesanan = (psn: Pesanan) => {
+    const alasan = window.prompt(`Batalkan penjualan ${psn.no_nota} (${psn.nama_pelanggan}, ${AppStore.formatRupiah(psn.total_akhir)})?\n\nStok dan hutang akan dikembalikan. Tulis alasan pembatalan:`, '');
+    if (alasan === null) return;
+    if (!alasan.trim()) { alert('Alasan pembatalan wajib diisi.'); return; }
+    try {
+      const hasil = AppStore.batalkanPesanan(psn.id, alasan);
+      if (hasil.perluKembalikan > 0) {
+        alert(`Pesanan dibatalkan.\n\nPelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembalikan uang itu ke pelanggan.`);
+      }
+      loadData();
+    } catch (e: any) {
+      alert(e?.message || 'Gagal membatalkan pesanan.');
+    }
+  };
 
   // Pending delivery (seluruh transaksi yang belum terkirim)
   const pendingDelivery = pesananList.filter(p => 
@@ -1606,6 +1621,9 @@ export default function KasirPage() {
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
                         <button type="button" className="btn btn-success btn-sm" style={{ flex: '1 1 130px' }} onClick={() => handleKonfirmasiTerkirim(psn.id)}>
                           <Check size={16} aria-hidden="true" /> Sudah terkirim
+                        </button>
+                        <button type="button" className="btn btn-secondary btn-sm" style={{ color: 'var(--c-red)' }} onClick={() => handleBatalkanPesanan(psn)}>
+                          <XCircle size={16} aria-hidden="true" /> Batalkan
                         </button>
                         {durInfo.isTerlambat && (isSnoozed ? (
                           <span className="badge badge-warning">Ditunda {remainingSnoozeMins} menit</span>

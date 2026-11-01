@@ -164,8 +164,10 @@ export const TOPIK: Topik[] = [
       'Tekan "Proses dan cetak struk". Pesanan masuk ke daftar antaran.',
       'Untuk memantau, tekan tombol "Antaran" di bagian atas. Pesanan yang terlambat ditandai dan membunyikan alarm.',
       'Saat barang sampai, kurir menekan "Konfirmasi Terkirim & Terima Bayar" di aplikasinya. Kasir juga bisa menekan "Sudah terkirim" lalu memilih kurirnya.',
+      'Kalau pelanggan membatalkan sebelum barang dikirim, tekan "Batalkan" di daftar Antaran, lalu tulis alasannya. Penjualan dan pengirimannya dibatalkan, stok air, pinjaman galon, dan hutang dikembalikan, dan nilai uangnya tidak ikut laporan.',
     ],
     tips: ['Untuk pembayaran tunai, uangnya dipegang kurir dulu. Kurir menyetor ke kasir lewat "Setoran kurir".'],
+    hati: ['Kalau pelanggan sudah membayar lewat QRIS atau transfer, aplikasi akan mengingatkan jumlah yang harus dikembalikan. Pengembaliannya dilakukan sendiri, tidak otomatis.'],
   },
   {
     id: 'setoran-kurir', kelompok: 'Kasir: uang dan shift', judul: 'Menerima setoran uang dari kurir', peran: KASIR,

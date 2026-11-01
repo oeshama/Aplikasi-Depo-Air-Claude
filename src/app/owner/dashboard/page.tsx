@@ -380,6 +380,25 @@ export default function OwnerDashboardPage() {
     });
   };
 
+  const handleBatalkanPesanan = (psn: Pesanan) => {
+    const alasan = window.prompt(`Batalkan penjualan ${psn.no_nota} (${psn.nama_pelanggan}, ${AppStore.formatRupiah(psn.total_akhir)})?
+
+Stok dan hutang akan dikembalikan. Tulis alasan pembatalan:`, '');
+    if (alasan === null) return;
+    if (!alasan.trim()) { alert('Alasan pembatalan wajib diisi.'); return; }
+    try {
+      const hasil = AppStore.batalkanPesanan(psn.id, alasan);
+      if (hasil.perluKembalikan > 0) {
+        alert(`Pesanan dibatalkan.
+
+Pelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembalikan uang itu ke pelanggan.`);
+      }
+      loadData();
+    } catch (e: any) {
+      alert(e?.message || 'Gagal membatalkan pesanan.');
+    }
+  };
+
   // Pending delivery (seluruh transaksi yang belum terkirim)
   const pendingDelivery = (pesananList || []).filter(p => 
     p && (
@@ -1653,6 +1672,15 @@ export default function OwnerDashboardPage() {
                         ) : (
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Normal</span>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => handleBatalkanPesanan(psn)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ marginTop: '6px', color: 'var(--c-red)', fontSize: '0.75rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          title="Batalkan penjualan dan pengiriman ini"
+                        >
+                          <X size={13} aria-hidden="true" /> Batalkan
+                        </button>
                       </td>
                     </tr>
                   );

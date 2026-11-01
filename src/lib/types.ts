@@ -125,6 +125,16 @@ export interface Pesanan {
   bayar_ke_kurir?: boolean;
   kurir_uang_diterima?: number;   // tunai yang benar-benar diterima kurir dari pelanggan
   kurir_diterima_at?: string;
+  // Diisi saat penjualan dibatalkan sebelum terkirim. Angka uang di atas dinolkan supaya tidak ikut laporan/kas;
+  // nilai aslinya disimpan di sini.
+  batal_info?: {
+    waktu: string;
+    oleh: string;
+    alasan: string;
+    total_asli: number;
+    metode_asli: string;      // mis. "hutang", "qris", "tunai (ke kurir)"
+    perlu_kembalikan: number; // uang yang sudah diterima toko dan harus dikembalikan ke pelanggan (non-tunai)
+  };
 }
 
 // Setoran uang dari kurir ke kasir (boleh kapan saja, berapa saja)

@@ -1088,6 +1088,96 @@ export class AppStore {
       .sort((a, b) => (b.kurir_diterima_at || b.created_at).localeCompare(a.kurir_diterima_at || a.created_at));
   }
 
+  // Batalkan penjualan + pengiriman yang belum terkirim. Membalikkan hutang pelanggan, pinjaman galon dan stok air,
+  // lalu menolkan nilai uangnya (nilai asli disimpan di batal_info). Dipakai kasir/owner/admin dari daftar "menunggu dikirim".
+  static batalkanPesanan(id: string, alasan: string): { pesanan: Pesanan; perluKembalikan: number } {
+    const list = this.getPesanan();
+    const idx = list.findIndex(p => p.id === id);
+    if (idx === -1) throw new Error('Pesanan tidak ditemukan!');
+    const p = list[idx];
+    if (p.status_pesanan === 'batal') throw new Error('Pesanan ini sudah dibatalkan.');
+    if (p.status_pesanan === 'terkirim' || p.status_pesanan === 'selesai') throw new Error('Pesanan yang sudah terkirim tidak bisa dibatalkan.');
+    if (!alasan || !alasan.trim()) throw new Error('Isi alasan pembatalan dulu.');
+    const user = this.getCurrentUser();
+    const totalAsli = p.total_akhir || 0;
+    const metode = (p.pembayaran_details || []).map(d => d && d.metode).filter(Boolean) as string[];
+    const adaHutang = metode.includes('hutang');
+    // Uang non-tunai yang sudah masuk (QRIS/transfer/EDC) harus dikembalikan; tunai antar belum diterima siapa pun
+    const nonTunaiMasuk = !p.bayar_ke_kurir && !adaHutang
+      ? (p.pembayaran_details || []).filter(d => d && d.metode !== 'tunai' && d.metode !== 'hutang').reduce((a, d) => a + (d.jumlah || 0), 0)
+      : 0;
+    const tunaiMasukLaci = !p.bayar_ke_kurir && !adaHutang && metode.includes('tunai') ? totalAsli : 0;
+
+    // 1) Hutang pelanggan
+    if (adaHutang && p.kontak_id && (p.sisa_hutang || 0) > 0) {
+      const kontak = this.getKontak();
+      const k = kontak.findIndex(x => x.id === p.kontak_id);
+      if (k !== -1) {
+        kontak[k].hutang_saat_ini = Math.max(0, (kontak[k].hutang_saat_ini || 0) - (p.sisa_hutang || 0));
+        this.saveKontak(kontak);
+      }
+    }
+
+    const peng = this.getPengaturan();
+    const produk = this.getProduk();
+    let pengBerubah = false;
+
+    // 2) Pinjaman galon (stok galon di depo kembali, catatan pinjaman pelanggan berkurang)
+    if (p.tipe_transaksi === 'pinjam_galon' && p.kontak_id && p.kontak_id !== 'kt-1') {
+      const galon = (p.items || []).filter(i => i && (i.nama_produk || '').toLowerCase().includes('galon')).reduce((a, i) => a + (i.jumlah || 0), 0);
+      if (galon > 0) {
+        const daftar = [...(peng.galon_pinjaman_pelanggan || [])];
+        const gi = daftar.findIndex(x => x.kontak_id === p.kontak_id);
+        if (gi !== -1) {
+          daftar[gi] = { ...daftar[gi], jumlah_galon: Math.max(0, (daftar[gi].jumlah_galon || 0) - galon) };
+          if (daftar[gi].jumlah_galon <= 0) daftar.splice(gi, 1);
+        }
+        peng.galon_pinjaman_pelanggan = daftar;
+        peng.stok_galon_di_depo = (peng.stok_galon_di_depo ?? 360) + galon;
+        pengBerubah = true;
+      }
+    }
+
+    // 3) Stok air baku (liter) yang sudah dipotong saat penjualan dikembalikan
+    const liter = (p.items || []).reduce((a, i) => {
+      if (!i) return a;
+      const pr = produk.find(x => x.id === i.produk_id);
+      const vol = pr ? pr.volume_liter : (i.nama_produk || '').includes('19L') ? 19 : (i.nama_produk || '').includes('15L') ? 15 : 10;
+      return a + vol * (i.jumlah || 0);
+    }, 0);
+    if (liter > 0) {
+      peng.stok_air_baku_saat_ini = (peng.stok_air_baku_saat_ini ?? 5000) + liter;
+      pengBerubah = true;
+    }
+    if (pengBerubah) {
+      this.savePengaturan(peng);
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('depo_pengaturan_updated'));
+    }
+
+    // 4) Tandai batal dan nolkan nilai uangnya
+    const perluKembalikan = nonTunaiMasuk + tunaiMasukLaci;
+    p.batal_info = {
+      waktu: new Date().toISOString(),
+      oleh: user?.nama || '-',
+      alasan: alasan.trim(),
+      total_asli: totalAsli,
+      metode_asli: p.bayar_ke_kurir ? 'tunai (ke kurir)' : (metode.join(' + ') || '-'),
+      perlu_kembalikan: perluKembalikan,
+    };
+    p.status_pesanan = 'batal';
+    p.subtotal_produk = 0;
+    p.total_ongkir = 0;
+    p.diskon = 0;
+    p.total_akhir = 0;
+    p.total_dibayar = 0;
+    p.sisa_hutang = 0;
+    p.pembayaran_details = [];
+    delete p.terkirim_at;
+    list[idx] = p;
+    this.savePesanan(list);
+    return { pesanan: p, perluKembalikan };
+  }
+
   // Kurir/kasir menandai pesanan antar sudah sampai, sekaligus mencatat cara bayar dari pelanggan
   static konfirmasiTerkirim(
     pesananId: string,
