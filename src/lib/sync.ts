@@ -45,6 +45,7 @@ const SYNC_COLLECTIONS: CollectionDef[] = [
   { key: 'depo_etalase', collection: 'etalase', event: 'depo_etalase_updated', kind: 'object', initial: () => ({ aktif: false, nama: '', wa: '', produk: [] }) },
   { key: 'depo_uang_pegangan', collection: 'uang_pegangan', event: 'depo_uang_pegangan_updated', kind: 'list', newestFirst: true, initial: () => [] },
   { key: 'depo_mutasi_keuangan', collection: 'mutasi_keuangan', event: 'depo_mutasi_keuangan_updated', kind: 'list', newestFirst: true, initial: () => [] },
+  { key: 'depo_permintaan_pengeluaran', collection: 'permintaan_pengeluaran', event: 'depo_permintaan_pengeluaran_updated', kind: 'list', newestFirst: true, initial: () => [] },
   { key: 'depo_notifikasi', collection: 'notifikasi', event: 'depo_notifikasi_updated', kind: 'list', newestFirst: true, initial: () => [] },
 ];
 

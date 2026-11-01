@@ -64,6 +64,9 @@ export default function AdminPengaturanPage() {
   const [tanggalMasukKaryawan, setTanggalMasukKaryawan] = useState(AppStore.tanggalHariIni());
   const [gajiBasic, setGajiBasic] = useState<number>(2200000);
   const [uangMakanPerHari, setUangMakanPerHari] = useState<number>(25000);
+  const [izinGaji, setIzinGaji] = useState<boolean>(true);
+  const [izinOngkir, setIzinOngkir] = useState<boolean>(true);
+  const [izinMakan, setIzinMakan] = useState<boolean>(true);
   const [tanggalJatuhTempoGaji, setTanggalJatuhTempoGaji] = useState<number>(25);
   const [passwordKaryawan, setPasswordKaryawan] = useState<string>('123456');
 
@@ -273,6 +276,7 @@ export default function AdminPengaturanPage() {
     setTanggalMasukKaryawan(AppStore.tanggalHariIni());
     setGajiBasic(2200000);
     setUangMakanPerHari(25000);
+    setIzinGaji(true); setIzinOngkir(true); setIzinMakan(true);
     setTanggalJatuhTempoGaji(25);
     setPasswordKaryawan('123456');
     setShowKaryawanModal(true);
@@ -287,6 +291,7 @@ export default function AdminPengaturanPage() {
     setTanggalMasukKaryawan(kary.tanggal_masuk || AppStore.tanggalHariIni());
     setGajiBasic(kary.gaji_basic);
     setUangMakanPerHari(kary.uang_makan_per_hari);
+    setIzinGaji(kary.izin_bayar?.gaji !== false); setIzinOngkir(kary.izin_bayar?.ongkir !== false); setIzinMakan(kary.izin_bayar?.makan !== false);
     setTanggalJatuhTempoGaji(kary.tanggal_jatuh_tempo_gaji || 25);
     setPasswordKaryawan(kary.password || '123456');
     setShowKaryawanModal(true);
@@ -308,6 +313,7 @@ export default function AdminPengaturanPage() {
             tanggal_masuk: tanggalMasukKaryawan,
             gaji_basic: gajiBasic,
             uang_makan_per_hari: uangMakanPerHari,
+            izin_bayar: { gaji: izinGaji, ongkir: izinOngkir, makan: izinMakan },
             tanggal_jatuh_tempo_gaji: tanggalJatuhTempoGaji,
             password: passwordKaryawan.trim() || '123456'
           };
@@ -329,6 +335,7 @@ export default function AdminPengaturanPage() {
         gaji_basic: gajiBasic,
         uang_makan_per_hari: uangMakanPerHari,
         insentif_per_galon: 0,
+        izin_bayar: { gaji: izinGaji, ongkir: izinOngkir, makan: izinMakan },
         tanggal_jatuh_tempo_gaji: tanggalJatuhTempoGaji,
         password: passwordKaryawan.trim() || '123456',
         aktif: true
@@ -1225,6 +1232,27 @@ export default function AdminPengaturanPage() {
               </div>
             </div>
 
+            {/* Batas pengeluaran lain-lain kasir */}
+            <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)' }}>
+                Batas Pengeluaran Lain-Lain Kasir per Shift
+              </label>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Rp</span>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={pengaturan.batas_lain_per_shift ?? 0}
+                  onChange={(e) => setPengaturan(prev => ({ ...prev, batas_lain_per_shift: Math.max(0, Number(e.target.value)) }))}
+                  placeholder="0"
+                  min={0}
+                />
+              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--c-amber)', marginTop: '6px' }}>
+                Total pengeluaran lain-lain (di luar gaji, ongkir, uang makan, pembelian air baku) yang boleh dicatat satu kasir per shift. Isi 0 untuk tanpa batas. Yang melewati batas menunggu persetujuan Anda lewat lonceng.
+              </p>
+            </div>
+
             {/* Batas Menit Keterlambatan */}
             <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
@@ -1915,6 +1943,16 @@ export default function AdminPengaturanPage() {
                     required 
                   />
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>Default: Tanggal 25 setiap bulannya</span>
+                </div>
+
+                <div className="form-group" style={{ marginTop: '12px' }}>
+                  <label className="form-label">Izin membayar dari menu pengeluaran (untuk kasir)</label>
+                  <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><input type="checkbox" checked={izinGaji} onChange={(e) => setIzinGaji(e.target.checked)} /> Gaji</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><input type="checkbox" checked={izinOngkir} onChange={(e) => setIzinOngkir(e.target.checked)} /> Ongkir</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><input type="checkbox" checked={izinMakan} onChange={(e) => setIzinMakan(e.target.checked)} /> Uang makan</label>
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>Yang tidak dicentang hilang dari menu pengeluaran kasir ini. Tidak berlaku untuk pengantar, admin, dan owner.</span>
                 </div>
 
                 {!AUTH_AKTIF && (

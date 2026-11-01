@@ -159,11 +159,27 @@ export interface SetoranKurir {
   riwayat_koreksi?: KoreksiSetoran[];
 }
 
+// Pengeluaran kasir yang melewati batas per shift: menunggu disetujui owner/admin sebelum dicatat sebagai pengeluaran.
+export interface PermintaanPengeluaran {
+  id: string;
+  waktu: string;
+  kasir_id: string;
+  kasir_nama: string;
+  nominal: number;
+  kategori: string;
+  peruntukan: string;
+  pengeluaran: Pengeluaran;       // data pengeluaran yang akan dicatat bila disetujui
+  status: 'menunggu' | 'disetujui' | 'ditolak';
+  diputus_oleh?: string;
+  diputus_waktu?: string;
+  alasan_tolak?: string;
+}
+
 // Pemberitahuan untuk owner/admin di dashboard (mis. kasir mengoreksi setoran)
 export interface NotifikasiOwner {
   id: string;
   waktu: string;
-  jenis: 'koreksi_setoran' | 'pembatalan_setoran' | 'setoran_owner' | 'selisih_setoran_owner';
+  jenis: 'koreksi_setoran' | 'pembatalan_setoran' | 'setoran_owner' | 'selisih_setoran_owner' | 'permintaan_pengeluaran';
   judul: string;
   pesan: string;
   dibaca: boolean;
@@ -326,6 +342,8 @@ export interface Karyawan {
   tanggal_jatuh_tempo_gaji?: number;
   password?: string;
   aktif: boolean;
+  // Hanya berlaku untuk kasir: apa yang boleh dibayar dari menu pengeluaran. Kosong = semua boleh.
+  izin_bayar?: { gaji?: boolean; ongkir?: boolean; makan?: boolean };
 }
 
 export interface GalonPinjamanPelanggan {
@@ -383,6 +401,8 @@ export interface PengaturanDepo {
   // Settings Notifikasi Alarm & Keterlambatan Pengiriman
   notifikasi_alarm_aktif?: boolean;
   batas_keterlambatan_menit?: number;
+  // Batas total pengeluaran lain-lain per shift kasir (Rp). Kosong/0 = tanpa batas. Lewat batas = perlu persetujuan owner.
+  batas_lain_per_shift?: number;
   durasi_snooze_menit?: number;
   mode_suara_alarm?: 'beep_suara' | 'silent';
   // Stok Opname & Aset Depo

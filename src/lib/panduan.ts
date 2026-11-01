@@ -202,7 +202,9 @@ export const TOPIK: Topik[] = [
       'Untuk "Pembelian Air Baku", isi nama vendor atau sopir, volume air masuk (liter), harga air, tips sopir, dan angka meteran saat diisi. Stok air baku bertambah otomatis.',
       'Kalau Anda sedang memegang uang pegangan dari owner, muncul pilihan "Uang yang dipakai": uang laci atau uang pegangan.',
       'Simpan. Bukti pengeluaran bisa dicetak atau dikirim ke owner lewat WhatsApp.',
+      'Kalau owner membatasi pengeluaran lain-lain per shift, di atas formulir terlihat batasnya dan yang sudah terpakai. Pengeluaran yang melewati batas tidak langsung tercatat: Anda diminta mengirim permintaan, lalu menunggu owner menyetujui. Statusnya (menunggu, disetujui, ditolak) terlihat di atas formulir yang sama.',
     ],
+    tips: ['Pilihan Gaji, Ongkir, dan Konsumsi / Uang Makan hanya muncul kalau owner mengizinkan Anda membayarnya. Kalau tidak muncul, minta owner yang membayarnya.'],
     hati: ['Pengeluaran dari uang laci mengurangi uang yang seharusnya ada di laci saat tutup shift. Jangan lupa mencatat, supaya tidak muncul selisih.'],
   },
   {
@@ -512,8 +514,10 @@ export const TOPIK: Topik[] = [
       'Isi nama, jabatan, nomor HP, tanggal masuk, "Gaji Basic / Pokok Bulanan", "Uang Makan per Hari", dan "Tanggal Jatuh Tempo Gaji Bulanan".',
       'Perhatikan kolom "Jabatan", karena peran di aplikasi ditentukan dari kata di dalamnya: mengandung "admin", "owner", atau "pemilik" menjadi Admin; mengandung "pengantar", "driver", atau "kurir" menjadi Pengantar; selain itu menjadi Kasir. Contoh: "Kasir Pagi", "Pengantar", "Admin Gudang".',
       AUTH_AKTIF ? 'Password tidak diisi di sini. Buat akun login karyawan di kategori "Akun login dan keamanan".' : 'Isi password karyawan. Kalau dikosongkan, memakai 123456, sebaiknya segera diganti.',
+      'Untuk kasir, ada centang "Izin membayar dari menu pengeluaran": Gaji, Ongkir, dan Uang makan. Yang tidak dicentang hilang dari menu pengeluaran kasir itu. Awalnya semua dicentang.',
       'Simpan. Karyawan masuk dengan namanya dan password itu, lalu melihat menu sesuai perannya.',
     ],
+    tips: ['Batas pengeluaran lain-lain per shift diatur di "Pengaturan Toko" > "Operasional depo" (isi 0 untuk tanpa batas). Yang melewati batas muncul di lonceng, di bagian "Menunggu persetujuan", lengkap dengan tombol Setujui dan Tolak. Gaji, ongkir, uang makan, pembelian air baku, dan pengembalian kasbon tidak kena batas ini.'],
   },
   {
     id: 'printer', kelompok: 'Owner: persiapan toko', judul: 'Memasang printer struk', peran: OWNER,

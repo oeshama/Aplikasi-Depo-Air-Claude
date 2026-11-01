@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppStore } from '@/lib/store';
-import { NotifikasiOwner } from '@/lib/types';
+import { NotifikasiOwner, PermintaanPengeluaran } from '@/lib/types';
 import { X, CheckCheck, ChevronRight } from 'lucide-react';
 
 // Panel pemberitahuan (dibuka dari lonceng): daftar pemberitahuan untuk owner/admin, bisa ditandai dibaca,
@@ -22,6 +22,25 @@ export default function NotifikasiPanel({ isOpen, onClose, daftar }: { isOpen: b
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, onClose]);
 
+  const [permintaan, setPermintaan] = useState<PermintaanPengeluaran[]>([]);
+  useEffect(() => {
+    if (!isOpen) return;
+    const muat = () => setPermintaan(AppStore.getPermintaanPengeluaran().filter(x => x.status === 'menunggu'));
+    muat();
+    window.addEventListener('depo_permintaan_pengeluaran_updated', muat);
+    return () => window.removeEventListener('depo_permintaan_pengeluaran_updated', muat);
+  }, [isOpen]);
+
+  const putuskan = (x: PermintaanPengeluaran, setuju: boolean) => {
+    let alasan: string | undefined;
+    if (!setuju) {
+      const a = window.prompt(`Tolak pengeluaran ${AppStore.formatRupiah(x.nominal)} dari ${x.kasir_nama}? Alasan (boleh kosong):`, '');
+      if (a === null) return;
+      alasan = a;
+    }
+    try { AppStore.putuskanPermintaan(x.id, setuju, alasan); } catch (e: any) { alert(e?.message || 'Gagal memproses.'); }
+  };
+
   if (!isOpen) return null;
   const belumDibaca = daftar.filter(n => !n.dibaca).length;
   const waktu = (iso: string) => new Date(iso).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -34,9 +53,31 @@ export default function NotifikasiPanel({ isOpen, onClose, daftar }: { isOpen: b
           <button type="button" className="icon-btn" aria-label="Tutup" onClick={onClose}><X size={20} aria-hidden="true" /></button>
         </div>
 
-        {daftar.length === 0 ? (
+        {permintaan.length > 0 && (
+          <div style={{ marginBottom: '12px' }}>
+            <strong style={{ display: 'block', marginBottom: '6px' }}>Menunggu persetujuan ({permintaan.length})</strong>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {permintaan.map(x => (
+                <li key={x.id} style={{ padding: '10px 12px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--glass-border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                    <strong>{x.kasir_nama}</strong>
+                    <strong style={{ color: 'var(--c-red)' }}>{AppStore.formatRupiah(x.nominal)}</strong>
+                  </div>
+                  <div style={{ fontSize: '0.88rem', marginTop: '2px' }}>{x.peruntukan}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{waktu(x.waktu)} - melewati batas per shift{x.pengeluaran.sumber_kas === 'pegangan' ? ' - dari uang pegangan' : ''}</div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                    <button type="button" className="btn btn-success btn-sm" onClick={() => putuskan(x, true)}>Setujui</button>
+                    <button type="button" className="btn btn-secondary btn-sm" style={{ color: 'var(--c-red)' }} onClick={() => putuskan(x, false)}>Tolak</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {daftar.length === 0 && permintaan.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', margin: '8px 0 16px' }}>Belum ada pemberitahuan.</p>
-        ) : (
+        ) : daftar.length === 0 ? null : (
           <>
             {belumDibaca > 0 && (
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => AppStore.tandaiNotifikasiDibaca()} style={{ marginBottom: '10px' }}>

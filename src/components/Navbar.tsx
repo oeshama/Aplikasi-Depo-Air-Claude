@@ -56,7 +56,7 @@ export default function Navbar() {
       : AppStore.hitungKasLaci(0, awalHariIni.getTime());
 
     setKasDiTanganNav(Math.max(0, kas.ekspektasi));
-    setNotifCount(AppStore.jumlahNotifikasiBelumDibaca());
+    setNotifCount(AppStore.jumlahNotifikasiBelumDibaca() + AppStore.jumlahPermintaanMenunggu());
     setNotifList(AppStore.getNotifikasi());
     const baru = AppStore.jumlahPesananMasukBaru();
     const antaran = AppStore.pesananMasukDalamAntaran().length;
@@ -115,6 +115,7 @@ export default function Navbar() {
     window.addEventListener('depo_uang_pegangan_updated', handleUpdate);
     window.addEventListener('depo_pesanan_masuk_updated', handleUpdate);
     window.addEventListener('depo_notifikasi_updated', handleUpdate);
+    window.addEventListener('depo_permintaan_pengeluaran_updated', handleUpdate);
 
     return () => {
       window.removeEventListener('depo_pengaturan_updated', handleUpdate);
@@ -127,6 +128,7 @@ export default function Navbar() {
       window.removeEventListener('depo_uang_pegangan_updated', handleUpdate);
       window.removeEventListener('depo_pesanan_masuk_updated', handleUpdate);
       window.removeEventListener('depo_notifikasi_updated', handleUpdate);
+      window.removeEventListener('depo_permintaan_pengeluaran_updated', handleUpdate);
     };
   }, []);
 

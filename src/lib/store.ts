@@ -1,7 +1,7 @@
 import {
   UserApp, Produk, ZoneOngkir, Kontak, Pesanan, TitipGalon,
   PengaturanDepo, ShiftKasir, UserRole, Pengeluaran, HutangToko, SumberKas,
-  SetoranKurir, SetoranOwner, UangPegangan, PesananMasuk, Etalase, TautanPesan, PesananItem, FotoMeter, ModeFotoMeter, Rekening, MutasiKeuangan, JenisMutasi, NotifikasiOwner, SaldoKurir, MetodePembayaran
+  SetoranKurir, SetoranOwner, UangPegangan, PesananMasuk, Etalase, TautanPesan, PesananItem, FotoMeter, ModeFotoMeter, Rekening, MutasiKeuangan, JenisMutasi, NotifikasiOwner, SaldoKurir, MetodePembayaran, PermintaanPengeluaran
 } from './types';
 import { normalisasiHp, hpLokal } from './telepon';
 import { AUTH_AKTIF, adaSesiAkun, keluarAkun } from './auth';
@@ -1305,6 +1305,102 @@ export class AppStore {
       dibuat_oleh: user.nama
     });
     return s;
+  }
+
+  // ---------------------------------------------------------------------
+  // Izin dan batas pengeluaran kasir
+  //
+  // - Izin bayar gaji/ongkir/uang makan diatur owner per kasir (Karyawan.izin_bayar). Kosong = boleh.
+  // - Pengeluaran lain-lain (di luar gaji, ongkir, uang makan, air baku, dan kas masuk) dibatasi totalnya per shift.
+  //   Yang melewati batas tidak langsung dicatat: menunggu persetujuan owner/admin.
+  // ---------------------------------------------------------------------
+
+  static kasirBolehBayar(kunci: 'gaji' | 'ongkir' | 'makan'): boolean {
+    const user = this.getCurrentUser();
+    if (!user || user.role !== 'kasir') return true;
+    const kary = (this.getPengaturan().karyawan_list || []).find(k => k.id === user.id);
+    return !kary || !kary.izin_bayar || kary.izin_bayar[kunci] !== false;
+  }
+
+  static kategoriKenaBatas(kategori?: string): boolean {
+    return !['gaji', 'ongkir', 'konsumsi', 'pembelian_air_baku', 'pengembalian_kasbon'].includes(kategori || 'operasional');
+  }
+
+  static getPermintaanPengeluaran(): PermintaanPengeluaran[] {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem('depo_permintaan_pengeluaran');
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  static savePermintaanPengeluaran(data: PermintaanPengeluaran[]) {
+    this.persist('depo_permintaan_pengeluaran', data);
+    window.dispatchEvent(new Event('depo_permintaan_pengeluaran_updated'));
+  }
+
+  static jumlahPermintaanMenunggu(): number {
+    return this.getPermintaanPengeluaran().filter(x => x.status === 'menunggu').length;
+  }
+
+  // Total pengeluaran lain-lain kasir pada shift yang sedang berjalan (atau hari ini bila tidak ada shift),
+  // termasuk yang masih menunggu persetujuan supaya tidak bisa dipecah-pecah.
+  static totalLainShift(kasirId: string): number {
+    const shift = this.getShiftAktif(kasirId);
+    const mulai = shift ? new Date(shift.waktu_buka).getTime() : new Date(new Date().toDateString()).getTime();
+    const dicatat = this.getPengeluaran()
+      .filter(p => p.kasir_id === kasirId && p.tipe_arus_kas !== 'masuk' && new Date(p.tanggal).getTime() >= mulai && this.kategoriKenaBatas(p.kategori))
+      .reduce((a, p) => a + (p.nominal || 0), 0);
+    const menunggu = this.getPermintaanPengeluaran()
+      .filter(x => x.kasir_id === kasirId && x.status === 'menunggu' && new Date(x.waktu).getTime() >= mulai)
+      .reduce((a, x) => a + (x.nominal || 0), 0);
+    return dicatat + menunggu;
+  }
+
+  static perluPersetujuan(kategori: string, nominal: number): { perlu: boolean; batas: number; terpakai: number } {
+    const user = this.getCurrentUser();
+    const batas = this.getPengaturan().batas_lain_per_shift || 0;
+    if (!user || user.role !== 'kasir' || batas <= 0 || !this.kategoriKenaBatas(kategori)) return { perlu: false, batas, terpakai: 0 };
+    const terpakai = this.totalLainShift(user.id);
+    return { perlu: terpakai + nominal > batas, batas, terpakai };
+  }
+
+  static ajukanPengeluaran(p: Pengeluaran): PermintaanPengeluaran {
+    const user = this.getCurrentUser();
+    const x: PermintaanPengeluaran = {
+      id: `req-${Date.now()}`, waktu: new Date().toISOString(),
+      kasir_id: user.id, kasir_nama: user.nama,
+      nominal: p.nominal, kategori: p.kategori || 'operasional', peruntukan: p.peruntukan,
+      pengeluaran: p, status: 'menunggu'
+    };
+    const list = this.getPermintaanPengeluaran();
+    list.unshift(x);
+    this.savePermintaanPengeluaran(list);
+    return x;
+  }
+
+  // Owner/admin menyetujui (pengeluaran dicatat sekarang) atau menolak
+  static putuskanPermintaan(id: string, setuju: boolean, alasanTolak?: string): PermintaanPengeluaran {
+    const user = this.getCurrentUser();
+    if (!user || (user.role !== 'owner' && user.role !== 'admin')) throw new Error('Hanya owner atau admin yang bisa memutuskan.');
+    const list = this.getPermintaanPengeluaran();
+    const i = list.findIndex(x => x.id === id);
+    if (i === -1) throw new Error('Permintaan tidak ditemukan.');
+    const x = list[i];
+    if (x.status !== 'menunggu') throw new Error('Permintaan ini sudah diputuskan.');
+    if (setuju) {
+      if (x.pengeluaran.sumber_kas === 'pegangan') {
+        const saldo = this.getSaldoPegangan(x.kasir_id);
+        if (x.nominal > saldo) throw new Error(`Uang pegangan ${x.kasir_nama} tinggal ${this.formatRupiah(saldo)}, tidak cukup untuk ${this.formatRupiah(x.nominal)}.`);
+      }
+      const catatan = `Disetujui ${user.nama}${x.pengeluaran.catatan ? ' | ' + x.pengeluaran.catatan : ''}`;
+      this.addPengeluaran({ ...x.pengeluaran, id: `exp-${Date.now()}`, tanggal: new Date().toISOString(), catatan });
+    }
+    x.status = setuju ? 'disetujui' : 'ditolak';
+    x.diputus_oleh = user.nama;
+    x.diputus_waktu = new Date().toISOString();
+    if (!setuju && alasanTolak && alasanTolak.trim()) x.alasan_tolak = alasanTolak.trim();
+    list[i] = x;
+    this.savePermintaanPengeluaran(list);
+    return x;
   }
 
   static getNotifikasi(): NotifikasiOwner[] {

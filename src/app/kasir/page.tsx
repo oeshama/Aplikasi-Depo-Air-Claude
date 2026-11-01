@@ -331,6 +331,13 @@ export default function KasirPage() {
       }
     }
 
+    // Izin kasir: gaji, ongkir, dan uang makan diatur owner per kasir
+    const kunciIzin = kategoriPengeluaran === 'gaji' ? 'gaji' : kategoriPengeluaran === 'ongkir' ? 'ongkir' : kategoriPengeluaran === 'konsumsi' ? 'makan' : null;
+    if (kunciIzin && !AppStore.kasirBolehBayar(kunciIzin)) {
+      alert('Anda tidak diberi izin oleh owner untuk membayar kategori ini.');
+      return;
+    }
+
     const currentUser = AppStore.getCurrentUser();
 
     // pengembalian_kasbon adds money back into cash drawer (kas masuk)
@@ -364,6 +371,22 @@ export default function KasirPage() {
       tips_sopir_pengirim: kategoriPengeluaran === 'pembelian_air_baku' ? Number(tipsSopirAir) : undefined,
       meteran_waktu_diisi_liter: kategoriPengeluaran === 'pembelian_air_baku' ? Number(meteranWaktuDiisi) : undefined,
     };
+
+    // Pengeluaran lain-lain yang melewati batas per shift: tunggu persetujuan owner
+    const cekBatas = AppStore.perluPersetujuan(kategoriPengeluaran, finalNominal);
+    if (cekBatas.perlu) {
+      const sisaBatas = Math.max(0, cekBatas.batas - cekBatas.terpakai);
+      if (!window.confirm(`Batas pengeluaran lain-lain per shift ${AppStore.formatRupiah(cekBatas.batas)}, sisa ${AppStore.formatRupiah(sisaBatas)}. Pengeluaran ${AppStore.formatRupiah(finalNominal)} ini perlu persetujuan owner dulu. Kirim permintaan?`)) return;
+      AppStore.ajukanPengeluaran(newPengeluaran);
+      setNominalPengeluaran(0);
+      setPeruntukanPengeluaran('');
+      setKategoriPengeluaran('operasional');
+      setSelectedKaryawanId('');
+      setCatatanPengeluaran('');
+      setSumberPengeluaran('laci');
+      alert('Permintaan dikirim. Pengeluaran baru dicatat setelah owner menyetujui. Statusnya terlihat di bagian atas formulir ini.');
+      return;
+    }
 
     AppStore.addPengeluaran(newPengeluaran);
 
@@ -512,6 +535,7 @@ export default function KasirPage() {
     window.addEventListener('depo_setoran_kurir_updated', loadData);
     window.addEventListener('depo_setoran_owner_updated', loadData);
     window.addEventListener('depo_uang_pegangan_updated', loadData);
+    window.addEventListener('depo_permintaan_pengeluaran_updated', loadData);
 
     const interval = setInterval(() => setNowTick(Date.now()), 10000);
 
@@ -526,6 +550,7 @@ export default function KasirPage() {
       window.removeEventListener('depo_setoran_kurir_updated', loadData);
       window.removeEventListener('depo_setoran_owner_updated', loadData);
       window.removeEventListener('depo_uang_pegangan_updated', loadData);
+      window.removeEventListener('depo_permintaan_pengeluaran_updated', loadData);
       clearInterval(interval);
     };
   }, []);
@@ -1998,6 +2023,31 @@ export default function KasirPage() {
               )}
             </div>
 
+            {(() => {
+              const me = AppStore.getCurrentUser();
+              const sebelum = Date.now() - 24 * 3600 * 1000;
+              const milikku = AppStore.getPermintaanPengeluaran().filter(x => x.kasir_id === me.id && (x.status === 'menunggu' || new Date(x.diputus_waktu || x.waktu).getTime() >= sebelum)).slice(0, 5);
+              const batas = AppStore.getPengaturan().batas_lain_per_shift || 0;
+              if (milikku.length === 0 && !(batas > 0 && me.role === 'kasir')) return null;
+              return (
+                <div style={{ background: 'var(--inset-60)', border: '1px solid var(--glass-border)', borderRadius: '10px', padding: '10px 12px', marginBottom: '12px', fontSize: '0.82rem' }}>
+                  {batas > 0 && me.role === 'kasir' && (
+                    <div style={{ color: 'var(--text-muted)' }}>
+                      Batas pengeluaran lain-lain per shift: <strong>{AppStore.formatRupiah(batas)}</strong>, terpakai <strong>{AppStore.formatRupiah(AppStore.totalLainShift(me.id))}</strong>. Lewat batas perlu persetujuan owner.
+                    </div>
+                  )}
+                  {milikku.map(x => (
+                    <div key={x.id} style={{ marginTop: '6px', display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                      <span>{x.peruntukan} - {AppStore.formatRupiah(x.nominal)}</span>
+                      <span className={`badge ${x.status === 'disetujui' ? 'badge-success' : x.status === 'ditolak' ? 'badge-danger' : 'badge-warning'}`}>
+                        {x.status === 'menunggu' ? 'Menunggu owner' : x.status === 'disetujui' ? 'Disetujui' : `Ditolak${x.alasan_tolak ? ': ' + x.alasan_tolak : ''}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
             <form onSubmit={handleSavePengeluaran} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div className="form-group">
                 <label className="form-label">Kategori Transaksi Kas</label>
@@ -2008,12 +2058,12 @@ export default function KasirPage() {
                 >
                   <option value="operasional">Operasional Depo / Toko</option>
                   <option value="pembelian_air_baku">Pembelian Air Baku (Truk Tangki)</option>
-                  <option value="ongkir">Ongkir / Transportasi Delivery</option>
-                  <option value="gaji">Pembayaran Gaji Karyawan</option>
+                  {AppStore.kasirBolehBayar('ongkir') && <option value="ongkir">Ongkir / Transportasi Delivery</option>}
+                  {AppStore.kasirBolehBayar('gaji') && <option value="gaji">Pembayaran Gaji Karyawan</option>}
                   <option value="kasbon">Pemberian Kasbon Karyawan</option>
                   <option value="pengembalian_kasbon">Pengembalian / Pelunasan Kasbon Karyawan</option>
                   <option value="bensin">Bensin &amp; BBM Operasional</option>
-                  <option value="konsumsi">Konsumsi / Uang Makan</option>
+                  {AppStore.kasirBolehBayar('makan') && <option value="konsumsi">Konsumsi / Uang Makan</option>}
                   <option value="lain_lain">Pengeluaran Lain-Lain</option>
                 </select>
               </div>
