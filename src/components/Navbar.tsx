@@ -13,7 +13,7 @@ import NotifikasiPushTombol from '@/components/NotifikasiPushTombol';
 import NotifikasiPanel from '@/components/NotifikasiPanel';
 import { 
   Droplets, ShoppingCart, Users, Package, MapPin, 
-  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet, Map, FileText, Inbox, BookOpen, KeyRound
+  LayoutDashboard, Truck, LogOut, UserCheck, Receipt, Settings, Menu, X, Sun, Moon, Bell, Wallet, Map, FileText, Inbox, BookOpen, KeyRound, BarChart3
 } from 'lucide-react';
 import { getTheme, setTheme, Theme } from '@/lib/theme';
 
@@ -363,6 +363,12 @@ export default function Navbar() {
             <Link href="/pengantar" aria-current={pathname === '/pengantar' ? 'page' : undefined} className={linkClass(pathname === '/pengantar')}>
               <Truck size={16} aria-hidden="true" /> Antaran Lapangan
               {onlineAntaran > 0 && <span aria-label={`${onlineAntaran} pesanan online untuk diantar`} style={{ marginLeft: '6px', minWidth: '20px', height: '20px', padding: '0 6px', borderRadius: '10px', background: '#dc2626', color: '#ffffff', fontSize: '0.72rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{onlineAntaran}</span>}
+            </Link>
+          )}
+
+          {(role === 'kasir' || role === 'admin' || role === 'pengantar') && (
+            <Link href="/rekap" aria-current={pathname === '/rekap' ? 'page' : undefined} className={linkClass(pathname === '/rekap')}>
+              <BarChart3 size={16} aria-hidden="true" /> Rekap Penjualan
             </Link>
           )}
 

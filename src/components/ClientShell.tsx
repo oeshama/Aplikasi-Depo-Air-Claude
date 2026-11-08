@@ -14,10 +14,10 @@ import ToastHost from '@/components/ToastHost';
 
 // Halaman yang boleh dibuka tiap peran (prefix path)
 const ROLE_ACCESS: Record<UserRole, string[]> = {
-  owner: ['/owner', '/admin', '/kasir', '/pengantar', '/peta', '/panduan'],
-  admin: ['/owner/dashboard', '/admin/kontak', '/peta', '/panduan'],
-  kasir: ['/kasir', '/peta', '/panduan'],
-  pengantar: ['/pengantar', '/panduan'],
+  owner: ['/owner', '/admin', '/kasir', '/pengantar', '/peta', '/panduan', '/rekap'],
+  admin: ['/owner/dashboard', '/admin/kontak', '/peta', '/panduan', '/rekap'],
+  kasir: ['/kasir', '/peta', '/panduan', '/rekap'],
+  pengantar: ['/pengantar', '/panduan', '/rekap'],
 };
 
 export function homeForRole(role: UserRole): string {

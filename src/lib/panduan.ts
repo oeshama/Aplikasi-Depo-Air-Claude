@@ -310,6 +310,19 @@ export const TOPIK: Topik[] = [
     hati: ['Pembayaran transfer atau QRIS tidak masuk uang yang Anda bawa, karena uangnya tidak lewat tangan Anda.'],
   },
   {
+    id: 'rekap-penjualan', kelompok: 'Dasar', judul: 'Rekap penjualan harian, mingguan, dan bulanan', peran: ['owner', 'admin', 'kasir', 'pengantar'],
+    ringkas: 'Melihat omzet, produk terlaris, dan pelanggan dengan pembelian terbanyak.',
+    buka: { href: '/rekap', label: 'Buka Rekap Penjualan' },
+    langkah: [
+      'Buka menu "Rekap Penjualan". Pilih "Hari ini", "Minggu ini" (Senin sampai Minggu), atau "Bulan ini".',
+      'Kartu di atas menampilkan omzet, jumlah transaksi, dan unit terjual, lengkap dengan perbandingan terhadap periode sebelumnya (kemarin, minggu lalu, atau bulan lalu).',
+      'Grafik batang menunjukkan penjualan per jam (hari ini) atau per hari (minggu dan bulan), jadi jam atau hari ramai mudah terlihat.',
+      '"Produk terlaris" mengurutkan produk dari yang paling banyak terjual. "Pelanggan dengan pembelian terbanyak" mengurutkan pelanggan terdaftar dari omzet terbesar.',
+      '"Cara bayar" menunjukkan porsi tunai, QRIS, transfer, dan hutang.',
+    ],
+    tips: ['Rekap ini mencakup semua penjualan depo, bukan hanya milik satu kasir. Pesanan yang dibatalkan dan pelunasan hutang tidak dihitung, dan laba tidak ditampilkan.'],
+  },
+  {
     id: 'alarm-terlambat', kelompok: 'Pengantar', judul: 'Alarm pesanan terlambat', peran: ['owner', 'kasir', 'pengantar'],
     ringkas: 'Peringatan bunyi kalau pesanan menunggu terlalu lama.',
     langkah: [
