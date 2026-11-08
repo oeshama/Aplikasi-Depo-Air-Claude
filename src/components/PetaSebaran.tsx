@@ -93,16 +93,44 @@ export default function PetaSebaran({ titik, depoLat, depoLng, cincin, pilihId, 
         const m = L.marker([lat, lng], {
           icon: L.divIcon({ className: '', html, iconSize: [ukuran, ukuran], iconAnchor: [ukuran / 2, ukuran / 2] }),
           keyboard: false,
-          title: `${s.titik.length} pelanggan, ketuk untuk memperbesar`
+          title: `${s.titik.length} pelanggan, ketuk untuk melihat namanya`
         });
         m.on('click', () => {
           const batas = L.latLngBounds(s.titik.map(t => [t.lat, t.lng] as [number, number]));
-          // Semua titik di tempat yang sama: zoom mentok, buka titik pertama
-          if (batas.getNorthEast().equals(batas.getSouthWest()) || peta.getZoom() >= 18) {
-            peta.setView(batas.getCenter(), 19);
-            return;
-          }
-          peta.fitBounds(batas, { padding: [50, 50], maxZoom: 19 });
+          const perbesar = () => {
+            // Semua titik di tempat yang sama: zoom mentok
+            if (batas.getNorthEast().equals(batas.getSouthWest()) || peta.getZoom() >= 18) {
+              peta.setView(batas.getCenter(), 19);
+              return;
+            }
+            peta.fitBounds(batas, { padding: [50, 50], maxZoom: 19 });
+          };
+
+          // Daftar nama pelanggan di bulatan ini (teks dimasukkan lewat textContent supaya aman)
+          const isi = L.DomUtil.create('div', '');
+          isi.style.cssText = 'min-width:190px;max-width:240px';
+          const judul = L.DomUtil.create('div', '', isi);
+          judul.style.cssText = 'font-weight:800;margin-bottom:6px;color:#0f172a';
+          judul.textContent = s.titik.length + ' pelanggan di sini';
+          const daftar = L.DomUtil.create('div', '', isi);
+          daftar.style.cssText = 'max-height:210px;overflow-y:auto;display:flex;flex-direction:column;gap:4px';
+          [...s.titik].sort((a, b) => a.nama.localeCompare(b.nama, 'id')).forEach(t => {
+            const tombol = L.DomUtil.create('button', '', daftar) as HTMLButtonElement;
+            tombol.type = 'button';
+            tombol.style.cssText = 'display:flex;align-items:center;gap:8px;text-align:left;padding:8px 10px;min-height:40px;border:1px solid #cbd5e1;border-radius:8px;background:#ffffff;color:#0f172a;font-size:14px;cursor:pointer';
+            const titikWarna = L.DomUtil.create('span', '', tombol);
+            titikWarna.style.cssText = 'width:12px;height:12px;border-radius:50%;flex:none;border:2px solid #ffffff;box-shadow:0 0 0 1px rgba(15,23,42,0.45);background:' + t.warna;
+            const nama = L.DomUtil.create('span', '', tombol);
+            nama.textContent = t.nama;
+            tombol.onclick = () => { peta.closePopup(); onPilihRef.current(t.id); };
+          });
+          const zoom = L.DomUtil.create('button', '', isi) as HTMLButtonElement;
+          zoom.type = 'button';
+          zoom.textContent = 'Perbesar peta ke sini';
+          zoom.style.cssText = 'margin-top:8px;width:100%;padding:8px 10px;min-height:40px;border:0;border-radius:8px;background:#0369a1;color:#ffffff;font-size:14px;font-weight:700;cursor:pointer';
+          zoom.onclick = () => { peta.closePopup(); perbesar(); };
+
+          L.popup({ maxWidth: 260, offset: [0, -ukuran / 2] }).setLatLng([lat, lng]).setContent(isi).openOn(peta);
         });
         m.addTo(layer);
       }

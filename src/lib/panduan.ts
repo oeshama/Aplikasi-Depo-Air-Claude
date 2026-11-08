@@ -381,6 +381,7 @@ export const TOPIK: Topik[] = [
       'Buka "Peta Pelanggan".',
       'Titik di peta menunjukkan lokasi pelanggan. Warnanya menunjukkan seberapa sering mereka membeli: Sering, Sedang, Jarang, Lama tidak membeli, atau Belum pernah.',
       'Ketuk titik untuk melihat nama dan ringkasan pembelian.',
+      'Bulatan hitam berangka berarti ada beberapa pelanggan yang berdekatan. Ketuk bulatan itu untuk melihat daftar nama pelanggan di dalamnya, lalu ketuk satu nama untuk melihat ringkasannya. Tombol "Perbesar peta ke sini" memperbesar peta ke kelompok itu.',
       'Pelanggan yang lama tidak membeli bisa dihubungi lewat WhatsApp untuk menawarkan lagi.',
     ],
     tips: ['Pelanggan yang tidak muncul di peta belum punya lokasi tersimpan.'],
