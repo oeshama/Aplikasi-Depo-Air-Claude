@@ -330,7 +330,8 @@ export class AppStore {
       jenis: 'setoran_owner',
       judul: 'Setoran kasir menunggu diterima',
       pesan: `${s.kasir_nama} menyerahkan ${this.formatRupiah(jumlah)} dari laci. Buka Keuangan Owner untuk menerimanya.`,
-      dibuat_oleh: user.nama
+      dibuat_oleh: user.nama,
+      rujukan_id: s.id
     });
     return s;
   }
@@ -724,7 +725,8 @@ export class AppStore {
     this.addNotifikasi({
       jenis: 'setoran_owner', judul: 'Sisa uang pegangan menunggu diterima',
       pesan: `${pemegang.nama} mengembalikan sisa uang pegangan ${this.formatRupiah(n)}. Buka Keuangan Owner untuk menerimanya.`,
-      dibuat_oleh: user.nama
+      dibuat_oleh: user.nama,
+      rujukan_id: x.id
     });
     return x;
   }
@@ -1518,6 +1520,31 @@ export class AppStore {
     this.saveNotifikasi(list);
   }
 
+  // Pemberitahuan "menunggu diterima" otomatis dianggap dibaca begitu setoran/uang pegangannya sudah diterima atau dibatalkan.
+  // Pemberitahuan lama yang belum punya rujukan: yang tersisa belum dibaca hanya sebanyak urusan yang masih menunggu (yang terbaru).
+  static rapikanNotifikasi(): void {
+    const list = this.getNotifikasi();
+    if (!list.some(n => !n.dibaca && n.jenis === 'setoran_owner')) return;
+    const menunggu = new Set<string>([
+      ...this.getSetoranOwner().filter(s => s.status === 'menunggu').map(s => s.id),
+      ...this.getUangPegangan().filter(x => x.jenis === 'kembali' && x.status === 'menunggu').map(x => x.id),
+    ]);
+    let berubah = false;
+    const tertutup = new Set<string>();
+    list.forEach(n => {
+      if (n.dibaca || n.jenis !== 'setoran_owner' || !n.rujukan_id) return;
+      if (menunggu.has(n.rujukan_id)) tertutup.add(n.rujukan_id);
+      else { n.dibaca = true; berubah = true; }
+    });
+    let jatah = Math.max(0, menunggu.size - tertutup.size);
+    list.forEach(n => {
+      if (n.dibaca || n.jenis !== 'setoran_owner' || n.rujukan_id) return;
+      if (jatah > 0) jatah--;
+      else { n.dibaca = true; berubah = true; }
+    });
+    if (berubah) this.saveNotifikasi(list);
+  }
+
   static jumlahNotifikasiBelumDibaca(): number {
     return this.getNotifikasi().filter(n => !n.dibaca).length;
   }
@@ -1952,7 +1979,8 @@ export class AppStore {
         jenis: 'setoran_owner',
         judul: 'Setoran kasir menunggu diterima',
         pesan: `${setoran.kasir_nama} menyerahkan ${this.formatRupiah(serahTutup)} saat tutup shift. Buka Keuangan Owner untuk menerimanya.`,
-        dibuat_oleh: user.nama
+        dibuat_oleh: user.nama,
+        rujukan_id: setoran.id
       });
     }
 

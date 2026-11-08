@@ -56,6 +56,8 @@ export default function Navbar() {
       : AppStore.hitungKasLaci(0, awalHariIni.getTime());
 
     setKasDiTanganNav(Math.max(0, kas.ekspektasi));
+    const peranNotif = AppStore.getCurrentUser().role;
+    if (peranNotif === 'owner' || peranNotif === 'admin') AppStore.rapikanNotifikasi();
     setNotifCount(AppStore.jumlahNotifikasiBelumDibaca() + AppStore.jumlahPermintaanMenunggu());
     setNotifList(AppStore.getNotifikasi());
     const baru = AppStore.jumlahPesananMasukBaru();

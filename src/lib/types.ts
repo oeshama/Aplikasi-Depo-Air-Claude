@@ -186,6 +186,7 @@ export interface NotifikasiOwner {
   pesan: string;
   dibaca: boolean;
   dibuat_oleh: string;
+  rujukan_id?: string;   // id setoran/uang pegangan yang menunggu; pemberitahuan otomatis dianggap dibaca saat urusannya selesai
 }
 
 // Uang dari laci kasir ke owner: kasir menyerahkan (menunggu diterima) atau owner mengambil langsung.
