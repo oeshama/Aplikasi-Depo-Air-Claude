@@ -672,13 +672,13 @@ export const TOPIK: Topik[] = [
   {
     id: 'reset-keuangan', kelompok: 'Owner: keuangan', judul: 'Mengatur ulang Keuangan Owner', peran: OWNER,
     ringkas: 'Untuk mengulang pencatatan kas besar dari nol.',
-    buka: { href: '/owner/keuangan', label: 'Buka Keuangan Owner' },
+    buka: { href: '/admin/pengaturan', label: 'Buka Pengaturan Toko' },
     langkah: [
-      'Di bagian bawah "Keuangan Owner" ada tombol atur ulang.',
-      'Tekan lalu konfirmasi "Ya, atur ulang". Catatan kas besar dan rekening dihapus.',
+      'Buka "Pengaturan Toko" > "Data dan reset", lalu centang "Keuangan Owner".',
+      'Tekan tombol reset, lalu ketik kata RESET untuk konfirmasi. Catatan kas besar, rekening, buku kas, dan setoran ke owner dihapus.',
       'Isi saldo awal lagi untuk memulai pencatatan baru.',
     ],
-    hati: ['Pengaturan ulang menghapus riwayat kas besar. Gunakan hanya kalau benar-benar perlu, misalnya salah memasukkan saldo awal di awal pemakaian.'],
+    hati: ['Tombol atur ulang sengaja tidak ada di halaman Keuangan Owner supaya tidak terpencet. Pengaturan ulang menghapus riwayat kas besar. Gunakan hanya kalau benar-benar perlu, misalnya salah memasukkan saldo awal di awal pemakaian.'],
   },
 
   // ===================== BANTUAN =====================

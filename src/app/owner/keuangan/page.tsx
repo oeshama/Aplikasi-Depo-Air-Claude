@@ -46,7 +46,6 @@ export default function KeuanganOwnerPage() {
   const [nominal, setNominal] = useState<number>(0);
   const [ket, setKet] = useState<string>('');
   const [showMenuAksi, setShowMenuAksi] = useState<boolean>(false);
-  const [konfirmasiReset, setKonfirmasiReset] = useState<boolean>(false);
   const [showPengeluaran, setShowPengeluaran] = useState<boolean>(false);
   const [struk, setStruk] = useState<Pengeluaran | null>(null);
 
@@ -412,30 +411,6 @@ export default function KeuanganOwnerPage() {
           </div>
         )}
       </section>
-
-      {mulai && (
-        <section aria-labelledby="judul-atur-ulang" style={{ marginTop: '28px', paddingTop: '16px', borderTop: '1px solid var(--glass-border)' }}>
-          {judulBagian('judul-atur-ulang', 'Atur ulang keuangan')}
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 10px' }}>
-            Mengosongkan kas besar, rekening, buku kas, dan setoran ke owner, lalu kamu mengisi saldo awal lagi dari nol. Penjualan, shift, dan pengeluaran tidak terhapus.
-          </p>
-          {!konfirmasiReset ? (
-            <button type="button" className="btn btn-secondary" onClick={() => setKonfirmasiReset(true)} style={{ color: 'var(--c-red)', borderColor: 'var(--c-red)' }}>
-              Atur ulang keuangan
-            </button>
-          ) : (
-            <div role="alert" className="glass-card" style={{ padding: '14px', border: '1px solid var(--c-red)' }}>
-              <p style={{ margin: '0 0 10px', fontWeight: 600 }}>Yakin? Catatan keuangan yang sudah ada tidak bisa dikembalikan.</p>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button type="button" className="btn btn-danger" onClick={() => { AppStore.resetKeuangan(); setKonfirmasiReset(false); alert('Keuangan diatur ulang. Isi saldo awal lagi untuk mulai mencatat.'); }}>
-                  Ya, atur ulang
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={() => setKonfirmasiReset(false)}>Batal</button>
-              </div>
-            </div>
-          )}
-        </section>
-      )}
 
       <PengeluaranOwnerSheet isOpen={showPengeluaran} onClose={() => setShowPengeluaran(false)} onSaved={(p) => setStruk(p)} />
       <ExpenseReceiptModal pengeluaran={struk} onClose={() => setStruk(null)} />
