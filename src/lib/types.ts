@@ -133,7 +133,11 @@ export interface Pesanan {
     alasan: string;
     total_asli: number;
     metode_asli: string;      // mis. "hutang", "qris", "tunai (ke kurir)"
-    perlu_kembalikan: number; // uang yang sudah diterima toko dan harus dikembalikan ke pelanggan (non-tunai)
+    perlu_kembalikan: number; // uang yang sudah diterima toko dan harus dikembalikan ke pelanggan
+    sudah_terkirim?: boolean;      // pesanan sudah terkirim/selesai saat dibatalkan
+    shift_tertutup?: boolean;      // pesanan berada di shift yang sudah ditutup
+    kas_dipertahankan?: boolean;   // mode koreksi manual: uang pesanan tidak dinolkan otomatis
+    koreksi_dicatat?: number;      // total koreksi kas manual yang sudah dicatat
   };
 }
 
@@ -405,6 +409,8 @@ export interface PengaturanDepo {
   batas_keterlambatan_menit?: number;
   // Batas total pengeluaran lain-lain per shift kasir (Rp). Kosong/0 = tanpa batas. Lewat batas = perlu persetujuan owner.
   batas_lain_per_shift?: number;
+  // Koreksi manual: pesanan terkirim yang dibatalkan tidak mengubah kas otomatis; owner mencatat koreksi kasnya sendiri. Mati = otomatis.
+  koreksi_batal_manual?: boolean;
   durasi_snooze_menit?: number;
   mode_suara_alarm?: 'beep_suara' | 'silent';
   // Stok Opname & Aset Depo

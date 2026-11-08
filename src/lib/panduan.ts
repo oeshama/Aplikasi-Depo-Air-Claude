@@ -633,6 +633,27 @@ export const TOPIK: Topik[] = [
     tips: ['Rekap selisih per kasir terlihat di Dashboard Owner dan di Laporan PDF.'],
   },
   {
+    id: 'batal-terkirim', kelompok: 'Owner: keuangan', judul: 'Membatalkan pesanan yang sudah terkirim (dobel atau salah)', peran: OWNER,
+    ringkas: 'Membersihkan pesanan dobel yang terlanjur terkirim, lengkap dengan koreksi uangnya.',
+    buka: { href: '/owner/dashboard', label: 'Buka Dashboard Owner' },
+    langkah: [
+      'Buka Dashboard Owner, tab "Riwayat". Pada pesanan yang sudah terkirim atau selesai ada tombol "Batalkan".',
+      'Tekan "Batalkan", baca peringatannya, lalu tulis alasan. Hanya owner dan admin yang bisa melakukannya.',
+      'Omzet, stok air, pinjaman galon, dan hutang pelanggan dikembalikan. Alasan dan nama pembatal tercatat di baris pesanan itu.',
+      'Kalau pesanan berada di shift yang sudah ditutup, ada peringatan tambahan. Rekap shift lama tidak berubah, tapi laporan dan kas berjalan ikut berubah.',
+      'Pembatalan pesanan yang belum terkirim cukup lewat tombol "Batalkan" di daftar Antaran.',
+    ],
+    tips: [
+      'Koreksi uang punya dua mode, diatur di "Pengaturan Toko" > "Operasional depo" > "Koreksi manual untuk pesanan yang dibatalkan".',
+      'Mode mati (bawaan): uang tunai di laci, uang yang dibawa kurir, dan saldo rekening dikoreksi otomatis. Aplikasi juga memberi tahu jumlah uang yang harus dikembalikan ke pelanggan.',
+      'Mode aktif: uang tidak berubah otomatis. Pada pesanan yang dibatalkan muncul tombol "Koreksi manual". Isi nominal dan pilih uang keluar dari laci kasir, kas besar, atau rekening. Koreksi tercatat sebagai uang keluar, tapi tidak dihitung sebagai biaya dan tidak mengurangi laba.',
+    ],
+    hati: [
+      'Pesanan yang uangnya sudah dipegang kurir: di mode manual saldo kurir tidak berubah otomatis. Di mode otomatis saldo kurir bisa menjadi minus bila kurir sudah menyetor uang itu, artinya uangnya perlu dikembalikan ke pelanggan.',
+      'Pelunasan hutang pelanggan tidak bisa dibatalkan dengan cara ini.',
+    ],
+  },
+  {
     id: 'catat-transaksi', kelompok: 'Owner: keuangan', judul: 'Catat transaksi kas besar dan rekening', peran: OWNER,
     ringkas: 'Modal, prive, setor dan tarik bank, transfer, dan koreksi saldo.',
     buka: { href: '/owner/keuangan', label: 'Buka Keuangan Owner' },

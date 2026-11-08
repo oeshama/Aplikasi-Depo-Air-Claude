@@ -142,7 +142,7 @@ function hitungAngka(pesananAll: Pesanan[], pengeluaranAll: Pengeluaran[], produ
   const galon = pesanan.reduce((a, p) => a + (p.items || []).filter(i => i && (i.nama_produk || '').includes('Galon')).reduce((s, i) => s + (i.jumlah || 0), 0), 0);
   const liter = pesanan.reduce((a, p) => a + (p.items || []).reduce((s, i) => s + (i ? literItem(i, produk) : 0), 0), 0);
   const biayaOperasional = pengeluaranAll
-    .filter(p => p && dalam(p.tanggal, r) && p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon' && p.kategori !== 'pembelian_air_baku')
+    .filter(p => p && dalam(p.tanggal, r) && p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon' && p.kategori !== 'pembelian_air_baku' && p.kategori !== 'koreksi_batal')
     .reduce((a, p) => a + (p.nominal || 0), 0);
   const hpp = Math.round(liter * hppPerLiter);
   const labaBersih = Math.max(0, omzet - (hpp + biayaOperasional));
@@ -181,7 +181,7 @@ export function hitungLaporan(rentang: RentangLaporan): DataLaporan {
   // Biaya per kategori (rumus dashboard: semua pengeluaran kas kecuali pembelian air baku dan pengembalian kasbon)
   const peta = new Map<string, number>();
   pengeluaranAll
-    .filter(p => p && dalam(p.tanggal, rentang) && p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon' && p.kategori !== 'pembelian_air_baku')
+    .filter(p => p && dalam(p.tanggal, rentang) && p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon' && p.kategori !== 'pembelian_air_baku' && p.kategori !== 'koreksi_batal')
     .forEach(p => { const k = p.kategori || 'operasional'; peta.set(k, (peta.get(k) || 0) + (p.nominal || 0)); });
   const biayaPerKategori = Array.from(peta.entries())
     .map(([kategori, nominal]) => ({ kategori, label: LABEL_KATEGORI[kategori] || kategori, nominal }))

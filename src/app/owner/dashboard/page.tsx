@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import KoreksiBatalSheet from '@/components/KoreksiBatalSheet';
 import { Pesanan, Kontak, Produk, PengaturanDepo, KomponenServis, Pengeluaran, HutangToko, UserApp, ShiftKasir, SetoranKurir, SetoranOwner, NotifikasiOwner, SaldoKurir, FotoMeter } from '@/lib/types';
 import { AppStore } from '@/lib/store';
 import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
@@ -380,6 +381,38 @@ export default function OwnerDashboardPage() {
     });
   };
 
+  const [koreksiPsn, setKoreksiPsn] = useState<Pesanan | null>(null);
+
+  // Batalkan pesanan yang SUDAH terkirim/selesai (dobel atau salah input). Hanya owner/admin.
+  const handleBatalkanTerkirim = (psn: Pesanan) => {
+    const manual = !!pengaturan.koreksi_batal_manual;
+    const shift = AppStore.shiftSudahDitutup(psn);
+    const peringatan = [
+      `Batalkan pesanan ${psn.no_nota} (${psn.nama_pelanggan}, ${AppStore.formatRupiah(psn.total_akhir)}) yang SUDAH terkirim?`,
+      'Omzet, stok air, pinjaman galon, dan hutang pelanggan dikembalikan.',
+      manual
+        ? 'Koreksi manual AKTIF: uang di kas/kurir/rekening TIDAK berubah otomatis. Setelah ini, tekan "Koreksi manual" pada pesanan itu untuk mencatat uang yang dikembalikan.'
+        : 'Uang tunai, setoran kurir, dan rekening ikut dikoreksi otomatis.',
+      shift ? `PERHATIAN: pesanan ini ada di shift ${shift.kasir_nama || ''} yang sudah ditutup (${new Date(shift.waktu_tutup as string).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Rekap shift lama tidak berubah, tapi laporan dan kas berjalan ikut berubah.` : '',
+      '',
+      'Tulis alasan pembatalan:'
+    ].filter(x => x !== '').join('\n\n');
+    const alasan = window.prompt(peringatan, '');
+    if (alasan === null) return;
+    if (!alasan.trim()) { alert('Alasan pembatalan wajib diisi.'); return; }
+    try {
+      const hasil = AppStore.batalkanPesanan(psn.id, alasan);
+      if (hasil.perluKembalikan > 0) {
+        alert(`Pesanan dibatalkan.\n\nPelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembalikan uang itu ke pelanggan.${manual ? ' Lalu catat lewat tombol Koreksi manual.' : ''}`);
+      } else {
+        alert('Pesanan dibatalkan.');
+      }
+      loadData();
+    } catch (e: any) {
+      alert(e?.message || 'Gagal membatalkan pesanan.');
+    }
+  };
+
   const handleBatalkanPesanan = (psn: Pesanan) => {
     const alasan = window.prompt(`Batalkan penjualan ${psn.no_nota} (${psn.nama_pelanggan}, ${AppStore.formatRupiah(psn.total_akhir)})?
 
@@ -694,7 +727,7 @@ Pelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembal
 
   // Biaya operasional lain-lain (selain pembelian air baku)
   const totalBiayaOperasionalLainnya = (filteredPengeluaran || [])
-    .filter(p => p && p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon' && p.kategori !== 'pembelian_air_baku')
+    .filter(p => p && p.tipe_arus_kas !== 'masuk' && p.kategori !== 'pengembalian_kasbon' && p.kategori !== 'pembelian_air_baku' && p.kategori !== 'koreksi_batal')
     .reduce((acc, p) => acc + (p?.nominal || 0), 0);
 
   const labaKotor = totalOmzet - totalHppAirTerjual;
@@ -2415,6 +2448,7 @@ Pelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembal
                         <th style={{ padding: '12px' }}>Total</th>
                         <th style={{ padding: '12px' }}>Status Bayar</th>
                         <th style={{ padding: '12px' }}>Status Kirim</th>
+                        <th style={{ padding: '12px' }}>Aksi</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2449,6 +2483,24 @@ Pelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembal
                                 {psn.status_pesanan}
                               </span>
                             </td>
+                            <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>
+                              {(psn.status_pesanan === 'terkirim' || psn.status_pesanan === 'selesai') && psn.tipe_transaksi !== 'pelunasan_hutang' && (
+                                <button type="button" className="btn btn-secondary btn-sm" style={{ color: 'var(--c-red)', fontSize: '0.75rem', padding: '4px 8px' }} onClick={() => handleBatalkanTerkirim(psn)} title="Batalkan pesanan ini (dobel atau salah input)">
+                                  Batalkan
+                                </button>
+                              )}
+                              {psn.status_pesanan === 'batal' && psn.batal_info?.kas_dipertahankan && pengaturan.koreksi_batal_manual && (
+                                <button type="button" className="btn btn-primary btn-sm" style={{ fontSize: '0.75rem', padding: '4px 8px' }} onClick={() => setKoreksiPsn(psn)}>
+                                  Koreksi manual
+                                </button>
+                              )}
+                              {psn.status_pesanan === 'batal' && psn.batal_info && (
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                  Dibatalkan {psn.batal_info.oleh}: {psn.batal_info.alasan}
+                                  {(psn.batal_info.koreksi_dicatat || 0) > 0 ? `. Dikoreksi ${AppStore.formatRupiah(psn.batal_info.koreksi_dicatat || 0)}` : ''}
+                                </div>
+                              )}
+                            </td>
                           </tr>
                         );
                       })}
@@ -2463,6 +2515,8 @@ Pelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembal
           </div>
         </div>
       )}
+
+      <KoreksiBatalSheet pesanan={koreksiPsn} onClose={() => { setKoreksiPsn(null); loadData(); }} />
 
       {/* Modal Detail Rekap Keuangan Staf */}
       {selectedDetailKaryawan && (
