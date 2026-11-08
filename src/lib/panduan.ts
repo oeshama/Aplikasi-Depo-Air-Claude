@@ -168,7 +168,7 @@ export const TOPIK: Topik[] = [
     ],
     tips: [
       'Untuk pembayaran tunai, uangnya dipegang kurir dulu. Kurir menyetor ke kasir lewat "Setoran kurir".',
-      'Kalau pelanggan terdaftar yang sama sudah punya pesanan dengan isi persis sama (baru dibuat atau masih menunggu dikirim), muncul peringatan "Pesanan mirip dobel?". Tekan Batal kalau memang dobel, atau OK kalau pelanggan memang memesan lagi. Pelanggan umum tidak dicek.',
+      'Kalau pelanggan terdaftar yang sama sudah punya pesanan dengan isi persis sama (dibuat selama shift yang sama, atau masih menunggu dikirim), muncul peringatan "Pesanan mirip dobel?". Tekan Batal kalau memang dobel, atau OK kalau pelanggan memang memesan lagi. Pelanggan umum tidak dicek.',
       'Di daftar Antaran, dua pesanan yang tampak kembar diberi tanda merah "Kemungkinan kembar". Kalau dobel, tekan "Batalkan" pada salah satunya.',
     ],
     hati: ['Kalau pelanggan sudah membayar lewat QRIS atau transfer, aplikasi akan mengingatkan jumlah yang harus dikembalikan. Pengembaliannya dilakukan sendiri, tidak otomatis.'],

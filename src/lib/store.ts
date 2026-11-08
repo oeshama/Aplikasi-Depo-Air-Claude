@@ -1104,13 +1104,19 @@ export class AppStore {
       .join('|');
   }
 
-  // Pesanan lain milik pelanggan yang sama dengan isi sama: dibuat dalam `menit` terakhir, atau masih menunggu dikirim.
+  // Awal rentang pengecekan kembar: sejak shift yang sedang berjalan dibuka (bila tidak ada shift, sejak awal hari ini)
+  static mulaiPengecekanKembarMs(): number {
+    const shift = this.getShiftAktif();
+    return shift ? new Date(shift.waktu_buka).getTime() : new Date(new Date().toDateString()).getTime();
+  }
+
+  // Pesanan lain milik pelanggan yang sama dengan isi sama: dibuat selama shift yang sama, atau masih menunggu dikirim.
   // Pelanggan umum (walk-in) tidak dicek karena banyak orang berbeda memakai nama itu.
-  static cariPesananKembar(kontakId: string | undefined, items: { produk_id?: string; nama_produk?: string; jumlah: number }[], menit = 30): Pesanan | undefined {
+  static cariPesananKembar(kontakId: string | undefined, items: { produk_id?: string; nama_produk?: string; jumlah: number }[], sejakMs: number = this.mulaiPengecekanKembarMs()): Pesanan | undefined {
     if (!kontakId || kontakId === 'kt-1') return undefined;
     const tanda = this.tandaIsi(items);
     if (!tanda) return undefined;
-    const batas = Date.now() - menit * 60000;
+    const batas = sejakMs;
     return this.getPesanan().find(p => p && p.kontak_id === kontakId && p.status_pesanan !== 'batal'
       && this.tandaIsi(p.items || []) === tanda
       && (new Date(p.created_at).getTime() >= batas || p.status_pesanan === 'pending' || p.status_pesanan === 'dijadwalkan' || p.status_pesanan === 'dalam_perjalanan'));
@@ -1121,7 +1127,7 @@ export class AppStore {
     const tanda = this.tandaIsi(pm.items);
     if (!tanda) return undefined;
     const lain = this.getPesananMasuk().find(x => x.id !== pm.id && x.no_hp === pm.no_hp && x.status !== 'ditolak'
-      && this.tandaIsi(x.items) === tanda && Math.abs(new Date(x.waktu).getTime() - new Date(pm.waktu).getTime()) <= 30 * 60000);
+      && this.tandaIsi(x.items) === tanda && new Date(x.waktu).getTime() >= this.mulaiPengecekanKembarMs());
     if (lain) return `pesanan online ${lain.no}`;
     const k = this.cariKontakByHp(pm.no_hp);
     const p = k ? this.cariPesananKembar(k.id, pm.items) : undefined;
