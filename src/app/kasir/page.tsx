@@ -597,6 +597,11 @@ export default function KasirPage() {
 
   const isOrderMuted = (id: string) => mutedIds.includes(id);
 
+  // Antaran lain yang tampak kembar (pelanggan sama, isi sama)
+  const kembarMenunggu = (p: Pesanan) => (p.kontak_id && p.kontak_id !== 'kt-1')
+    ? pendingDelivery.find(x => x.id !== p.id && x.kontak_id === p.kontak_id && AppStore.tandaIsi(x.items) === AppStore.tandaIsi(p.items))
+    : undefined;
+
   const isOrderSnoozed = (id: string) => {
     const until = snoozedUntilMap[id];
     return until ? nowTick < until : false;
@@ -809,6 +814,8 @@ export default function KasirPage() {
   const kembalian = Math.max(0, jumlahBayarTunai - totalAkhir);
 
   // Process Transaction
+  const sedangProsesRef = useRef<boolean>(false);   // cegah dobel ketuk pada tombol proses
+
   const handleProcessOrder = () => {
     if (needsShift) {
       setShowCheckout(false);
@@ -850,6 +857,18 @@ export default function KasirPage() {
         return;
       }
     }
+
+    // Peringatan pesanan kembar: pelanggan sama, isi sama, baru dibuat atau masih menunggu dikirim
+    const kembar = AppStore.cariPesananKembar(selectedKontak?.id, cartItems);
+    if (kembar) {
+      const jam = new Date(kembar.created_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const status = kembar.status_pesanan === 'selesai' || kembar.status_pesanan === 'terkirim' ? 'sudah selesai' : 'masih menunggu dikirim';
+      if (!window.confirm(`PESANAN MIRIP DOBEL?\n\n${selectedKontak?.nama} sudah punya pesanan dengan isi yang sama: ${kembar.no_nota} (${jam}, ${status}).\n\nTekan OK untuk tetap membuat pesanan ini, atau Batal untuk tidak jadi.`)) return;
+    }
+
+    if (sedangProsesRef.current) return;
+    sedangProsesRef.current = true;
+    setTimeout(() => { sedangProsesRef.current = false; }, 2500);
 
     let pembayaranDetails: PembayaranDetail[] = [];
     let totalDibayar = 0;
@@ -1635,6 +1654,12 @@ export default function KasirPage() {
                         <span className="badge badge-warning">{psn.status_pesanan.replace('_', ' ')}</span>
                       </div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>{psn.no_nota} - order {durInfo.jamOrder}</div>
+                      {kembarMenunggu(psn) && (
+                        <div role="status" style={{ marginTop: '6px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--c-red)' }}>
+                          <AlertTriangle size={14} style={{ display: 'inline', marginRight: '4px' }} aria-hidden="true" />
+                          Kemungkinan kembar dengan {kembarMenunggu(psn)?.no_nota}. Kalau dobel, tekan Batalkan.
+                        </div>
+                      )}
                       <div style={{ fontSize: '0.9rem', marginTop: '6px', color: 'var(--text-2)' }}>{formatProdukRingkas(psn.items)}</div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
                         <strong style={{ color: 'var(--c-green)' }}>{AppStore.formatRupiah(psn.total_akhir)}</strong>

@@ -86,6 +86,16 @@ export async function POST(req: Request) {
   if (items.length === 0) return galat('Pilih minimal satu produk.');
   if (totalJumlah > 100) return galat('Jumlah terlalu banyak. Hubungi kami lewat WhatsApp.');
 
+  // Pesanan yang sama persis (nomor, isi, alamat) dalam 2 menit terakhir dianggap kirim ganda: jangan dibuat dua kali,
+  // pelanggan diberi nomor pesanan yang pertama.
+  const duaMenit = new Date(Date.now() - 120 * 1000).toISOString();
+  const tandaBaru = items.map(i => `${i.produk_id}:${i.jumlah}`).sort().join('|');
+  const baruSaja = await db.from('depo_records').select('data')
+    .eq('collection', 'pesanan_masuk').eq('data->>no_hp', hp).gte('updated_at', duaMenit);
+  const kembar = (baruSaja.data || []).map((r: any) => r.data as PesananMasuk).find(x => x && x.status !== 'ditolak'
+    && x.alamat === alamat && (x.items || []).map(i => `${i.produk_id}:${i.jumlah}`).sort().join('|') === tandaBaru);
+  if (kembar) return NextResponse.json({ ok: true, no: kembar.no, lacak: kembar.lacak, wa: etalase.wa });
+
   // Batas pesanan: per nomor dan keseluruhan, dalam satu jam terakhir
   const sejam = new Date(Date.now() - 3600 * 1000).toISOString();
   const perNomor = await db.from('depo_records').select('id', { count: 'exact', head: true })

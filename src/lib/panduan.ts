@@ -166,7 +166,11 @@ export const TOPIK: Topik[] = [
       'Saat barang sampai, kurir menekan "Konfirmasi Terkirim & Terima Bayar" di aplikasinya. Kasir juga bisa menekan "Sudah terkirim" lalu memilih kurirnya.',
       'Kalau pelanggan membatalkan sebelum barang dikirim, tekan "Batalkan" di daftar Antaran, lalu tulis alasannya. Penjualan dan pengirimannya dibatalkan, stok air, pinjaman galon, dan hutang dikembalikan, dan nilai uangnya tidak ikut laporan.',
     ],
-    tips: ['Untuk pembayaran tunai, uangnya dipegang kurir dulu. Kurir menyetor ke kasir lewat "Setoran kurir".'],
+    tips: [
+      'Untuk pembayaran tunai, uangnya dipegang kurir dulu. Kurir menyetor ke kasir lewat "Setoran kurir".',
+      'Kalau pelanggan terdaftar yang sama sudah punya pesanan dengan isi persis sama (baru dibuat atau masih menunggu dikirim), muncul peringatan "Pesanan mirip dobel?". Tekan Batal kalau memang dobel, atau OK kalau pelanggan memang memesan lagi. Pelanggan umum tidak dicek.',
+      'Di daftar Antaran, dua pesanan yang tampak kembar diberi tanda merah "Kemungkinan kembar". Kalau dobel, tekan "Batalkan" pada salah satunya.',
+    ],
     hati: ['Kalau pelanggan sudah membayar lewat QRIS atau transfer, aplikasi akan mengingatkan jumlah yang harus dikembalikan. Pengembaliannya dilakukan sendiri, tidak otomatis.'],
   },
   {

@@ -1091,6 +1091,43 @@ export class AppStore {
       .sort((a, b) => (b.kurir_diterima_at || b.created_at).localeCompare(a.kurir_diterima_at || a.created_at));
   }
 
+  // ---------------------------------------------------------------------
+  // Deteksi pesanan kembar (dobel input): pelanggan terdaftar yang sama dengan isi persis sama
+  // ---------------------------------------------------------------------
+
+  // Tanda isi pesanan: produk dan jumlahnya (urutan tidak berpengaruh, baris pelunasan hutang diabaikan)
+  static tandaIsi(items: { produk_id?: string; nama_produk?: string; jumlah: number }[]): string {
+    return (items || [])
+      .filter(i => i && !(i.nama_produk || '').startsWith('Pelunasan'))
+      .map(i => `${i.produk_id || i.nama_produk}:${i.jumlah}`)
+      .sort()
+      .join('|');
+  }
+
+  // Pesanan lain milik pelanggan yang sama dengan isi sama: dibuat dalam `menit` terakhir, atau masih menunggu dikirim.
+  // Pelanggan umum (walk-in) tidak dicek karena banyak orang berbeda memakai nama itu.
+  static cariPesananKembar(kontakId: string | undefined, items: { produk_id?: string; nama_produk?: string; jumlah: number }[], menit = 30): Pesanan | undefined {
+    if (!kontakId || kontakId === 'kt-1') return undefined;
+    const tanda = this.tandaIsi(items);
+    if (!tanda) return undefined;
+    const batas = Date.now() - menit * 60000;
+    return this.getPesanan().find(p => p && p.kontak_id === kontakId && p.status_pesanan !== 'batal'
+      && this.tandaIsi(p.items || []) === tanda
+      && (new Date(p.created_at).getTime() >= batas || p.status_pesanan === 'pending' || p.status_pesanan === 'dijadwalkan' || p.status_pesanan === 'dalam_perjalanan'));
+  }
+
+  // Untuk pesanan online yang masih baru: keterangan singkat bila mirip pesanan online lain atau pesanan yang sudah dibuat kasir
+  static cariKembarPesananMasuk(pm: PesananMasuk): string | undefined {
+    const tanda = this.tandaIsi(pm.items);
+    if (!tanda) return undefined;
+    const lain = this.getPesananMasuk().find(x => x.id !== pm.id && x.no_hp === pm.no_hp && x.status !== 'ditolak'
+      && this.tandaIsi(x.items) === tanda && Math.abs(new Date(x.waktu).getTime() - new Date(pm.waktu).getTime()) <= 30 * 60000);
+    if (lain) return `pesanan online ${lain.no}`;
+    const k = this.cariKontakByHp(pm.no_hp);
+    const p = k ? this.cariPesananKembar(k.id, pm.items) : undefined;
+    return p ? `nota ${p.no_nota}` : undefined;
+  }
+
   // Batalkan penjualan + pengiriman yang belum terkirim. Membalikkan hutang pelanggan, pinjaman galon dan stok air,
   // lalu menolkan nilai uangnya (nilai asli disimpan di batal_info). Dipakai kasir/owner/admin dari daftar "menunggu dikirim".
   static batalkanPesanan(id: string, alasan: string): { pesanan: Pesanan; perluKembalikan: number } {

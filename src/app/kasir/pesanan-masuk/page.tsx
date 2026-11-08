@@ -59,6 +59,8 @@ export default function PesananMasukPage() {
 
   const konfirmasi = () => {
     if (!pilih) return;
+    const kembar = AppStore.cariKembarPesananMasuk(pilih);
+    if (kembar && !window.confirm(`PESANAN MIRIP DOBEL?\n\nPesanan ${pilih.no} dari ${pilih.nama} mirip dengan ${kembar} (isi sama).\n\nTekan OK untuk tetap mengonfirmasi, atau Batal untuk memeriksa dulu.`)) return;
     try {
       const { pm, pesanan, kontak } = AppStore.konfirmasiPesananMasuk(pilih.id, { zonaId, estimasiMenit: menit });
       setPilih(null);
@@ -128,6 +130,9 @@ export default function PesananMasukPage() {
           <span style={{ display: 'flex', gap: '6px', alignItems: 'center' }}><Phone size={14} aria-hidden="true" /> {pm.no_hp}</span>
           <span style={{ display: 'flex', gap: '6px', alignItems: 'center' }}><Clock size={14} aria-hidden="true" /> Antar: {pm.waktu_antar}. Bayar: {pm.bayar === 'tunai' ? 'tunai' : 'transfer'}</span>
           {pm.catatan && <span>Catatan: {pm.catatan}</span>}
+          {pm.status === 'baru' && AppStore.cariKembarPesananMasuk(pm) && (
+            <span role="status" style={{ fontWeight: 700, color: 'var(--c-red)' }}><AlertTriangle size={14} style={{ display: 'inline', marginRight: '4px' }} aria-hidden="true" />Kemungkinan kembar dengan {AppStore.cariKembarPesananMasuk(pm)}</span>
+          )}
         </div>
       </>
     );
