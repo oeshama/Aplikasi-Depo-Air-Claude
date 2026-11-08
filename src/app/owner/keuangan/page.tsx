@@ -5,6 +5,7 @@ import { AppStore } from '@/lib/store';
 import { SetoranOwner, Pengeluaran } from '@/lib/types';
 import PeganganOwnerSection from '@/components/PeganganOwnerSection';
 import PengeluaranOwnerSheet from '@/components/PengeluaranOwnerSheet';
+import HutangTokoOwnerSheet from '@/components/HutangTokoOwnerSheet';
 import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
 import LaporanSelisihKasir from '@/components/LaporanSelisihKasir';
 import { Wallet, Receipt, HandCoins, Check, Truck, Store, Landmark, X, Plus, ArrowLeftRight } from 'lucide-react';
@@ -47,6 +48,7 @@ export default function KeuanganOwnerPage() {
   const [ket, setKet] = useState<string>('');
   const [showMenuAksi, setShowMenuAksi] = useState<boolean>(false);
   const [showPengeluaran, setShowPengeluaran] = useState<boolean>(false);
+  const [showHutang, setShowHutang] = useState<boolean>(false);
   const [struk, setStruk] = useState<Pengeluaran | null>(null);
 
   const [bukuAkun, setBukuAkun] = useState<string>('kas_besar');
@@ -281,6 +283,47 @@ export default function KeuanganOwnerPage() {
         )}
       </section>
 
+      <section aria-labelledby="judul-hutang-toko" style={{ marginBottom: '24px' }}>
+        {judulBagian('judul-hutang-toko', 'Hutang toko')}
+        <div className="glass-card" style={{ padding: '14px' }}>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 10px' }}>
+            Catat uang yang dipinjam depo dari karyawan atau pihak lain, termasuk hutang lama sebelum aplikasi dipakai. Tanggalnya boleh mundur dan uang kas tidak berubah sampai hutang dibayar.
+          </p>
+          {(() => {
+            const hutangBuka = AppStore.getHutangToko().filter(h => h.status !== 'lunas' && (h.sisa_hutang || 0) > 0);
+            const total = hutangBuka.reduce((a, h) => a + (h.sisa_hutang || 0), 0);
+            return hutangBuka.length === 0 ? (
+              <p style={{ fontSize: '0.88rem', margin: '0 0 10px' }}>Tidak ada hutang toko yang belum lunas.</p>
+            ) : (
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, marginBottom: '6px' }}>
+                  <span>Belum lunas ({hutangBuka.length})</span><span style={{ color: 'var(--c-red)' }}>{fmt(total)}</span>
+                </div>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {hutangBuka.slice(0, 8).map(h => (
+                    <li key={h.id} style={{ border: '1px solid var(--glass-border)', borderRadius: '10px', padding: '8px 10px', fontSize: '0.85rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                        <strong>{h.nama_pihak}</strong>
+                        <strong style={{ color: 'var(--c-red)' }}>{fmt(h.sisa_hutang)}</strong>
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                        {new Date(h.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })} - {h.peruntukan}
+                        {h.total_dibayar > 0 ? ` - sudah dibayar ${fmt(h.total_dibayar)} dari ${fmt(h.nominal_hutang)}` : ''}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {hutangBuka.length > 8 && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '6px' }}>dan {hutangBuka.length - 8} lainnya.</div>}
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '8px 0 0' }}>Untuk membayar, pakai "Catat pengeluaran" lalu pilih "Bayar hutang toko".</p>
+              </div>
+            );
+          })()}
+          <button type="button" className="btn btn-primary btn-lg" onClick={() => setShowHutang(true)} aria-haspopup="dialog" style={{ width: '100%' }}>
+            <Receipt size={20} aria-hidden="true" /> Catat hutang toko
+          </button>
+        </div>
+      </section>
+
       {mulai && (
         <>
           <PeganganOwnerSection />
@@ -412,6 +455,7 @@ export default function KeuanganOwnerPage() {
         )}
       </section>
 
+      <HutangTokoOwnerSheet isOpen={showHutang} onClose={() => setShowHutang(false)} />
       <PengeluaranOwnerSheet isOpen={showPengeluaran} onClose={() => setShowPengeluaran(false)} onSaved={(p) => setStruk(p)} />
       <ExpenseReceiptModal pengeluaran={struk} onClose={() => setStruk(null)} />
 

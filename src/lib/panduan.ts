@@ -219,8 +219,8 @@ export const TOPIK: Topik[] = [
     ringkas: 'Untuk uang yang dipinjam depo dari karyawan atau pihak lain.',
     buka: { href: '/kasir/shift', label: 'Buka Rekap Shift' },
     langkah: [
-      'Tekan "Lainnya", lalu "Catat hutang toko".',
-      'Pilih pihak (karyawan atau orang ketiga), isi nominal dan keperluannya.',
+      'Tekan "Lainnya", lalu "Catat hutang toko". Owner juga bisa mencatatnya dari halaman Keuangan Owner, bagian "Hutang toko", dengan tanggal yang boleh diisi mundur (cocok untuk hutang lama sebelum aplikasi dipakai).',
+      'Pilih pihak (karyawan atau orang ketiga), isi nominal dan keperluannya. Untuk hutang lama, isi hanya sisa yang belum dibayar.',
       'Untuk melunasi, buka "Rekap Shift", cari catatan hutangnya, lalu tekan "Bayar Kas".',
     ],
   },
