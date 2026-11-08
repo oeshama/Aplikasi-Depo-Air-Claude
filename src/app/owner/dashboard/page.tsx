@@ -246,7 +246,7 @@ export default function OwnerDashboardPage() {
 
   // Calculation helper for Rekap Hutang Piutang & Keuangan Karyawan
   const getRekapKaryawanList = () => {
-    const list = pengaturan.karyawan_list || [];
+    const list = (pengaturan.karyawan_list || []).filter(k => !AppStore.penerimaSaja(k));
 
     return list.map(kary => {
       const matchesKary = (id?: string, nama?: string, peruntukan?: string) => {
@@ -1755,7 +1755,7 @@ Pelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembal
                 >
                   <Trash2 size={13} /> Reset Ongkir Staf
                 </button>
-                <span className="badge badge-primary">{(pengaturan.karyawan_list || []).length} Staf Terdaftar</span>
+                <span className="badge badge-primary">{(pengaturan.karyawan_list || []).filter(k => !AppStore.penerimaSaja(k)).length} Staf Terdaftar</span>
               </div>
             </div>
 

@@ -30,7 +30,7 @@ export default function HutangTokoOwnerSheet({ isOpen, onClose }: { isOpen: bool
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-  const karyawan = (AppStore.getPengaturan().karyawan_list || []).filter(k => k.aktif);
+  const karyawan = (AppStore.getPengaturan().karyawan_list || []).filter(k => k.aktif && !AppStore.penerimaSaja(k));
   const hariIni = AppStore.tanggalHariIni();
 
   const simpan = (e: React.FormEvent) => {

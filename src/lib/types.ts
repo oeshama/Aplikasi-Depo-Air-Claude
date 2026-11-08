@@ -347,6 +347,8 @@ export interface Karyawan {
   tanggal_jatuh_tempo_gaji?: number;
   password?: string;
   aktif: boolean;
+  // Penerima pengeluaran yang bukan karyawan (ditambah kasir dari formulir pengeluaran): tidak punya akun dan tidak dihitung sebagai staf.
+  penerima_saja?: boolean;
   // Hanya berlaku untuk kasir: apa yang boleh dibayar dari menu pengeluaran. Kosong = semua boleh.
   izin_bayar?: { gaji?: boolean; ongkir?: boolean; makan?: boolean };
 }

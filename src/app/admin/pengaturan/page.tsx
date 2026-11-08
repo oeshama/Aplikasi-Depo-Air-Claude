@@ -358,6 +358,21 @@ export default function AdminPengaturanPage() {
     }
   };
 
+  // Ubah nama/jabatan penerima pengeluaran (bukan karyawan)
+  const ubahPenerima = (id: string) => {
+    const k = (pengaturan.karyawan_list || []).find(x => x.id === id);
+    if (!k) return;
+    const nama = window.prompt('Nama penerima:', k.nama);
+    if (nama === null) return;
+    if (!nama.trim()) { alert('Nama tidak boleh kosong.'); return; }
+    const jabatan = window.prompt('Keterangan (mis. Rumah, Pribadi, Vendor):', k.jabatan);
+    if (jabatan === null) return;
+    const updatedList = (pengaturan.karyawan_list || []).map(x => x.id === id ? { ...x, nama: nama.trim(), jabatan: jabatan.trim() || 'Penerima / Pihak Ketiga' } : x);
+    const updatedPengaturan = { ...pengaturan, karyawan_list: updatedList };
+    setPengaturan(updatedPengaturan);
+    simpanPengaturan(updatedPengaturan);
+  };
+
   const handleToggleAktifKaryawan = (id: string) => {
     const updatedList = (pengaturan.karyawan_list || []).map(k => 
       k.id === id ? { ...k, aktif: !k.aktif } : k
@@ -503,7 +518,7 @@ export default function AdminPengaturanPage() {
     const modeFoto = { wajib: 'wajib', opsional: 'boleh dilewati', nonaktif: 'mati' }[pengaturan.foto_meter_mode || 'opsional'];
     switch (id) {
       case 'toko': return namaCetak(pengaturan);
-      case 'karyawan': return `${(pengaturan.karyawan_list || []).length} karyawan`;
+      case 'karyawan': return `${(pengaturan.karyawan_list || []).filter(k => !AppStore.penerimaSaja(k)).length} karyawan`;
       case 'printer': return `${pengaturan.printer_metode === 'rawbt' ? 'RawBT' : 'Dialog browser'}, ${pengaturan.printer_lebar_mm || 58} mm`;
       case 'target': return `Harian ${AppStore.formatRupiah(ambilTarget(pengaturan, 'omzet', 'harian'))}`;
       case 'operasional': return `Foto meteran ${modeFoto}, ${(pengaturan.komponen_servis_list || []).length} komponen mesin`;
@@ -599,10 +614,10 @@ export default function AdminPengaturanPage() {
 
         {/* Grid List Karyawan */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: '16px' }}>
-          {pengaturan.karyawan_list?.length === 0 ? (
+          {(pengaturan.karyawan_list || []).filter(k => !AppStore.penerimaSaja(k)).length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Belum ada data karyawan. Klik tombol di atas untuk menambah.</p>
           ) : (
-            pengaturan.karyawan_list?.map(kary => (
+            (pengaturan.karyawan_list || []).filter(k => !AppStore.penerimaSaja(k)).map(kary => (
               <div key={kary.id} className="glass-card" style={{ padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
@@ -658,6 +673,30 @@ export default function AdminPengaturanPage() {
             ))
           )}
         </div>
+
+        {(() => {
+          const penerima = (pengaturan.karyawan_list || []).filter(k => AppStore.penerimaSaja(k));
+          if (penerima.length === 0) return null;
+          return (
+            <div style={{ marginTop: '24px' }}>
+              <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 4px' }}>Penerima pengeluaran (bukan karyawan)</h4>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 10px' }}>
+                Orang di luar karyawan yang dipilih sebagai penerima di menu pengeluaran kasir. Mereka tidak punya akun login dan tidak dihitung sebagai karyawan atau staf.
+              </p>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {penerima.map(k => (
+                  <li key={k.id} className="glass-card" style={{ padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span><strong>{k.nama}</strong> <span className="badge badge-primary" style={{ marginLeft: '6px' }}>{k.jabatan}</span></span>
+                    <span style={{ display: 'flex', gap: '6px' }}>
+                      <button type="button" onClick={() => ubahPenerima(k.id)} className="btn btn-secondary btn-sm" title="Ubah nama atau keterangan"><Edit3 size={14} /> Ubah</button>
+                      <button type="button" onClick={() => handleDeleteKaryawan(k.id, k.nama)} className="btn btn-danger btn-sm" title="Hapus penerima"><Trash2 size={14} /></button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })()}
 
       </div>
 

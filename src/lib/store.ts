@@ -1656,6 +1656,11 @@ export class AppStore {
     }
   }
 
+  // Penerima pengeluaran yang bukan karyawan (termasuk data lama yang ID-nya diawali "penerima-")
+  static penerimaSaja(k: { id?: string; penerima_saja?: boolean }): boolean {
+    return !!k && (!!k.penerima_saja || (k.id || '').startsWith('penerima-'));
+  }
+
   static getUsers(): UserApp[] {
     const pengaturan = this.getPengaturan();
     const ownerName = pengaturan.nama_owner || 'Owner Toko';
@@ -1674,7 +1679,7 @@ export class AppStore {
 
     const karyawanList = pengaturan.karyawan_list || [];
     karyawanList.forEach(k => {
-      if (k.aktif !== false) {
+      if (k.aktif !== false && !this.penerimaSaja(k)) {
         let role: UserRole = 'kasir';
         const jab = (k.jabatan || '').toLowerCase();
         if (jab.includes('admin') || jab.includes('pemilik') || jab.includes('owner')) {

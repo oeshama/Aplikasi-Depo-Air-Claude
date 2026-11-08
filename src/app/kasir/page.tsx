@@ -184,6 +184,7 @@ export default function KasirPage() {
       tanggal_masuk: AppStore.tanggalHariIni(),
       gaji_basic: 0,
       uang_makan_per_hari: 0,
+      penerima_saja: true,
       aktif: true
     };
 
@@ -306,6 +307,11 @@ export default function KasirPage() {
     }
 
     const kary = karyawanList.find(k => k.id === selectedKaryawanId);
+
+    if (kary && AppStore.penerimaSaja(kary) && ['gaji', 'kasbon', 'pengembalian_kasbon'].includes(kategoriPengeluaran)) {
+      alert('Gaji dan kasbon hanya untuk karyawan. "' + kary.nama + '" terdaftar sebagai penerima pengeluaran, bukan karyawan.');
+      return;
+    }
 
     if (kategoriPengeluaran === 'gaji' && kary) {
       const dueDay = kary.tanggal_jatuh_tempo_gaji || 25;
@@ -2322,7 +2328,7 @@ export default function KasirPage() {
                   required={['gaji', 'kasbon', 'pengembalian_kasbon', 'ongkir'].includes(kategoriPengeluaran)}
                 >
                   <option value="">-- {['gaji', 'kasbon', 'pengembalian_kasbon', 'ongkir'].includes(kategoriPengeluaran) ? 'Wajib Pilih Karyawan / Penerima' : 'Pilih Karyawan / Staf / Penerima (Opsional)'} --</option>
-                  {karyawanList.map(k => (
+                  {karyawanList.filter(k => !AppStore.penerimaSaja(k) || !['gaji', 'kasbon', 'pengembalian_kasbon'].includes(kategoriPengeluaran)).map(k => (
                     <option key={k.id} value={k.id}>
                       {k.nama} ({k.jabatan})
                     </option>
@@ -2458,7 +2464,7 @@ export default function KasirPage() {
                     required
                   >
                     <option value="">-- Pilih Nama Karyawan --</option>
-                    {karyawanList.map(k => (
+                    {karyawanList.filter(k => !AppStore.penerimaSaja(k)).map(k => (
                       <option key={k.id} value={k.id}>
                         {k.nama} ({k.jabatan})
                       </option>

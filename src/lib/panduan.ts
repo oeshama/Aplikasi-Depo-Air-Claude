@@ -207,6 +207,7 @@ export const TOPIK: Topik[] = [
       'Pilih kategori: Operasional, Pembelian Air Baku, Ongkir, Bensin, Konsumsi, Lain-lain, dan seterusnya.',
       'Isi nominal dan keterangan.',
       'Untuk "Pembelian Air Baku", isi nama vendor atau sopir, volume air masuk (liter), harga air, tips sopir, dan angka meteran saat diisi. Stok air baku bertambah otomatis.',
+      'Penerima di luar karyawan (mis. keluarga atau pihak lain) bisa ditambahkan lewat tombol tambah penerima di formulir ini. Mereka tidak dihitung sebagai karyawan, tidak punya akun, dan tidak bisa dipilih untuk gaji atau kasbon. Owner bisa mengubah atau menghapusnya di Pengaturan Toko, bagian "Penerima pengeluaran".',
       'Kalau Anda sedang memegang uang pegangan dari owner, muncul pilihan "Uang yang dipakai": uang laci atau uang pegangan.',
       'Simpan. Bukti pengeluaran bisa dicetak atau dikirim ke owner lewat WhatsApp.',
       'Kalau owner membatasi pengeluaran lain-lain per shift, di atas formulir terlihat batasnya dan yang sudah terpakai. Pengeluaran yang melewati batas tidak langsung tercatat: Anda diminta mengirim permintaan, lalu menunggu owner menyetujui. Statusnya (menunggu, disetujui, ditolak) terlihat di atas formulir yang sama.',
