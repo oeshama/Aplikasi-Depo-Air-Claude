@@ -103,14 +103,27 @@ export async function kirimNotifikasiUji(): Promise<{ ok: boolean; pesan: string
 }
 
 // Kasir sudah mengonfirmasi pesanan online: beri tahu HP pengantar. Tidak menunggu hasil dan tidak mengganggu alur kasir.
-export function picuPushDikonfirmasi(pm: { no: string; items: { jumlah: number; nama_produk: string }[]; alamat: string }): void {
+export function picuPushDikonfirmasi(pm: { no: string; items: { jumlah: number; nama_produk: string }[]; alamat: string }, pengantarId?: string): void {
   if (!pushDidukung()) return;
   (async () => {
     const token = await tokenAkun();
     if (!token) return;
     await fetch('/api/push/kirim', {
       method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-      body: JSON.stringify({ jenis: 'dikonfirmasi', no: pm.no, ringkas: pm.items.map(i => `${i.jumlah} ${i.nama_produk}`).join(', '), alamat: pm.alamat })
+      body: JSON.stringify({ jenis: 'dikonfirmasi', no: pm.no, ringkas: pm.items.map(i => `${i.jumlah} ${i.nama_produk}`).join(', '), alamat: pm.alamat, pengantar_id: pengantarId || '' })
+    }).catch(() => undefined);
+  })();
+}
+
+// Penugasan atau pemindahan pengantar: beri tahu HP pengantar yang bersangkutan (kosong = semua pengantar, untuk antaran belum ditugaskan)
+export function picuPushTugas(t: { no: string; ringkas: string; alamat: string; pengantarId: string; aksi: 'baru' | 'dipindah' }): void {
+  if (!pushDidukung()) return;
+  (async () => {
+    const token = await tokenAkun();
+    if (!token) return;
+    await fetch('/api/push/kirim', {
+      method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify({ jenis: 'tugas', no: t.no, ringkas: t.ringkas, alamat: t.alamat, pengantar_id: t.pengantarId, aksi: t.aksi })
     }).catch(() => undefined);
   })();
 }

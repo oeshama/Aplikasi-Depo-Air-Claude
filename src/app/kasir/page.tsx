@@ -17,6 +17,8 @@ import SetoranKurirSheet from '@/components/SetoranKurirSheet';
 import SerahOwnerSheet from '@/components/SerahOwnerSheet';
 import PeganganKasirCard from '@/components/PeganganKasirCard';
 import PesananOnlinePanel from '@/components/PesananOnlinePanel';
+import GantiPengantarSheet from '@/components/GantiPengantarSheet';
+import { picuPushTugas } from '@/lib/push';
 import {
   ShoppingCart, Plus, Minus, User, Truck, Receipt,
   CreditCard, DollarSign, QrCode, Building, Clock, AlertTriangle, Check,
@@ -70,6 +72,8 @@ export default function KasirPage() {
   const [selectedKontakId, setSelectedKontakId] = useState<string>('kt-1');
   const [tipeTransaksi, setTipeTransaksi] = useState<TipeTransaksi>('tukar_galon');
   const [isDelivery, setIsDelivery] = useState<boolean>(false);
+  const [pilihPengantar, setPilihPengantar] = useState<{ kontakId: string; id: string } | null>(null);
+  const [gantiPsn, setGantiPsn] = useState<Pesanan | null>(null);
   const [selectedZonaId, setSelectedZonaId] = useState<string>('zn-1');
   const [diskon, setDiskon] = useState<number>(0);
   const [catatan, setCatatan] = useState<string>('');
@@ -821,6 +825,12 @@ export default function KasirPage() {
   const kembalian = Math.max(0, jumlahBayarTunai - totalAkhir);
 
   // Process Transaction
+  // Pengantar untuk pesanan antar: pilihan kasir, atau otomatis pengantar terakhir pelanggan ini (kosong = belum ditugaskan)
+  const hitungPengantar = (): string => {
+    if (pilihPengantar && pilihPengantar.kontakId === selectedKontak?.id) return pilihPengantar.id;
+    return AppStore.pengantarTerakhir(selectedKontak?.id);
+  };
+
   const sedangProsesRef = useRef<boolean>(false);   // cegah dobel ketuk pada tombol proses
 
   const handleProcessOrder = () => {
@@ -934,10 +944,15 @@ export default function KasirPage() {
       kasir_id: currentUser.id,
       catatan: catatan,
       bayar_ke_kurir: bayarKeKurir || undefined,
+      pengantar_id: isDelivery ? (hitungPengantar() || undefined) : undefined,
       created_at: new Date().toISOString()
     };
 
     AppStore.addPesanan(newPesanan);
+    if (isDelivery) {
+      picuPushTugas({ no: newNotaNo, ringkas: cartItems.map(i => `${i.jumlah} ${i.nama_produk}`).join(', '), alamat: selectedKontak.alamat || '', pengantarId: newPesanan.pengantar_id || '', aksi: 'baru' });
+      setPilihPengantar(null);
+    }
 
     if (metodePembayaran === 'hutang') {
       AppStore.tambahHutangPelanggan(selectedKontak.id, totalAkhir);
@@ -1104,6 +1119,8 @@ export default function KasirPage() {
           setShowBukaShiftModal(false);
         }}
       />
+
+      <GantiPengantarSheet pesanan={gantiPsn} onClose={() => setGantiPsn(null)} />
 
       <KonfirmasiTerkirimSheet
         pesanan={konfirmasiPesanan}
@@ -1438,6 +1455,20 @@ export default function KasirPage() {
                             </option>
                           ))}
                         </select>
+                        <div style={{ marginTop: '10px' }}>
+                          <label className="form-label" htmlFor="pilih-pengantar">
+                            Pengantar{selectedKontak && !pilihPengantar && AppStore.pengantarTerakhir(selectedKontak.id) ? ' (otomatis: pengantar terakhir pelanggan ini)' : ''}
+                          </label>
+                          <select
+                            id="pilih-pengantar"
+                            value={hitungPengantar()}
+                            onChange={(e) => setPilihPengantar({ kontakId: selectedKontak?.id || '', id: e.target.value })}
+                            className="form-select"
+                          >
+                            <option value="">Belum ditugaskan (semua pengantar melihatnya)</option>
+                            {AppStore.pengantarAktif().map(u => <option key={u.id} value={u.id}>{u.nama}</option>)}
+                          </select>
+                        </div>
                         {selectedKontak && selectedKontak.id !== 'kt-1' && !selectedKontak.zona_id && (
                           <button type="button" className="btn btn-secondary btn-sm" onClick={simpanZonaKePelanggan} style={{ alignSelf: 'flex-start', marginTop: '6px' }}>
                             Simpan zona ini ke data pelanggan
@@ -1661,6 +1692,11 @@ export default function KasirPage() {
                         <span className="badge badge-warning">{psn.status_pesanan.replace('_', ' ')}</span>
                       </div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>{psn.no_nota} - order {durInfo.jamOrder}</div>
+                      <div style={{ marginTop: '6px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <Truck size={14} aria-hidden="true" />
+                        <span>Pengantar: <strong style={{ color: psn.pengantar_id ? 'var(--text-main)' : 'var(--c-amber)' }}>{AppStore.namaPengantar(psn.pengantar_id)}</strong></span>
+                        <button type="button" className="btn btn-secondary btn-sm" style={{ padding: '2px 8px', fontSize: '0.75rem' }} onClick={() => setGantiPsn(psn)}>Ganti pengantar</button>
+                      </div>
                       {dariShiftLalu(psn) && (
                         <div style={{ marginTop: '6px' }}>
                           <span className="badge badge-warning" style={{ fontSize: '0.72rem' }}>Dari shift sebelumnya</span>

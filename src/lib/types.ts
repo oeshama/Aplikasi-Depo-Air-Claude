@@ -125,6 +125,8 @@ export interface Pesanan {
   bayar_ke_kurir?: boolean;
   kurir_uang_diterima?: number;   // tunai yang benar-benar diterima kurir dari pelanggan
   kurir_diterima_at?: string;
+  // Pergantian pengantar oleh kasir/owner sebelum pesanan terkirim (id pengantar, kosong = belum ditugaskan)
+  riwayat_pengantar?: { waktu: string; dari?: string; ke?: string; oleh: string }[];
   // Diisi saat penjualan dibatalkan sebelum terkirim. Angka uang di atas dinolkan supaya tidak ikut laporan/kas;
   // nilai aslinya disimpan di sini.
   batal_info?: {

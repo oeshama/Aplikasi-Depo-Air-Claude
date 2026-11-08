@@ -90,6 +90,14 @@ export async function kirimKePeran(db: SupabaseClient, peran: PeranPush[], paylo
   return kirimKeDaftar(db, daftar, payload, batasMs);
 }
 
+// Mengirim hanya ke HP milik satu karyawan (mis. pengantar yang ditugaskan)
+export async function kirimKeKaryawan(db: SupabaseClient, peran: PeranPush[], karyawanId: string, payload: PayloadPush, batasMs = 5000): Promise<{ terkirim: number; gagal: number }> {
+  if (!pushSiap()) return { terkirim: 0, gagal: 0 };
+  aturVapid();
+  const daftar = (await ambilLangganan(db, peran)).filter(l => l.karyawan_id === karyawanId);
+  return kirimKeDaftar(db, daftar, payload, batasMs);
+}
+
 export async function kirimKeDaftar(db: SupabaseClient, daftar: Langganan[], payload: PayloadPush, batasMs = 5000): Promise<{ terkirim: number; gagal: number }> {
   if (!pushSiap() || daftar.length === 0) return { terkirim: 0, gagal: 0 };
   aturVapid();

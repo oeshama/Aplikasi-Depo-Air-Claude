@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { dbPublik } from '@/lib/apiPublik';
-import { ambilPenanya, kirimKePeran, kirimKeDaftar, tandaiSekali, bersih, pushSiap, idLangganan, endpointDiizinkan, KOLEKSI_LANGGANAN } from '@/lib/pushServer';
+import { ambilPenanya, kirimKePeran, kirimKeKaryawan, kirimKeDaftar, tandaiSekali, bersih, pushSiap, idLangganan, endpointDiizinkan, KOLEKSI_LANGGANAN } from '@/lib/pushServer';
 import type { Langganan } from '@/lib/pushServer';
 
 export const dynamic = 'force-dynamic';
@@ -39,11 +39,34 @@ export async function POST(req: Request) {
     if (!(await tandaiSekali(db, `konfirmasi-${no}`))) return NextResponse.json({ ok: true, terkirim: 0, sudahPernah: true });
     const ringkas = bersih(b.ringkas, 100);
     const alamat = bersih(b.alamat, 80);
-    const hasil = await kirimKePeran(db, ['pengantar'], {
-      title: 'Pesanan online untuk diantar',
+    const untuk = bersih(b.pengantar_id, 60);
+    const payload = {
+      title: untuk ? 'Tugas antar untuk Anda' : 'Pesanan online untuk diantar',
       body: `${ringkas || 'Pesanan baru'}${alamat ? ' ke ' + alamat : ''} (${no})`,
       url: '/pengantar', tag: `antar-${no}`
-    });
+    };
+    const hasil = untuk ? await kirimKeKaryawan(db, ['pengantar'], untuk, payload) : await kirimKePeran(db, ['pengantar'], payload);
+    return NextResponse.json({ ok: true, ...hasil });
+  }
+
+  // Penugasan atau pemindahan pengantar oleh kasir/owner/admin
+  if (b?.jenis === 'tugas') {
+    if (penanya.peran === 'pengantar') return tolak('Peran ini tidak boleh memicu notifikasi.', 403);
+    const no = bersih(b.no, 30);
+    if (!no) return tolak('Nomor pesanan kosong.', 400);
+    const untuk = bersih(b.pengantar_id, 60);
+    const ringkas = bersih(b.ringkas, 100);
+    const alamat = bersih(b.alamat, 80);
+    const dipindah = b.aksi === 'dipindah';
+    if (dipindah && !untuk) return tolak('Pengantar lama kosong.', 400);
+    const payload = dipindah
+      ? { title: 'Tugas dipindahkan', body: `Pesanan ${no} dipindahkan ke pengantar lain. Anda tidak perlu mengantarnya.`, url: '/pengantar', tag: `pindah-${no}` }
+      : {
+        title: untuk ? 'Tugas antar untuk Anda' : 'Antaran belum ditugaskan',
+        body: `${ringkas || 'Pesanan antar'}${alamat ? ' ke ' + alamat : ''} (${no})`,
+        url: '/pengantar', tag: `tugas-${no}`
+      };
+    const hasil = untuk ? await kirimKeKaryawan(db, ['pengantar'], untuk, payload) : await kirimKePeran(db, ['pengantar'], payload);
     return NextResponse.json({ ok: true, ...hasil });
   }
 

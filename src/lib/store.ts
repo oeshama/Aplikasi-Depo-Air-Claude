@@ -488,7 +488,7 @@ export class AppStore {
 
   // Kasir mengonfirmasi pesanan online: pelanggan dicocokkan/dibuat, lalu dibuatkan pesanan antar biasa
   // (uang diterima kurir, cara bayar dicatat kurir saat sampai).
-  static konfirmasiPesananMasuk(id: string, opsi: { zonaId: string; estimasiMenit: number }): { pesanan: Pesanan; kontak: Kontak; pm: PesananMasuk } {
+  static konfirmasiPesananMasuk(id: string, opsi: { zonaId: string; estimasiMenit: number; pengantarId?: string }): { pesanan: Pesanan; kontak: Kontak; pm: PesananMasuk } {
     const daftar = this.getPesananMasuk();
     const pm = daftar.find(x => x.id === id);
     if (!pm) throw new Error('Pesanan masuk tidak ditemukan!');
@@ -530,7 +530,7 @@ export class AppStore {
       total_unit_ongkir: h.unitOngkir, total_ongkir: h.ongkir, diskon: 0, total_akhir: h.total,
       status_pesanan: 'dijadwalkan', status_pembayaran: 'belum_bayar',
       pembayaran_details: [{ metode: 'tunai', jumlah: h.total }], total_dibayar: 0, sisa_hutang: 0,
-      kasir_id: user.id, catatan, bayar_ke_kurir: true, created_at: sekarang.toISOString()
+      kasir_id: user.id, pengantar_id: opsi.pengantarId || undefined, catatan, bayar_ke_kurir: true, created_at: sekarang.toISOString()
     };
     this.addPesanan(pesanan);
 
@@ -1224,6 +1224,49 @@ export class AppStore {
     return { pesanan: p, perluKembalikan };
   }
 
+  // ---------------------------------------------------------------------
+  // Penugasan pengantar: kasir menentukan siapa yang mengantar, dan boleh menggantinya sebelum pesanan terkirim.
+  // Pesanan tanpa pengantar ("belum ditugaskan") terlihat oleh semua pengantar.
+  // ---------------------------------------------------------------------
+
+  static pengantarAktif(): UserApp[] {
+    return this.getUsers().filter(u => u.role === 'pengantar');
+  }
+
+  static namaPengantar(id?: string): string {
+    if (!id) return 'Belum ditugaskan';
+    const u = this.getUsers().find(x => x.id === id);
+    return u ? u.nama : 'Pengantar sudah tidak aktif';
+  }
+
+  // Pengantar yang terakhir mengantar ke pelanggan ini (untuk mengisi pilihan otomatis); kosong bila belum ada
+  static pengantarTerakhir(kontakId?: string): string {
+    if (!kontakId || kontakId === 'kt-1') return '';
+    const aktif = new Set(this.pengantarAktif().map(u => u.id));
+    const p = this.getPesanan()
+      .filter(x => x && x.kontak_id === kontakId && x.status_pesanan !== 'batal' && x.pengantar_id && aktif.has(x.pengantar_id))
+      .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))[0];
+    return p?.pengantar_id || '';
+  }
+
+  static gantiPengantar(id: string, pengantarId: string): { pesanan: Pesanan; lama: string; baru: string } {
+    const user = this.getCurrentUser();
+    if (!user || user.role === 'pengantar') throw new Error('Hanya kasir, owner, atau admin yang bisa mengganti pengantar.');
+    const list = this.getPesanan();
+    const i = list.findIndex(x => x.id === id);
+    if (i === -1) throw new Error('Pesanan tidak ditemukan!');
+    const p = list[i];
+    if (p.status_pesanan !== 'pending' && p.status_pesanan !== 'dijadwalkan' && p.status_pesanan !== 'dalam_perjalanan') throw new Error('Pengantar hanya bisa diganti selama pesanan belum terkirim.');
+    if (pengantarId && !this.pengantarAktif().some(u => u.id === pengantarId)) throw new Error('Pengantar tidak ditemukan.');
+    const lama = p.pengantar_id || '';
+    if (lama === pengantarId) throw new Error('Pengantarnya sama, tidak ada yang diganti.');
+    p.pengantar_id = pengantarId || undefined;
+    p.riwayat_pengantar = [...(p.riwayat_pengantar || []), { waktu: new Date().toISOString(), dari: lama || undefined, ke: pengantarId || undefined, oleh: user.nama }];
+    list[i] = p;
+    this.savePesanan(list);
+    return { pesanan: p, lama, baru: pengantarId };
+  }
+
   // Kurir/kasir menandai pesanan antar sudah sampai, sekaligus mencatat cara bayar dari pelanggan
   static konfirmasiTerkirim(
     pesananId: string,
@@ -1238,6 +1281,10 @@ export class AppStore {
       throw new Error('Pesanan ini sudah dikonfirmasi terkirim sebelumnya.');
     }
 
+    const pelaku = this.getCurrentUser();
+    if (pelaku && pelaku.role === 'pengantar' && p.pengantar_id && p.pengantar_id !== pelaku.id) {
+      throw new Error(`Pesanan ini ditugaskan ke ${this.namaPengantar(p.pengantar_id)}. Minta kasir mengganti pengantarnya dulu.`);
+    }
     if (opsi.kurirId) p.pengantar_id = opsi.kurirId;
     p.status_pesanan = 'terkirim';
     if (!p.terkirim_at) p.terkirim_at = new Date().toISOString();

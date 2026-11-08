@@ -20,6 +20,7 @@ export default function PesananMasukPage() {
   const [pilih, setPilih] = useState<PesananMasuk | null>(null);
   const [tolak, setTolak] = useState<PesananMasuk | null>(null);
   const [zonaId, setZonaId] = useState('');
+  const [pengantarId, setPengantarId] = useState('');
   const [menit, setMenit] = useState(45);
   const [alasan, setAlasan] = useState('');
   const [selesai, setSelesai] = useState<{ pm: PesananMasuk; teks: string; judul: string } | null>(null);
@@ -54,6 +55,7 @@ export default function PesananMasukPage() {
     const k = AppStore.cariKontakByHp(pm.no_hp);
     setPilih(pm);
     setZonaId(k?.zona_id && zonaList.some(z => z.id === k.zona_id) ? k.zona_id : '');
+    setPengantarId(AppStore.pengantarTerakhir(k?.id));
     setMenit(AppStore.saranEstimasiMenit());
   };
 
@@ -62,9 +64,9 @@ export default function PesananMasukPage() {
     const kembar = AppStore.cariKembarPesananMasuk(pilih);
     if (kembar && !window.confirm(`PESANAN MIRIP DOBEL?\n\nPesanan ${pilih.no} dari ${pilih.nama} mirip dengan ${kembar} (isi sama).\n\nTekan OK untuk tetap mengonfirmasi, atau Batal untuk memeriksa dulu.`)) return;
     try {
-      const { pm, pesanan, kontak } = AppStore.konfirmasiPesananMasuk(pilih.id, { zonaId, estimasiMenit: menit });
+      const { pm, pesanan, kontak } = AppStore.konfirmasiPesananMasuk(pilih.id, { zonaId, estimasiMenit: menit, pengantarId });
       setPilih(null);
-      picuPushDikonfirmasi(pm); // beri tahu HP pengantar
+      picuPushDikonfirmasi(pm, pengantarId); // beri tahu HP pengantar yang ditugaskan (atau semua bila belum ditugaskan)
       // Pelanggan yang dikonfirmasi otomatis mendapat tautan pribadi untuk pesanan berikutnya
       let pribadi: string | undefined;
       try { AppStore.buatTokenPesan(kontak.id); pribadi = urlPribadi(kontak.id); } catch { /* abaikan */ }
@@ -268,6 +270,13 @@ export default function PesananMasukPage() {
               <select id="kf-zona" className="form-input" value={zonaId} onChange={(e) => setZonaId(e.target.value)}>
                 <option value="">Pilih zona</option>
                 {zonaList.map(z => <option key={z.id} value={z.id}>{z.nama_zona} - {fmt(z.tarif_per_galon)}/galon</option>)}
+              </select>
+            </div>
+            <div className="form-group" style={{ marginBottom: '10px' }}>
+              <label className="form-label" htmlFor="kf-pengantar">Pengantar{kontakPilih && pengantarId && pengantarId === AppStore.pengantarTerakhir(kontakPilih.id) ? ' (otomatis: pengantar terakhir pelanggan ini)' : ''}</label>
+              <select id="kf-pengantar" className="form-input" value={pengantarId} onChange={(e) => setPengantarId(e.target.value)}>
+                <option value="">Belum ditugaskan (semua pengantar melihatnya)</option>
+                {AppStore.pengantarAktif().map(u => <option key={u.id} value={u.id}>{u.nama}</option>)}
               </select>
             </div>
             <div className="form-label">Estimasi tiba (menit)</div>

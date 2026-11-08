@@ -160,10 +160,12 @@ export const TOPIK: Topik[] = [
     langkah: [
       'Di lembar Pembayaran buka "Ubah", pilih pelanggan terdaftar, lalu centang "Kirim antar ke rumah".',
       'Pilih "Zona ongkir tujuan". Kalau data pelanggan sudah punya zona, otomatis terisi. Tombol "Simpan zona ini ke data pelanggan" menyimpannya untuk berikutnya.',
+      'Pilih "Pengantar" yang akan mengantar. Kalau pelanggan itu pernah diantar seorang pengantar, namanya otomatis terisi (pengantar terakhir), dan bisa diganti. Pilihan "Belum ditugaskan" membuat semua pengantar melihat pesanan itu.',
       'Ongkir dihitung per unit galon sesuai zona, lalu ditambahkan ke total.',
-      'Tekan "Proses dan cetak struk". Pesanan masuk ke daftar antaran.',
+      'Tekan "Proses dan cetak struk". Pesanan masuk ke daftar antaran, dan HP pengantar yang ditugaskan mendapat notifikasi.',
       'Untuk memantau, tekan tombol "Antaran" di bagian atas. Pesanan yang terlambat ditandai dan membunyikan alarm.',
       'Saat barang sampai, kurir menekan "Konfirmasi Terkirim & Terima Bayar" di aplikasinya. Kasir juga bisa menekan "Sudah terkirim" lalu memilih kurirnya.',
+      'Di daftar Antaran terlihat nama pengantar tiap pesanan. Tekan "Ganti pengantar" kalau ada yang berhalangan. Pengantar lama diberi tahu tugasnya dipindah, pengantar baru diberi tahu ada tugas, dan riwayat pergantiannya tersimpan. Pengantar hanya bisa diganti selama pesanan belum terkirim.',
       'Kalau pelanggan membatalkan sebelum barang dikirim, tekan "Cancel order" di daftar Antaran, lalu tulis alasannya. Penjualan dan pengirimannya dibatalkan, stok air, pinjaman galon, dan hutang dikembalikan, dan nilai uangnya tidak ikut laporan.',
     ],
     tips: [
@@ -287,6 +289,7 @@ export const TOPIK: Topik[] = [
     buka: { href: '/pengantar', label: 'Buka Antaran Lapangan' },
     langkah: [
       'Buka "Antaran Lapangan". Setiap pesanan menunggu tampil sebagai kartu: nama pelanggan, alamat, dan barang yang harus diantar.',
+      'Kartu bertanda "Tugas saya" ditugaskan kasir kepada Anda dan tampil paling atas. Kartu "Belum ditugaskan" bisa diantar siapa saja. Tugas pengantar lain tidak tampil di HP Anda. Kalau tugas dipindah ke pengantar lain, Anda mendapat notifikasi dan kartunya hilang.',
       'Tekan "Navigasi ke lokasi" untuk membuka peta menuju rumah pelanggan.',
       'Kalau lokasi pelanggan belum tersimpan, setelah sampai tekan "Simpan lokasi pelanggan" supaya antaran berikutnya lebih mudah.',
       'Setelah barang diserahkan, tekan "Konfirmasi Terkirim & Terima Bayar".',

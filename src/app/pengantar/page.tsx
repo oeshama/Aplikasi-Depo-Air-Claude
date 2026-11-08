@@ -48,11 +48,15 @@ export default function PengantarPage() {
     };
   }, []);
 
+  // Pengantar hanya melihat tugasnya sendiri dan yang belum ditugaskan (tugas sendiri di atas). Owner/admin/kasir melihat semua.
+  const idSaya = pengguna?.role === 'pengantar' ? pengguna.id : null;
+  const idPengantarAktif = new Set(AppStore.pengantarAktif().map(u => u.id));
   const deliveryJobs = pesananList.filter(p => 
-    p.status_pesanan === 'pending' || 
+    (p.status_pesanan === 'pending' || 
     p.status_pesanan === 'dijadwalkan' || 
-    p.status_pesanan === 'dalam_perjalanan'
-  );
+    p.status_pesanan === 'dalam_perjalanan') &&
+    (!idSaya || !p.pengantar_id || p.pengantar_id === idSaya || !idPengantarAktif.has(p.pengantar_id))
+  ).sort((a, b) => (idSaya ? Number(b.pengantar_id === idSaya) - Number(a.pengantar_id === idSaya) : 0));
 
   // Dynamic Settings Notifikasi Alarm
   const thresholdMins = pengaturan.batas_keterlambatan_menit || 90;
@@ -437,6 +441,9 @@ export default function PengantarPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                 <div>
                   <span className="badge badge-primary">{job.no_nota}</span>
+                  <span className={`badge ${job.pengantar_id && idPengantarAktif.has(job.pengantar_id) ? 'badge-success' : 'badge-warning'}`} style={{ marginLeft: '6px' }}>
+                    {job.pengantar_id && idPengantarAktif.has(job.pengantar_id) ? (job.pengantar_id === idSaya ? 'Tugas saya' : `Tugas ${AppStore.namaPengantar(job.pengantar_id)}`) : 'Belum ditugaskan'}
+                  </span>
                   <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '6px' }}>
                     {job.nama_pelanggan}
                   </h3>

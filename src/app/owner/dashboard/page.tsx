@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import GantiPengantarSheet from '@/components/GantiPengantarSheet';
 import { Pesanan, Kontak, Produk, PengaturanDepo, KomponenServis, Pengeluaran, HutangToko, UserApp, ShiftKasir, SetoranKurir, SetoranOwner, NotifikasiOwner, SaldoKurir, FotoMeter } from '@/lib/types';
 import { AppStore } from '@/lib/store';
 import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
@@ -379,6 +380,8 @@ export default function OwnerDashboardPage() {
       };
     });
   };
+
+  const [gantiPsn, setGantiPsn] = useState<Pesanan | null>(null);
 
   const handleBatalkanPesanan = (psn: Pesanan) => {
     const alasan = window.prompt(`Batalkan penjualan ${psn.no_nota} (${psn.nama_pelanggan}, ${AppStore.formatRupiah(psn.total_akhir)})?
@@ -1672,6 +1675,10 @@ Pelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembal
                         ) : (
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Normal</span>
                         )}
+                        <div style={{ marginTop: '6px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          Pengantar: <strong style={{ color: psn.pengantar_id ? 'var(--text-main)' : 'var(--c-amber)' }}>{AppStore.namaPengantar(psn.pengantar_id)}</strong>
+                          <button type="button" className="btn btn-secondary btn-sm" style={{ marginLeft: '6px', padding: '2px 8px', fontSize: '0.72rem' }} onClick={() => setGantiPsn(psn)}>Ganti pengantar</button>
+                        </div>
                         <button
                           type="button"
                           onClick={() => handleBatalkanPesanan(psn)}
@@ -2463,6 +2470,8 @@ Pelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembal
           </div>
         </div>
       )}
+
+      <GantiPengantarSheet pesanan={gantiPsn} onClose={() => setGantiPsn(null)} />
 
       {/* Modal Detail Rekap Keuangan Staf */}
       {selectedDetailKaryawan && (
