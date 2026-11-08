@@ -23,6 +23,7 @@ export default function NotifikasiPanel({ isOpen, onClose, daftar }: { isOpen: b
   }, [isOpen, onClose]);
 
   const [permintaan, setPermintaan] = useState<PermintaanPengeluaran[]>([]);
+  const [lihatSemua, setLihatSemua] = useState<boolean>(false);
   useEffect(() => {
     if (!isOpen) return;
     const muat = () => setPermintaan(AppStore.getPermintaanPengeluaran().filter(x => x.status === 'menunggu'));
@@ -43,6 +44,8 @@ export default function NotifikasiPanel({ isOpen, onClose, daftar }: { isOpen: b
 
   if (!isOpen) return null;
   const belumDibaca = daftar.filter(n => !n.dibaca).length;
+  const sudahDibaca = daftar.length - belumDibaca;
+  const tampil = lihatSemua ? daftar : daftar.filter(n => !n.dibaca);
   const waktu = (iso: string) => new Date(iso).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
   return (
@@ -75,9 +78,9 @@ export default function NotifikasiPanel({ isOpen, onClose, daftar }: { isOpen: b
           </div>
         )}
 
-        {daftar.length === 0 && permintaan.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', margin: '8px 0 16px' }}>Belum ada pemberitahuan.</p>
-        ) : daftar.length === 0 ? null : (
+        {tampil.length === 0 && permintaan.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', margin: '8px 0 16px' }}>{daftar.length === 0 ? 'Belum ada pemberitahuan.' : 'Tidak ada pemberitahuan baru.'}</p>
+        ) : tampil.length === 0 ? null : (
           <>
             {belumDibaca > 0 && (
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => AppStore.tandaiNotifikasiDibaca()} style={{ marginBottom: '10px' }}>
@@ -85,7 +88,7 @@ export default function NotifikasiPanel({ isOpen, onClose, daftar }: { isOpen: b
               </button>
             )}
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {daftar.slice(0, 15).map(n => {
+              {tampil.slice(0, 15).map(n => {
                 const tujuan = TUJUAN[n.jenis];
                 return (
                   <li key={n.id} style={{ padding: '10px 12px', borderRadius: '10px', background: n.dibaca ? 'var(--inset-50)' : 'rgba(245, 158, 11, 0.14)', border: '1px solid var(--glass-border)' }}>
@@ -107,6 +110,12 @@ export default function NotifikasiPanel({ isOpen, onClose, daftar }: { isOpen: b
               })}
             </ul>
           </>
+        )}
+
+        {sudahDibaca > 0 && (
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setLihatSemua(v => !v)} style={{ marginTop: '12px' }}>
+            {lihatSemua ? 'Sembunyikan yang sudah dibaca' : `Lihat yang sudah dibaca (${sudahDibaca})`}
+          </button>
         )}
       </div>
     </div>

@@ -1366,7 +1366,7 @@ Pelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembal
           </section>
 
           {/* PEMBERITAHUAN: mis. kasir mengoreksi setoran kurir */}
-          {notifList.length > 0 && (
+          {notifList.some(n => !n.dibaca) && (
             <section aria-labelledby="judul-pemberitahuan" className="glass-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--c-amber)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
                 <h2 id="judul-pemberitahuan" style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
@@ -1377,7 +1377,7 @@ Pelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembal
                 )}
               </div>
               <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {notifList.slice(0, 5).map(n => (
+                {notifList.filter(n => !n.dibaca).slice(0, 5).map(n => (
                   <li key={n.id} style={{ padding: '10px 12px', borderRadius: '10px', background: n.dibaca ? 'var(--inset-50)' : 'rgba(245, 158, 11, 0.14)', border: '1px solid var(--glass-border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                       <strong style={{ color: n.dibaca ? 'var(--text-main)' : 'var(--c-amber)' }}>{n.judul}</strong>
