@@ -1677,9 +1677,9 @@ Pelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembal
                           onClick={() => handleBatalkanPesanan(psn)}
                           className="btn btn-secondary btn-sm"
                           style={{ marginTop: '6px', color: 'var(--c-red)', fontSize: '0.75rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                          title="Batalkan penjualan dan pengiriman ini"
+                          title="Cancel order: batalkan penjualan dan pengiriman ini"
                         >
-                          <X size={13} aria-hidden="true" /> Batalkan
+                          <X size={13} aria-hidden="true" /> Cancel order
                         </button>
                       </td>
                     </tr>

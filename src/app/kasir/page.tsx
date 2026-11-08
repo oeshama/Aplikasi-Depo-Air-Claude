@@ -597,6 +597,13 @@ export default function KasirPage() {
 
   const isOrderMuted = (id: string) => mutedIds.includes(id);
 
+  // Pesanan yang dibuat sebelum shift berjalan dibuka (atau sebelum hari ini bila belum ada shift): terbawa dari shift sebelumnya
+  const dariShiftLalu = (p: Pesanan) => {
+    const shift = AppStore.getShiftAktif();
+    const batas = shift ? new Date(shift.waktu_buka).getTime() : new Date(new Date().toDateString()).getTime();
+    return new Date(p.created_at).getTime() < batas;
+  };
+
   // Antaran lain yang tampak kembar (pelanggan sama, isi sama)
   const kembarMenunggu = (p: Pesanan) => (p.kontak_id && p.kontak_id !== 'kt-1')
     ? pendingDelivery.find(x => x.id !== p.id && x.kontak_id === p.kontak_id && AppStore.tandaIsi(x.items) === AppStore.tandaIsi(p.items))
@@ -1654,10 +1661,15 @@ export default function KasirPage() {
                         <span className="badge badge-warning">{psn.status_pesanan.replace('_', ' ')}</span>
                       </div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>{psn.no_nota} - order {durInfo.jamOrder}</div>
+                      {dariShiftLalu(psn) && (
+                        <div style={{ marginTop: '6px' }}>
+                          <span className="badge badge-warning" style={{ fontSize: '0.72rem' }}>Dari shift sebelumnya</span>
+                        </div>
+                      )}
                       {kembarMenunggu(psn) && (
                         <div role="status" style={{ marginTop: '6px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--c-red)' }}>
                           <AlertTriangle size={14} style={{ display: 'inline', marginRight: '4px' }} aria-hidden="true" />
-                          Kemungkinan kembar dengan {kembarMenunggu(psn)?.no_nota}. Kalau dobel, tekan Batalkan.
+                          Kemungkinan kembar dengan {kembarMenunggu(psn)?.no_nota}. Kalau dobel, tekan Cancel order.
                         </div>
                       )}
                       <div style={{ fontSize: '0.9rem', marginTop: '6px', color: 'var(--text-2)' }}>{formatProdukRingkas(psn.items)}</div>
@@ -1673,7 +1685,7 @@ export default function KasirPage() {
                           <Check size={16} aria-hidden="true" /> Sudah terkirim
                         </button>
                         <button type="button" className="btn btn-secondary btn-sm" style={{ color: 'var(--c-red)' }} onClick={() => handleBatalkanPesanan(psn)}>
-                          <XCircle size={16} aria-hidden="true" /> Batalkan
+                          <XCircle size={16} aria-hidden="true" /> Cancel order
                         </button>
                         {durInfo.isTerlambat && (isSnoozed ? (
                           <span className="badge badge-warning">Ditunda {remainingSnoozeMins} menit</span>

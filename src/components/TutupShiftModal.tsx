@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AppStore } from '@/lib/store';
-import { ShiftKasir, UserApp } from '@/lib/types';
+import { ShiftKasir, UserApp, Pesanan } from '@/lib/types';
 import FotoMeterField from '@/components/FotoMeterField';
 import KepalaStruk from '@/components/KepalaStruk';
 import { cetakStrukBaris, namaCetak, susunStrukTutupShift } from '@/lib/cetak';
@@ -20,6 +20,7 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
   const [meterAkhir, setMeterAkhir] = useState<number | ''>('');
   const [fotoMeter, setFotoMeter] = useState<string | null>(null);
   const [serah, setSerah] = useState<number | ''>(''); // '' = seluruh uang laci
+  const [, setTick] = useState(0); // segarkan daftar antaran setelah cancel order
 
   const [closedShiftResult, setClosedShiftResult] = useState<{
     shift: ShiftKasir;
@@ -56,6 +57,20 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
   const totalTunaiLangsung = AppStore.totalTunaiLangsung(allPesanan);
   const totalSetoranKurir = AppStore.totalSetoranSejak(shiftBukaTime);
   const totalTunai = totalTunaiLangsung + totalSetoranKurir;
+  const antaranBelumTerkirim = AppStore.getPesanan().filter(p => p && (p.status_pesanan === 'pending' || p.status_pesanan === 'dijadwalkan' || p.status_pesanan === 'dalam_perjalanan'));
+
+  const handleCancelOrder = (psn: Pesanan) => {
+    const alasan = window.prompt(`Cancel order ${psn.no_nota} (${psn.nama_pelanggan}, ${AppStore.formatRupiah(psn.total_akhir)})?\n\nStok dan hutang akan dikembalikan. Tulis alasan pembatalan:`, '');
+    if (alasan === null) return;
+    if (!alasan.trim()) { alert('Alasan pembatalan wajib diisi.'); return; }
+    try {
+      const hasil = AppStore.batalkanPesanan(psn.id, alasan);
+      if (hasil.perluKembalikan > 0) alert(`Order dibatalkan.\n\nPelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembalikan uang itu ke pelanggan.`);
+      setTick(t => t + 1);
+    } catch (e: any) {
+      alert(e?.message || 'Gagal membatalkan order.');
+    }
+  };
   const kurirMembawaUang = AppStore.getSaldoKurirList().filter(k => k.saldo > 0);
   const uangDiKurir = kurirMembawaUang.reduce((acc, k) => acc + k.saldo, 0);
 
@@ -286,6 +301,29 @@ export default function TutupShiftModal({ isOpen, shiftAktif, onClose, onShiftCl
                 <span style={{ fontWeight: 800, color: 'var(--c-green)' }}>{AppStore.formatRupiah(saldoEkspektasiKas)}</span>
               </div>
             </div>
+
+            {antaranBelumTerkirim.length > 0 && (
+              <div role="status" style={{
+                marginBottom: '18px', padding: '12px 14px', borderRadius: '12px', fontSize: '0.85rem',
+                background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.45)', color: 'var(--text-main)'
+              }}>
+                <strong style={{ color: 'var(--c-red)' }}>Masih ada {antaranBelumTerkirim.length} antaran belum terkirim</strong>
+                <div style={{ marginTop: '4px', color: 'var(--text-muted)' }}>
+                  Pesanan ini terbawa ke shift berikutnya dan tampil lagi di daftar Antaran. Kalau ada yang sudah tidak jadi, tekan Cancel order.
+                </div>
+                <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {antaranBelumTerkirim.slice(0, 8).map(psn => (
+                    <li key={psn.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span>{psn.nama_pelanggan} - {psn.no_nota} - <strong>{AppStore.formatRupiah(psn.total_akhir)}</strong></span>
+                      <button type="button" className="btn btn-secondary btn-sm" style={{ color: 'var(--c-red)' }} onClick={() => handleCancelOrder(psn)}>
+                        Cancel order
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {antaranBelumTerkirim.length > 8 && <div style={{ marginTop: '6px', color: 'var(--text-muted)' }}>dan {antaranBelumTerkirim.length - 8} lainnya di daftar Antaran.</div>}
+              </div>
+            )}
 
             {uangDiKurir > 0 && (
               <div role="status" style={{
