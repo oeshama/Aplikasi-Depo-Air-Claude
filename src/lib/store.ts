@@ -220,8 +220,7 @@ export class AppStore {
   static tunaiLangsung(p: Pesanan): number {
     if (!p || p.bayar_ke_kurir) return 0;
     const adaTunai = Array.isArray(p.pembayaran_details) && p.pembayaran_details.some(d => d && d.metode === 'tunai');
-    const nilai = p.batal_info?.kas_dipertahankan ? (p.batal_info.total_asli || 0) : (p.total_akhir || 0);
-    return adaTunai ? nilai : 0;
+    return adaTunai ? (p.total_akhir || 0) : 0;
   }
 
   static totalTunaiLangsung(list: Pesanan[]): number {
@@ -842,7 +841,7 @@ export class AppStore {
     if (akun !== 'kas_besar') {
       const metodeUntukAkun = (['transfer', 'qris', 'edc'] as const).filter(m => this.getRekeningUntukMetode(m) === akun);
       if (metodeUntukAkun.length > 0) {
-        this.getPesanan().filter(p => p && (p.status_pesanan !== 'batal' || p.batal_info?.kas_dipertahankan) && new Date(p.created_at).getTime() >= mulai).forEach(p => {
+        this.getPesanan().filter(p => p && p.status_pesanan !== 'batal' && new Date(p.created_at).getTime() >= mulai).forEach(p => {
           (p.pembayaran_details || []).forEach(d => {
             if (d && (metodeUntukAkun as string[]).includes(d.metode) && d.jumlah > 0) {
               baris.push({ id: `${p.id}-${d.metode}`, waktu: p.created_at, keterangan: `Penjualan ${String(d.metode).toUpperCase()} ${p.no_nota || ''}`.trim(), masuk: d.jumlah, keluar: 0 });
@@ -1137,11 +1136,9 @@ export class AppStore {
     if (idx === -1) throw new Error('Pesanan tidak ditemukan!');
     const p = list[idx];
     if (p.status_pesanan === 'batal') throw new Error('Pesanan ini sudah dibatalkan.');
-    if (p.tipe_transaksi === 'pelunasan_hutang') throw new Error('Pelunasan hutang tidak bisa dibatalkan dari sini.');
-    const sudahTerkirim = p.status_pesanan === 'terkirim' || p.status_pesanan === 'selesai';
-    const user = this.getCurrentUser();
-    if (sudahTerkirim && (!user || (user.role !== 'owner' && user.role !== 'admin'))) throw new Error('Pesanan yang sudah terkirim hanya bisa dibatalkan oleh owner atau admin.');
+    if (p.status_pesanan === 'terkirim' || p.status_pesanan === 'selesai') throw new Error('Pesanan yang sudah terkirim tidak bisa dibatalkan.');
     if (!alasan || !alasan.trim()) throw new Error('Isi alasan pembatalan dulu.');
+    const user = this.getCurrentUser();
     const totalAsli = p.total_akhir || 0;
     const metode = (p.pembayaran_details || []).map(d => d && d.metode).filter(Boolean) as string[];
     const adaHutang = metode.includes('hutang');
@@ -1150,8 +1147,6 @@ export class AppStore {
       ? (p.pembayaran_details || []).filter(d => d && d.metode !== 'tunai' && d.metode !== 'hutang').reduce((a, d) => a + (d.jumlah || 0), 0)
       : 0;
     const tunaiMasukLaci = !p.bayar_ke_kurir && !adaHutang && metode.includes('tunai') ? totalAsli : 0;
-    const uangDiKurir = p.bayar_ke_kurir ? (p.kurir_uang_diterima || 0) : 0;
-    const shiftTutup = sudahTerkirim ? this.shiftSudahDitutup(p) : undefined;
 
     // 1) Hutang pelanggan
     if (adaHutang && p.kontak_id && (p.sisa_hutang || 0) > 0) {
@@ -1200,9 +1195,7 @@ export class AppStore {
     }
 
     // 4) Tandai batal dan nolkan nilai uangnya
-    const perluKembalikan = nonTunaiMasuk + tunaiMasukLaci + uangDiKurir;
-    // Mode koreksi manual: uang pesanan (tunai, kurir, rekening) tidak diubah otomatis supaya owner yang mencatat koreksinya
-    const kasDipertahankan = !!this.getPengaturan().koreksi_batal_manual && perluKembalikan > 0;
+    const perluKembalikan = nonTunaiMasuk + tunaiMasukLaci;
     p.batal_info = {
       waktu: new Date().toISOString(),
       oleh: user?.nama || '-',
@@ -1210,9 +1203,6 @@ export class AppStore {
       total_asli: totalAsli,
       metode_asli: p.bayar_ke_kurir ? 'tunai (ke kurir)' : (metode.join(' + ') || '-'),
       perlu_kembalikan: perluKembalikan,
-      sudah_terkirim: sudahTerkirim || undefined,
-      shift_tertutup: !!shiftTutup || undefined,
-      kas_dipertahankan: kasDipertahankan || undefined,
     };
     p.status_pesanan = 'batal';
     p.subtotal_produk = 0;
@@ -1221,58 +1211,11 @@ export class AppStore {
     p.total_akhir = 0;
     p.total_dibayar = 0;
     p.sisa_hutang = 0;
-    if (!kasDipertahankan) {
-      p.pembayaran_details = [];
-      if (p.kurir_uang_diterima) p.kurir_uang_diterima = 0;
-    }
-    if (!sudahTerkirim) delete p.terkirim_at;
+    p.pembayaran_details = [];
+    delete p.terkirim_at;
     list[idx] = p;
     this.savePesanan(list);
     return { pesanan: p, perluKembalikan };
-  }
-
-  // Shift yang sudah ditutup dan memuat waktu pembuatan pesanan ini (untuk peringatan sebelum membatalkan)
-  static shiftSudahDitutup(p: Pesanan): ShiftKasir | undefined {
-    const t = new Date(p.created_at).getTime();
-    return this.getShiftList().find(s => s.status === 'tutup' && s.waktu_tutup && new Date(s.waktu_buka).getTime() <= t && t <= new Date(s.waktu_tutup).getTime());
-  }
-
-  // Koreksi manual (hanya bila mode koreksi manual aktif): owner/admin mencatat uang yang keluar karena pesanan dibatalkan.
-  // Dicatat sebagai pengeluaran kategori koreksi_batal (tidak ikut biaya/laba, hanya mengurangi uang).
-  static catatKoreksiBatal(pesananId: string, nominal: number, sumber: 'laci' | 'kas_besar' | 'rekening', rekeningId?: string, catatan?: string): Pengeluaran {
-    const user = this.getCurrentUser();
-    if (!user || (user.role !== 'owner' && user.role !== 'admin')) throw new Error('Hanya owner atau admin yang bisa mencatat koreksi.');
-    const list = this.getPesanan();
-    const i = list.findIndex(x => x.id === pesananId);
-    if (i === -1) throw new Error('Pesanan tidak ditemukan!');
-    const p = list[i];
-    if (p.status_pesanan !== 'batal' || !p.batal_info?.kas_dipertahankan) throw new Error('Pesanan ini tidak memerlukan koreksi manual.');
-    const jumlah = Math.round(nominal);
-    if (!(jumlah > 0)) throw new Error('Nominal harus lebih besar dari Rp 0!');
-    if (sumber !== 'laci') {
-      if (!this.keuanganSudahMulai()) throw new Error('Mulai pencatatan Keuangan Owner dulu untuk memakai kas besar atau rekening.');
-      const akun = sumber === 'kas_besar' ? 'kas_besar' : (rekeningId || '');
-      if (!akun) throw new Error('Pilih rekening.');
-      this.cekSaldoCukup(akun, jumlah);
-    }
-    const x: Pengeluaran = {
-      id: `exp-${Date.now()}`,
-      tanggal: new Date().toISOString(),
-      nominal: jumlah,
-      peruntukan: `Koreksi kas pesanan batal ${p.no_nota} (${p.nama_pelanggan})`,
-      kategori: 'koreksi_batal',
-      tipe_arus_kas: 'keluar',
-      sumber_kas: sumber,
-      rekening_id: sumber === 'rekening' ? rekeningId : undefined,
-      kasir_id: user.id,
-      kasir_nama: user.nama,
-      catatan: catatan?.trim() || undefined,
-    };
-    this.addPengeluaran(x);
-    p.batal_info = { ...p.batal_info, koreksi_dicatat: (p.batal_info.koreksi_dicatat || 0) + jumlah };
-    list[i] = p;
-    this.savePesanan(list);
-    return x;
   }
 
   // Kurir/kasir menandai pesanan antar sudah sampai, sekaligus mencatat cara bayar dari pelanggan
@@ -1913,7 +1856,7 @@ export class AppStore {
     const totalSetoranKurir = this.totalSetoranSejak(shiftBukaTime);
     const totalNonTunai = allPesanan
       .filter(p => p && p.pembayaran_details && Array.isArray(p.pembayaran_details) && p.pembayaran_details.some(d => d && d.metode !== 'tunai' && d.metode !== 'hutang'))
-      .reduce((acc, p) => acc + (p.batal_info?.kas_dipertahankan ? (p.batal_info.total_asli || 0) : (p.total_akhir || 0)), 0);
+      .reduce((acc, p) => acc + (p.total_akhir || 0), 0);
 
     const kasLaci = this.hitungKasLaci(target.saldo_awal, shiftBukaTime);
     const ekspektasiKas = kasLaci.ekspektasi;

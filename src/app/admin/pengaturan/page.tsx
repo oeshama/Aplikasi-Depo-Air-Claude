@@ -1253,25 +1253,6 @@ export default function AdminPengaturanPage() {
               </p>
             </div>
 
-            {/* Koreksi manual pesanan batal */}
-            <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={!!pengaturan.koreksi_batal_manual}
-                  onChange={(e) => setPengaturan(prev => ({ ...prev, koreksi_batal_manual: e.target.checked }))}
-                  style={{ marginTop: '4px' }}
-                />
-                <span>
-                  <strong style={{ color: 'var(--text-main)' }}>Koreksi manual untuk pesanan yang dibatalkan</strong>
-                  <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    Mati (bawaan): saat owner membatalkan pesanan, uang tunai, setoran kurir, dan rekening dikoreksi otomatis.
-                    Aktif: uangnya tidak berubah otomatis, dan owner mencatat koreksi kasnya sendiri lewat tombol "Koreksi manual" di Riwayat Transaksi.
-                  </span>
-                </span>
-              </label>
-            </div>
-
             {/* Batas Menit Keterlambatan */}
             <div style={{ background: 'var(--inset-60)', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
