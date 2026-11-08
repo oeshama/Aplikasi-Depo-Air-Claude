@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import GantiPengantarSheet from '@/components/GantiPengantarSheet';
-import { Pesanan, Kontak, Produk, PengaturanDepo, KomponenServis, Pengeluaran, HutangToko, UserApp, ShiftKasir, SetoranKurir, SetoranOwner, NotifikasiOwner, SaldoKurir, FotoMeter } from '@/lib/types';
+import { Pesanan, Kontak, Produk, PengaturanDepo, KomponenServis, Pengeluaran, HutangToko, UserApp, ShiftKasir, SetoranKurir, SetoranOwner, SaldoKurir, FotoMeter } from '@/lib/types';
 import { AppStore } from '@/lib/store';
 import ExpenseReceiptModal from '@/components/ExpenseReceiptModal';
 import KartuTarget from '@/components/KartuTarget';
@@ -35,7 +35,6 @@ export default function OwnerDashboardPage() {
   const [hutangTokoList, setHutangTokoList] = useState<HutangToko[]>([]);
   const [shiftList, setShiftList] = useState<ShiftKasir[]>([]);
   const [setoranList, setSetoranList] = useState<SetoranKurir[]>([]);
-  const [notifList, setNotifList] = useState<NotifikasiOwner[]>([]);
   const [saldoKurirList, setSaldoKurirList] = useState<SaldoKurir[]>([]);
   const [fotoMeterList, setFotoMeterList] = useState<FotoMeter[]>([]);
   const [setoranOwnerList, setSetoranOwnerList] = useState<SetoranOwner[]>([]);
@@ -202,7 +201,6 @@ export default function OwnerDashboardPage() {
     setPengaturan(AppStore.getPengaturan());
     setShiftList(AppStore.getShiftList());
     setSetoranList(AppStore.getSetoranKurir());
-    setNotifList(AppStore.getNotifikasi());
     setSaldoKurirList(AppStore.getSaldoKurirList());
     setFotoMeterList(AppStore.getFotoMeter());
     setSetoranOwnerList(AppStore.getSetoranOwner());
@@ -1364,34 +1362,6 @@ Pelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembal
               );
             })()}
           </section>
-
-          {/* PEMBERITAHUAN: mis. kasir mengoreksi setoran kurir */}
-          {notifList.some(n => !n.dibaca) && (
-            <section aria-labelledby="judul-pemberitahuan" className="glass-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--c-amber)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                <h2 id="judul-pemberitahuan" style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                  Pemberitahuan {notifList.filter(n => !n.dibaca).length > 0 && <span className="badge badge-danger">{notifList.filter(n => !n.dibaca).length} baru</span>}
-                </h2>
-                {notifList.some(n => !n.dibaca) && (
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => AppStore.tandaiNotifikasiDibaca()}>Tandai semua dibaca</button>
-                )}
-              </div>
-              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {notifList.filter(n => !n.dibaca).slice(0, 5).map(n => (
-                  <li key={n.id} style={{ padding: '10px 12px', borderRadius: '10px', background: n.dibaca ? 'var(--inset-50)' : 'rgba(245, 158, 11, 0.14)', border: '1px solid var(--glass-border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
-                      <strong style={{ color: n.dibaca ? 'var(--text-main)' : 'var(--c-amber)' }}>{n.judul}</strong>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(n.waktu).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                    <div style={{ fontSize: '0.88rem', marginTop: '2px' }}>{n.pesan}</div>
-                    {!n.dibaca && (
-                      <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: '8px' }} onClick={() => AppStore.tandaiNotifikasiDibaca(n.id)}>Tandai dibaca</button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
 
           {/* IKHTISAR: angka utama dan hal yang perlu perhatian */}
           <section aria-labelledby="judul-ikhtisar">

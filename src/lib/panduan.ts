@@ -71,7 +71,7 @@ export const TOPIK: Topik[] = [
     ringkas: 'Arti bagian-bagian di bar atas dan menu.',
     langkah: [
       'Bar atas menampilkan nama depo, status sambungan ("Tersinkron", "Mengirim ..." atau "Offline"), dan untuk kasir/owner tulisan "Kas di Tangan".',
-      'Lonceng menunjukkan pemberitahuan. Angka merah di menu artinya ada yang perlu Anda kerjakan.',
+      'Lonceng (untuk owner dan admin) memuat semua pemberitahuan dan permintaan persetujuan. Tekan untuk membuka daftarnya. Angka merah di lonceng dan di menu artinya ada yang perlu Anda kerjakan.',
       'Menu berisi halaman yang boleh dibuka sesuai peran Anda. Di HP, menu dibuka lewat tombol tiga garis.',
       'Tombol "Mode gelap" di menu mengganti tampilan terang atau gelap, berguna di tempat redup.',
     ],
