@@ -351,11 +351,11 @@ export const TOPIK: Topik[] = [
 
   // ===================== PELANGGAN DAN PETA =====================
   {
-    id: 'dashboard-admin', kelompok: 'Pelanggan dan peta', judul: 'Dashboard dan target harian', peran: ['admin'],
+    id: 'dashboard-admin', kelompok: 'Pelanggan dan peta', judul: 'Dashboard Admin dan target harian', peran: ['admin'],
     ringkas: 'Memantau penjualan harian dan capaian target.',
-    buka: { href: '/owner/dashboard', label: 'Buka Dashboard' },
+    buka: { href: '/owner/dashboard', label: 'Buka Dashboard Admin' },
     langkah: [
-      'Buka "Dashboard & Target Harian".',
+      'Buka "Dashboard Admin".',
       'Pilih periode (harian, mingguan, bulanan) di kolom "Periode".',
       'Lihat omzet, sisa air baku, dan bagian "Perlu tindakan".',
     ],

@@ -314,7 +314,7 @@ export default function Navbar() {
 
           {(role === 'admin' || role === 'owner') && (
             <Link href="/owner/dashboard" aria-current={pathname === '/owner/dashboard' ? 'page' : undefined} className={linkClass(pathname === '/owner/dashboard')}>
-              <LayoutDashboard size={16} aria-hidden="true" /> {role === 'owner' ? 'Dashboard Owner' : 'Dashboard & Target Harian'}
+              <LayoutDashboard size={16} aria-hidden="true" /> {role === 'owner' ? 'Dashboard Owner' : 'Dashboard Admin'}
             </Link>
           )}
           {role === 'owner' && (

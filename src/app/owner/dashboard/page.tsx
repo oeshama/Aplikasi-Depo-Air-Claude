@@ -1137,7 +1137,7 @@ Pelanggan sudah membayar ${AppStore.formatRupiah(hasil.perluKembalikan)}. Kembal
       {/* Kepala halaman dan pilihan periode */}
       <div className="glass-card animate-fade-in" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
         <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-          <LayoutDashboard size={26} color="#38bdf8" aria-hidden="true" /> Dashboard Owner
+          <LayoutDashboard size={26} color="#38bdf8" aria-hidden="true" /> {currentUser?.role === 'admin' ? 'Dashboard Admin' : 'Dashboard Owner'}
         </h1>
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>
           <Calendar size={16} color="#38bdf8" aria-hidden="true" /> Periode
