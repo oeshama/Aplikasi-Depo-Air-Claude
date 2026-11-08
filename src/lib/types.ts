@@ -203,6 +203,8 @@ export interface SetoranOwner {
   diterima_oleh?: string;
   diterima_at?: string;
   catatan?: string;
+  dibatalkan_oleh?: string;        // nama yang membatalkan (kasir pengirim atau owner/admin)
+  alasan_batal?: string;
 }
 
 // Pesanan yang dikirim pelanggan lewat halaman publik /pesan. Selalu menunggu konfirmasi kasir dulu;

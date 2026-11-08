@@ -385,13 +385,16 @@ export class AppStore {
     return s;
   }
 
-  // Setoran yang masih menunggu boleh dibatalkan (mis. salah ketik): uangnya kembali ke hitungan laci
-  static batalkanSetoranOwner(id: string): SetoranOwner {
+  // Setoran yang masih menunggu boleh dibatalkan, oleh kasir pengirimnya (mis. salah ketik) atau oleh owner/admin
+  // (mis. salah setor atau dobel): uangnya kembali ke hitungan laci
+  static batalkanSetoranOwner(id: string, alasan?: string): SetoranOwner {
     const list = this.getSetoranOwner();
     const s = list.find(x => x.id === id);
     if (!s) throw new Error('Data setoran tidak ditemukan!');
     if (s.status !== 'menunggu') throw new Error('Hanya setoran yang masih menunggu yang bisa dibatalkan.');
     s.status = 'dibatalkan';
+    s.dibatalkan_oleh = this.getCurrentUser()?.nama;
+    if (alasan && alasan.trim()) s.alasan_batal = alasan.trim();
     this.saveSetoranOwner(list);
     return s;
   }

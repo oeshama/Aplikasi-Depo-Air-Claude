@@ -104,6 +104,17 @@ export default function KeuanganOwnerPage() {
     }
   };
 
+  const handleBatalSetoran = (s: SetoranOwner) => {
+    const alasan = window.prompt(`Batalkan setoran ${fmt(s.nominal)} dari ${s.kasir_nama}? Uangnya kembali dihitung di laci kasir. Alasan (mis. salah setor atau dobel):`, '');
+    if (alasan === null) return;
+    try {
+      AppStore.batalkanSetoranOwner(s.id, alasan);
+      alert('Setoran dibatalkan. Uangnya kembali dihitung di laci kasir.');
+    } catch (err: any) {
+      alert(err.message || 'Gagal membatalkan setoran.');
+    }
+  };
+
   const handleAmbil = () => {
     try {
       const hasil = AppStore.ambilDariLaciOlehOwner(ambil, catatanAmbil);
@@ -240,6 +251,9 @@ export default function KeuanganOwnerPage() {
                   )}
                   <button type="button" className="btn btn-success btn-lg" onClick={() => handleTerima(s)} style={{ width: '100%', marginTop: '10px' }}>
                     <Check size={20} aria-hidden="true" /> Terima setoran
+                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={() => handleBatalSetoran(s)} style={{ width: '100%', marginTop: '8px', color: 'var(--c-red)' }}>
+                    <X size={18} aria-hidden="true" /> Batalkan setoran (salah atau dobel)
                   </button>
                 </div>
               );
@@ -384,7 +398,7 @@ export default function KeuanganOwnerPage() {
                   </div>
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                     {waktu(s.waktu)}
-                    {batal ? ' - dibatalkan kasir' : s.diterima_oleh ? ` - diterima ${s.diterima_oleh}` : ''}
+                    {batal ? ` - dibatalkan${s.dibatalkan_oleh ? ' oleh ' + s.dibatalkan_oleh : ''}${s.alasan_batal ? ': ' + s.alasan_batal : ''}` : s.diterima_oleh ? ` - diterima ${s.diterima_oleh}` : ''}
                     {s.catatan ? ` - ${s.catatan}` : ''}
                   </div>
                   {!!s.selisih && (

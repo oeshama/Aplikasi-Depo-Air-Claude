@@ -623,6 +623,7 @@ export const TOPIK: Topik[] = [
       'Di bagian "Setoran dari kasir", setiap penyerahan kasir tampil dengan jumlahnya.',
       'Hitung uang yang Anda terima, isi "Uang yang benar-benar diterima (Rp)", lalu tekan "Terima setoran".',
       'Kalau jumlahnya kurang atau lebih, selisih otomatis dicatat atas nama kasir itu.',
+      'Kalau setoran itu salah atau dobel, jangan diterima. Tekan "Batalkan setoran (salah atau dobel)", lalu tulis alasannya. Uangnya kembali dihitung di laci kasir, dan kasir melihat alasannya di riwayat penyerahannya.',
       'Untuk mengambil uang langsung dari laci, pakai "Ambil uang dari laci": isi jumlah dan catatan, lalu "Catat pengambilan". Ini langsung sah tanpa menunggu kasir.',
     ],
     tips: ['Rekap selisih per kasir terlihat di Dashboard Owner dan di Laporan PDF.'],

@@ -62,9 +62,9 @@ export default function SerahOwnerSheet({ isOpen, onClose }: SerahOwnerSheetProp
     }
   };
 
-  const statusLabel = (s: { status: string; selisih?: number }) => {
+  const statusLabel = (s: { status: string; selisih?: number; dibatalkan_oleh?: string; alasan_batal?: string }) => {
     if (s.status === 'menunggu') return { teks: 'Menunggu diterima owner', warna: 'var(--c-amber)' };
-    if (s.status === 'dibatalkan') return { teks: 'Dibatalkan', warna: 'var(--text-muted)' };
+    if (s.status === 'dibatalkan') return { teks: `Dibatalkan${s.dibatalkan_oleh ? ' oleh ' + s.dibatalkan_oleh : ''}${s.alasan_batal ? ': ' + s.alasan_batal : ''}`, warna: 'var(--text-muted)' };
     if (s.selisih) return { teks: `Diterima, selisih ${AppStore.formatRupiah(s.selisih)}`, warna: 'var(--c-red)' };
     return { teks: 'Diterima owner', warna: 'var(--c-green)' };
   };
