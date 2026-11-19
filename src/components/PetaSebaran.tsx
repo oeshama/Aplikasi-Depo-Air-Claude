@@ -36,7 +36,7 @@ const DEPO_HTML =
   '<div style="width:20px;height:20px;border-radius:50%;background:#0369a1;border:3px solid #ffffff;box-shadow:0 0 0 2px #0369a1"></div>';
 
 // Peta sebaran pelanggan (OpenStreetMap). Titik yang berdekatan dikelompokkan otomatis sesuai zoom.
-export default function PetaSebaran({ titik, depoLat, depoLng, cincin, pilihId, onPilih, tinggi = 420 }: PetaSebaranProps) {
+export default function PetaSebaran({ titik, depoLat, depoLng, cincin, pilihId, onPilih, tinggi = 560 }: PetaSebaranProps) {
   const wadah = useRef<HTMLDivElement>(null);
   const petaRef = useRef<LeafletMap | null>(null);
   const leafletRef = useRef<typeof import('leaflet') | null>(null);
@@ -211,7 +211,7 @@ export default function PetaSebaran({ titik, depoLat, depoLng, cincin, pilihId, 
       role="application"
       aria-label="Peta sebaran pelanggan. Ketuk titik untuk melihat detail pelanggan."
       style={{
-        height: `${tinggi}px`, width: '100%', borderRadius: '14px', overflow: 'hidden',
+        height: `max(${tinggi}px, 68vh)`, width: '100%', borderRadius: '14px', overflow: 'hidden',
         border: '1px solid var(--glass-border)', position: 'relative', zIndex: 0, isolation: 'isolate'
       }}
     />

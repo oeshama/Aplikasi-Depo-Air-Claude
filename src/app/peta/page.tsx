@@ -13,7 +13,7 @@ import type { CincinZona, TitikPeta } from '@/components/PetaSebaran';
 const PetaSebaran = dynamic(() => import('@/components/PetaSebaran'), {
   ssr: false,
   loading: () => (
-    <div style={{ height: '420px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Memuat peta...</div>
+    <div style={{ height: 'max(560px, 68vh)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Memuat peta...</div>
   )
 });
 
