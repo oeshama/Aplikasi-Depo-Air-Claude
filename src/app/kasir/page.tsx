@@ -955,6 +955,16 @@ export default function KasirPage() {
     };
 
     AppStore.addPesanan(newPesanan);
+
+    // Pesanan sudah tersimpan: segera kembalikan layar ke kondisi awal (keranjang 0, lembar bayar tertutup, struk tampil).
+    // Dilakukan SEBELUM langkah lanjutan (stok, cetak) supaya layar tidak tertinggal bila salah satunya gagal atau terputus.
+    setActiveReceipt(newPesanan);
+    clearCart();
+    setShowCheckout(false);
+    setShowOpsi(false);
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0 });
+
+    try {
     if (isDelivery) {
       picuPushTugas({ no: newNotaNo, ringkas: cartItems.map(i => `${i.jumlah} ${i.nama_produk}`).join(', '), alamat: selectedKontak.alamat || '', pengantarId: newPesanan.pengantar_id || '', aksi: 'baru' });
       setPilihPengantar(null);
@@ -1024,15 +1034,22 @@ export default function KasirPage() {
       window.dispatchEvent(new Event('depo_pengaturan_updated'));
     }
 
-    setActiveReceipt(newPesanan);
-    // Cetak otomatis hanya untuk printer lewat RawBT (dialog cetak browser tidak bisa otomatis)
+    } catch (err: any) {
+      alert('Pesanan sudah tersimpan, tetapi ada langkah lanjutan yang gagal (' + (err?.message || 'galat') + '). Periksa stok dan hutang pelanggan.');
+    }
+
+    // Cetak otomatis hanya untuk printer lewat RawBT (dialog cetak browser tidak bisa otomatis).
+    // Ditunda sebentar: membuka RawBT memindahkan HP ke aplikasi lain, jadi layar harus sudah bersih lebih dulu.
     const pengCetak = AppStore.getPengaturan();
     if (pengCetak.printer_metode === 'rawbt' && pengCetak.printer_cetak_otomatis) {
-      cetakStrukPenjualan(newPesanan, { otomatis: true });
+      setTimeout(() => {
+        try {
+          cetakStrukPenjualan(newPesanan, { otomatis: true });
+        } catch {
+          alert('Struk belum terkirim ke printer. Tekan tombol Cetak di struk.');
+        }
+      }, 400);
     }
-    clearCart();
-    setShowCheckout(false);
-    setShowOpsi(false);
   };
 
   // Active shift cash calculations for Kasir POS Header
